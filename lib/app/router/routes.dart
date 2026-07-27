@@ -1,0 +1,24 @@
+abstract final class Routes {
+  static const onboarding = '/onboarding';
+  static const welcome = '/welcome';
+  static const signIn = '/sign-in';
+  static const signUp = '/sign-up';
+  static const forgot = '/forgot-password';
+  static const home = '/home';
+  static const onlineStore = '/online-store';
+  static const models = '/models';
+  static const offers = '/offers';
+  static const finance = '/finance';
+  static const parts = '/parts';
+  static const partsCart = '/parts/cart';
+  static const partsCheckout = '/parts/checkout';
+  static const protection = '/protection';
+  static const news = '/news';
+  static const usedCars = '/used-cars';
+  static const contact = '/contact';
+  static const financeRequests = '/finance-requests';
+  static const tracking = '/tracking';
+  static const cart = '/cart';
+  static const favorites = '/favorites';
+  static const profile = '/profile';
+}

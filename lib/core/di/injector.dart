@@ -1,0 +1,56 @@
+import 'package:get_it/get_it.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../app/router/app_router.dart';
+import '../../features/auth/bloc/auth_bloc.dart';
+import '../../features/auth/data/auth_repository.dart';
+import '../../features/cart/bloc/cart_cubit.dart';
+import '../../features/parts/bloc/parts_cart_cubit.dart';
+import '../../features/home/data/home_repository.dart';
+import '../../features/onboarding/data/onboarding_repository.dart';
+import '../../features/online_store/bloc/collections_cubits.dart';
+import '../../features/online_store/data/online_store_repository.dart';
+import '../../features/notifications/notifications.dart';
+import '../../features/settings/bloc/locale_cubit.dart';
+import '../../features/vehicles/data/vehicles_repository.dart';
+import '../../shared/navigation/side_menu.dart';
+import '../../features/settings/bloc/theme_cubit.dart';
+import '../../features/settings/data/branding_repository.dart';
+import '../network/api_client.dart';
+import '../storage/local_store.dart';
+
+final sl = GetIt.instance;
+
+Future<void> setupInjector() async {
+  final prefs = await SharedPreferences.getInstance();
+
+  sl
+    ..registerSingleton<LocalStore>(LocalStore(prefs))
+    ..registerLazySingleton<ApiClient>(ApiClient.new)
+    ..registerLazySingleton<BrandingRepository>(
+      () => BrandingRepository(sl(), sl()),
+    )
+    ..registerLazySingleton<OnboardingRepository>(
+      () => OnboardingRepository(sl()),
+    )
+    ..registerLazySingleton<AuthRepository>(() => AuthRepository(sl(), sl()))
+    ..registerLazySingleton<HomeRepository>(() => HomeRepository(sl()))
+    ..registerLazySingleton<OnlineStoreRepository>(() => OnlineStoreRepository(sl()))
+    ..registerLazySingleton<VehiclesRepository>(() => VehiclesRepository(sl()))
+    // App-lifetime blocs + THE router, created exactly once. Keeping them in
+    // DI (not in a widget's build) means a locale/theme/brand change rebuilds
+    // the UI in place — navigation stack and screen state survive, like the
+    // website's instant language toggle.
+    ..registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl(), sl()))
+    ..registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl()))
+    ..registerLazySingleton<AuthBloc>(() => AuthBloc(sl()))
+    ..registerLazySingleton<FavoritesCubit>(() => FavoritesCubit(sl()))
+    ..registerLazySingleton<CartCubit>(() => CartCubit(sl(), sl(), sl()))
+    ..registerLazySingleton<PartsCartCubit>(() => PartsCartCubit(sl()))
+    ..registerLazySingleton<MenuCubit>(MenuCubit.new)
+    ..registerLazySingleton<NotificationsCubit>(() => NotificationsCubit(prefs))
+    ..registerLazySingleton<GoRouter>(
+      () => buildRouter(authBloc: sl(), store: sl()),
+    );
+}

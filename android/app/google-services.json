@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "172504827635",
+    "firebase_url": "https://hassan-jameel.firebaseio.com",
+    "project_id": "hassan-jameel",
+    "storage_bucket": "hassan-jameel.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172504827635:android:550d7c8df2b84fd226d986",
+        "android_client_info": {
+          "package_name": "com.hassanjameel.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo8e-_ldopnlh1ntjfHdkkD89oQJTLk0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
