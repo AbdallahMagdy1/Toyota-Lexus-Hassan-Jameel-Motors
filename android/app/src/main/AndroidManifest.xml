@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="hj_mobile"
+        android:label="Toyota HJ"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

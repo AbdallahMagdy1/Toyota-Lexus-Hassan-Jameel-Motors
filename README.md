@@ -4,6 +4,7 @@ Hassan Jameel Motors official mobile app — a Flutter app for **Toyota** and **
 
 | | Toyota | Lexus |
 |---|---|---|
+| App name | Toyota HJ | Lexus HJ |
 | Entry point | `lib/main_toyota.dart` | `lib/main_lexus.dart` |
 | Bundle ID / App ID | `com.hassanjameel.toyota` | `com.hassanjameel.lexus` |
 | Icon config | `icons-toyota.yaml` | `icons-lexus.yaml` |
@@ -18,7 +19,7 @@ cd ios && pod install && cd ..   # macOS only
 
 ## Building the Toyota app (repo default)
 
-The repo is checked in with the Toyota icons and the Toyota bundle ID, so:
+The repo is checked in with the Toyota name, icons, and bundle ID, so:
 
 ```bash
 flutter build ipa -t lib/main_toyota.dart
@@ -26,17 +27,18 @@ flutter build ipa -t lib/main_toyota.dart
 
 ## Building the Lexus app
 
-1. Regenerate the Lexus launcher icons:
-   ```bash
-   dart run flutter_launcher_icons -f icons-lexus.yaml
-   ```
-2. In Xcode (Runner → Signing & Capabilities): change the Bundle Identifier to `com.hassanjameel.lexus` and set the Lexus display name.
-3. Build:
-   ```bash
-   flutter build ipa -t lib/main_lexus.dart
-   ```
+One command flips the app name (Lexus HJ), the iOS bundle identifier, the Android label, and the launcher icons:
 
-To return to Toyota, run `dart run flutter_launcher_icons -f icons-toyota.yaml` and switch the bundle ID back.
+```bash
+dart run tool/set_brand.dart lexus
+flutter build ipa -t lib/main_lexus.dart
+```
+
+To return to Toyota:
+
+```bash
+dart run tool/set_brand.dart toyota
+```
 
 ## Notes
 
