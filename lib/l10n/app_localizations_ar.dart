@@ -2509,4 +2509,324 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get contactPopCall => 'اتصل بنا';
+
+  @override
+  String get osOrderDetails => 'تفاصيل الطلب';
+
+  @override
+  String get osInclVat => 'شامل ضريبة القيمة المضافة';
+
+  @override
+  String get osExteriorColor => 'اللون الخارجي';
+
+  @override
+  String get osInnerColor => 'اللون الداخلي';
+
+  @override
+  String get osTotal => 'الإجمالي';
+
+  @override
+  String get osAmountRequired => 'المبلغ المطلوب دفعه';
+
+  @override
+  String get osHowYouPay => 'طريقة الدفع';
+
+  @override
+  String get osPayHint =>
+      'تُدفع الدفعة الأولى عبر فيزا أو مدى، والمبلغ المتبقي عبر سداد.';
+
+  @override
+  String get formPayConfirm => 'ادفع وأكّد الحجز';
+
+  @override
+  String get reserveWillPay => 'ستدفع الآن';
+
+  @override
+  String get linkTerms => 'الشروط والأحكام';
+
+  @override
+  String get linkPrivacy => 'سياسة الموقع';
+
+  @override
+  String get termsPrefix => 'لقد قرأت ';
+
+  @override
+  String get termsJoin => ' و';
+
+  @override
+  String get termsSuffix => ' وأوافق.';
+
+  @override
+  String get finReqLearnTitle => 'ما هي متطلبات التمويل والوثائق المطلوبة؟';
+
+  @override
+  String get finReqLearnMore => 'اعرف أكثر';
+
+  @override
+  String get finReqDialogReqs => 'متطلبات التمويل:';
+
+  @override
+  String get finReqDialogDocs => 'الوثائق المطلوبة:';
+
+  @override
+  String get finReqSaudi => 'سعودي';
+
+  @override
+  String get finReqResident => 'مقيم';
+
+  @override
+  String get finReqAge => 'عمر الضيف يبدأ من ٢١ سنة';
+
+  @override
+  String get finReqWorkDuration => 'مدة العمل ٩٥ يومًا';
+
+  @override
+  String get finReqSalarySaudi => 'الراتب يبدأ من ٣٠٠٠ ريال';
+
+  @override
+  String get finReqSalaryResident => 'الراتب يبدأ من ٥٠٠٠ ريال';
+
+  @override
+  String get finReqDoc1 => 'الهوية الشخصية سارية المفعول';
+
+  @override
+  String get finReqDoc2 => 'رخصة قيادة سارية المفعول';
+
+  @override
+  String get finReqDoc3 => 'برنت تأمينات حديث لا تتجاوز مدته ١٠ أيام';
+
+  @override
+  String get finReqDoc4 =>
+      'تعريف بالراتب مصدّق من الغرفة التجارية لا تتجاوز مدته شهرين';
+
+  @override
+  String get finReqDoc5 => 'كشف حساب آخر ٣ أشهر';
+
+  @override
+  String get cpcTitle => 'أكمل شراء سيارتك';
+
+  @override
+  String get cpcDepositBanner =>
+      'تم استلام العربون وتأكيد حجز سيارتك. أكمل خطوات الشراء أدناه.';
+
+  @override
+  String get cpcYourCar => 'سيارتك';
+
+  @override
+  String get cpcStepProtection => 'الحماية والتظليل';
+
+  @override
+  String get cpcStepContract => 'العقد والتوقيع';
+
+  @override
+  String get cpcStepDelivery => 'جدولة التسليم';
+
+  @override
+  String get cpcStepPayment => 'المبلغ المتبقي';
+
+  @override
+  String get cpcProtectionHint =>
+      'اختر باقات الحماية والتظليل التي ترغب بإضافتها لسيارتك (اختياري).';
+
+  @override
+  String get cpcNoPackages =>
+      'لا توجد باقات حماية متاحة لهذه المركبة. يمكنك المتابعة بدون إضافة.';
+
+  @override
+  String get cpcNoneSelected => 'لم تختر أي باقة';
+
+  @override
+  String cpcSelectedCount(int count) {
+    return '$count باقة مختارة';
+  }
+
+  @override
+  String get cpcByChoice => 'حسب الاختيار';
+
+  @override
+  String get cpcConfirmSelection => 'تأكيد الاختيار';
+
+  @override
+  String get cpcContinueWithout => 'متابعة بدون إضافة';
+
+  @override
+  String get cpcLockedStep =>
+      'هذه الخطوة قريبًا في التطبيق — سيتواصل معك فريقنا لإكمالها.';
+
+  @override
+  String get cpcNotFound => 'تعذّر العثور على حجز السيارة المرتبط بهذا الرابط.';
+
+  @override
+  String get cpcResumeBanner => 'أكمل عملية شراء سيارتك';
+
+  @override
+  String get cpcSelectionDone =>
+      'تم تسجيل اختيارك — سيتم إكمال الخطوات التالية مع فريقنا.';
+
+  @override
+  String get cpcCompletePurchase => 'أكمل الشراء';
+
+  @override
+  String get cpcBack => 'السابق';
+
+  @override
+  String get cpcSignInFirst => 'سجّل الدخول لمتابعة خطوات شراء سيارتك.';
+
+  @override
+  String get cpcContractTitle => 'عقد البيع والتوقيع';
+
+  @override
+  String get cpcAddons => 'الإضافات:';
+
+  @override
+  String get cpcContractPreparing =>
+      'جارٍ إنشاء أمر البيع وتجهيز العقد، من فضلك لا تغلق الشاشة…';
+
+  @override
+  String get cpcContractFailed => 'تعذّر إنشاء أمر البيع.';
+
+  @override
+  String get cpcContractReady => 'عقد البيع الخاص بك جاهز.';
+
+  @override
+  String get cpcViewContract => 'عرض العقد (PDF)';
+
+  @override
+  String get cpcAgreeContract => 'أوافق على شروط وأحكام عقد البيع.';
+
+  @override
+  String get cpcAgreeFirst => 'يجب الموافقة على الشروط أولاً.';
+
+  @override
+  String get cpcNoIdentity => 'رقم الهوية غير متوفر في حسابك.';
+
+  @override
+  String get cpcSignAbsher => 'التوقيع عبر أبشر';
+
+  @override
+  String get cpcSignOtpHint => 'أدخل رمز التحقق المرسل إلى جوالك عبر أبشر';
+
+  @override
+  String get cpcSignConfirm => 'تأكيد التوقيع';
+
+  @override
+  String get cpcSignResend => 'إعادة إرسال الرمز';
+
+  @override
+  String get cpcSignSendFailed => 'تعذّر إرسال رمز التوثيق، حاول مجددًا.';
+
+  @override
+  String get cpcSignInvalidOtp => 'رمز التحقق غير صحيح.';
+
+  @override
+  String get cpcTestModeSign => 'وضع الاختبار: يتم التوقيع بدون أبشر.';
+
+  @override
+  String get cpcSignTest => 'توقيع العقد (اختبار)';
+
+  @override
+  String get cpcAlreadySigned => 'تم توقيع العقد.';
+
+  @override
+  String get cpcContinue => 'متابعة';
+
+  @override
+  String get cpcDeliveryHint => 'اختر تاريخ ووقت استلام سيارتك.';
+
+  @override
+  String get cpcDeliveryLoading => 'جارٍ تحميل جدولة التسليم…';
+
+  @override
+  String get cpcDeliveryNotReady =>
+      'سيتم تفعيل جدولة التسليم بعد تأكيد أمر البيع (عادةً خلال يوم عمل واحد). يمكنك متابعة الدفع الآن وجدولة التسليم لاحقًا.';
+
+  @override
+  String get cpcDeliveryDate => 'التاريخ';
+
+  @override
+  String get cpcDeliveryTimes => 'الأوقات المتاحة';
+
+  @override
+  String get cpcDeliveryNoSlots =>
+      'لا توجد أوقات متاحة في هذا اليوم. جرّب تاريخًا آخر.';
+
+  @override
+  String get cpcDeliveryBooked => 'تم حجز موعد التسليم';
+
+  @override
+  String get cpcDeliveryBookFailed => 'تعذّر حجز الموعد، حاول مجددًا.';
+
+  @override
+  String get cpcDeliveryConfirm => 'تأكيد الموعد';
+
+  @override
+  String get cpcDeliveryLater => 'جدولة لاحقًا';
+
+  @override
+  String get cpcContinuePayment => 'متابعة للدفع';
+
+  @override
+  String get cpcPayTitle => 'سداد المبلغ المتبقي';
+
+  @override
+  String get cpcPayCar => 'سعر السيارة (شامل الضريبة)';
+
+  @override
+  String get cpcPayAddons => 'الإضافات (حماية وتظليل)';
+
+  @override
+  String get cpcPayDeposit => 'العربون المدفوع';
+
+  @override
+  String get cpcPayRemaining => 'المبلغ المتبقي';
+
+  @override
+  String get cpcPayProceed => 'إتمام الدفع';
+
+  @override
+  String get cpcSadadOpenBank =>
+      'افتح تطبيق البنك ← سداد وأدخل الرقم لإتمام الدفع.';
+
+  @override
+  String get cpcPayDone => 'تم إتمام شراء سيارتك بنجاح';
+
+  @override
+  String get cpcPayProcessing => 'عملية الدفع قيد المعالجة';
+
+  @override
+  String get cpcPayThanks =>
+      'شكرًا لاختيارك حسن جميل. ستصلك تفاصيل التسليم قريبًا.';
+
+  @override
+  String get cpcPayConfirming => 'جارٍ التحقق من حالة الدفع…';
+
+  @override
+  String get cpcTestModePay =>
+      'وضع الاختبار: يتم اعتبار الدفع مكتملًا بدون التوجه لبوابة الدفع.';
+
+  @override
+  String get cpcPayTest => 'إتمام الشراء (اختبار)';
+
+  @override
+  String get cpcTestPaid => 'تم إتمام الشراء (وضع الاختبار)';
+
+  @override
+  String get cpcTestPaidHint => 'تم اجتياز جميع الخطوات بنجاح بدون دفع فعلي.';
+
+  @override
+  String get offersFinancingBy => 'جهة التمويل';
+
+  @override
+  String get pfDeleteNote =>
+      'تنبيه: هذا الإجراء سيحذف حسابك ويخفي جميع بياناتك نهائيًا ولا يمكن التراجع عنه من التطبيق.';
+
+  @override
+  String get pfDeleteDialogTitle => 'حذف الحساب؟';
+
+  @override
+  String get pfDeleteDialogBody =>
+      'هل أنت متأكد أنك تريد حذف حسابك؟ سيتم إخفاء بياناتك من التطبيق ولا يمكن التراجع عن هذا الإجراء.';
+
+  @override
+  String get pfCancel => 'إلغاء';
 }

@@ -7,17 +7,23 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/di/injector.dart';
+import '../../../../core/storage/local_store.dart';
+import '../../../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_dropdown.dart';
 import '../../../auth/bloc/auth_bloc.dart';
+import '../../../finance/presentation/finance_lead_sheet.dart'
+    show AbsherAutofillButton;
 import '../../../home/domain/home_models.dart';
 import '../../../home/presentation/widgets/home_bits.dart';
 import '../../../settings/bloc/locale_cubit.dart';
 import '../../bloc/car_sheet_cubit.dart';
 import '../../bloc/method_form_cubits.dart';
 import '../../domain/online_store_models.dart';
+import '../purchase_complete_screen.dart';
 import 'bank_cards.dart';
+import 'order_summary_card.dart';
 
 /* ───────────────────────── Method picker card ───────────────────────── */
 
@@ -570,6 +576,15 @@ final class ContactForm extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
+        // Compact collapsible order summary — the website's "Order details".
+        OrderSummaryCard(
+          vehicle: cubit.vehicle,
+          color: sheet.state.color,
+          downPayment: sheet.downPayment,
+        ),
+        SizedBox(height: context.rs(4)),
+        // Absher autofill — website's "Autofill your details" strip.
+        AbsherAutofillButton(onFilled: cubit.applyAbsher),
         PickerField<CustGroup>(
           label: t.formApplicant,
           value: cubit.custGroup,
@@ -661,6 +676,31 @@ final class ReserveForm extends StatelessWidget {
       final url = '${res['urlPayment'] ?? ''}';
       final sadad = '${res['sadadNumber'] ?? ''}';
       final orderId = '${res['orderId'] ?? ''}';
+      final draftGuid = '${res['orderGuid'] ?? ''}';
+
+      // Opens the post-deposit "complete purchase" continuation (the
+      // website's /car/complete/{orderGuid}) over the sheet and remembers it
+      // so the flow stays reachable after the app is closed.
+      Future<void> openComplete(String guid) async {
+        await sl<LocalStore>().setPendingCarPurchase(
+            guid: guid, carName: cubit.vehicle.name(lang));
+        if (context.mounted) await PurchaseCompleteScreen.open(context, guid);
+      }
+
+      // TEST-MODE parity with the website: cars in the 'test' product group
+      // skip the deposit gateway — the draft exists, go straight to the
+      // purchase continuation.
+      final isTest =
+          '${cubit.vehicle.groupEn ?? ''} ${cubit.vehicle.shortDescriptionEn ?? ''}'
+              .toLowerCase()
+              .contains('test');
+      if (isTest && draftGuid.isNotEmpty && draftGuid != 'null') {
+        sheet.showSuccess(orderId == 'null' ? '' : orderId,
+            orderGuid: draftGuid);
+        await openComplete(draftGuid);
+        return;
+      }
+
       if (url.isNotEmpty && url != 'null') {
         final gate = await Navigator.of(context, rootNavigator: true)
             .push<(bool, String?)>(MaterialPageRoute(
@@ -669,7 +709,12 @@ final class ReserveForm extends StatelessWidget {
         ));
         if (!context.mounted) return;
         if (gate != null && gate.$1) {
-          sheet.showSuccess(gate.$2 ?? (orderId == 'null' ? '' : orderId));
+          final guid = (gate.$2 ?? '').trim();
+          sheet.showSuccess(guid.isNotEmpty ? guid : (orderId == 'null' ? '' : orderId),
+              orderGuid: guid.isEmpty ? null : guid);
+          // Paid → continue the purchase (protection & shading + next steps),
+          // exactly where the website redirects after the gateway.
+          if (guid.isNotEmpty) await openComplete(guid);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
               content: Text(t.pcPayFailed),
@@ -712,47 +757,14 @@ final class ReserveForm extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
-        // Order summary — down payment / amount required, like the website.
-        Container(
-          padding: EdgeInsets.all(context.rs(14)),
-          decoration: BoxDecoration(
-            color: scheme.primary.withValues(alpha: 0.07),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(t.sheetDownPayment,
-                        style: TextStyle(
-                            fontSize: context.rf(11),
-                            color: scheme.onSurface.withValues(alpha: 0.6))),
-                    Text.rich(
-                      TextSpan(children: [
-                        riyalSpan(
-                            fontSize: context.rf(17), color: scheme.primary),
-                        TextSpan(text: formatPrice(cubit.downPayment)),
-                      ]),
-                      textDirection: TextDirection.ltr,
-                      style: TextStyle(
-                          fontSize: context.rf(17),
-                          fontWeight: FontWeight.w800,
-                          fontStyle: FontStyle.italic,
-                          color: scheme.primary),
-                    ),
-                  ],
-                ),
-              ),
-              Text(t.methodRefundable,
-                  style: TextStyle(
-                      fontSize: context.rf(11.5),
-                      fontWeight: FontWeight.w700,
-                      color: scheme.primary)),
-            ],
-          ),
+        // The website's "Order details" panel — car + colours + total, down
+        // payment, amount required and the "How you pay" platforms strip.
+        OrderSummaryCard(
+          vehicle: cubit.vehicle,
+          color: sheet.state.color,
+          downPayment: cubit.downPayment,
+          showPlatforms: true,
+          initiallyExpanded: true,
         ),
         PickerField<CustGroup>(
           label: t.formApplicant,
@@ -791,7 +803,34 @@ final class ReserveForm extends StatelessWidget {
             maxLength: 10,
             ltr: true),
         _serverError(context, state.serverError),
-        _submitBar(context, busy: state.busy, onSubmit: submit),
+        // "You will pay <amount> (Refundable)" — website ReserveForm footer.
+        Padding(
+          padding: EdgeInsets.only(top: context.rs(14)),
+          child: Text.rich(
+            TextSpan(
+              style: TextStyle(
+                fontSize: context.rf(11.5),
+                color: scheme.onSurface.withValues(alpha: 0.6),
+              ),
+              children: [
+                TextSpan(text: '${t.reserveWillPay} '),
+                TextSpan(children: [
+                  riyalSpan(
+                      fontSize: context.rf(12), color: scheme.onSurface),
+                  TextSpan(
+                      text: formatPrice(cubit.downPayment),
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontStyle: FontStyle.italic,
+                          color: scheme.onSurface)),
+                ]),
+                TextSpan(text: ' (${t.methodRefundable})'),
+              ],
+            ),
+          ),
+        ),
+        _submitBar(context,
+            busy: state.busy, onSubmit: submit, label: t.formPayConfirm),
       ],
     ).animate().fadeIn(duration: 220.ms);
   }
@@ -858,6 +897,51 @@ final class FinanceForm extends StatelessWidget {
             ],
           ),
         ),
+        // "What are the financing requirements & required documents?" —
+        // the website's Learn-more entry, visible on every step.
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              context.rs(20), context.rs(8), context.rs(20), 0),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(13),
+            onTap: () => showFinanceRequirementsSheet(context),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: context.rs(12), vertical: context.rs(10)),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(13),
+                border:
+                    Border.all(color: scheme.outline.withValues(alpha: 0.6)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.description_outlined,
+                      size: 16, color: scheme.primary),
+                  SizedBox(width: context.rs(8)),
+                  Expanded(
+                    child: Text(
+                      t.finReqLearnTitle,
+                      style: TextStyle(
+                          fontSize: context.rf(11.5),
+                          fontWeight: FontWeight.w700,
+                          color: scheme.primary),
+                    ),
+                  ),
+                  Text(
+                    t.finReqLearnMore,
+                    style: TextStyle(
+                      fontSize: context.rf(10.5),
+                      fontWeight: FontWeight.w800,
+                      decoration: TextDecoration.underline,
+                      decorationColor: scheme.primary,
+                      color: scheme.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 220),
@@ -873,6 +957,111 @@ final class FinanceForm extends StatelessWidget {
   }
 }
 
+/// Financing requirements & required documents — the website's
+/// FinanceRequirementsDialog (Saudi / Resident tabs) as a bottom sheet.
+void showFinanceRequirementsSheet(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => const _FinanceRequirementsSheet(),
+  );
+}
+
+final class _FinanceRequirementsSheet extends StatefulWidget {
+  const _FinanceRequirementsSheet();
+
+  @override
+  State<_FinanceRequirementsSheet> createState() =>
+      _FinanceRequirementsSheetState();
+}
+
+final class _FinanceRequirementsSheetState
+    extends State<_FinanceRequirementsSheet> {
+  int _tab = 0; // 0 Saudi | 1 Resident
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+
+    final requirements = [
+      t.finReqAge,
+      t.finReqWorkDuration,
+      _tab == 0 ? t.finReqSalarySaudi : t.finReqSalaryResident,
+    ];
+    final documents = [
+      t.finReqDoc1,
+      t.finReqDoc2,
+      t.finReqDoc3,
+      t.finReqDoc4,
+      t.finReqDoc5,
+    ];
+
+    Widget bullet(IconData icon, String text) => Padding(
+          padding: EdgeInsets.only(bottom: context.rs(8)),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, size: 15, color: scheme.primary),
+              SizedBox(width: context.rs(8)),
+              Expanded(
+                child: Text(text,
+                    style: TextStyle(
+                        fontSize: context.rf(12),
+                        height: 1.5,
+                        color: scheme.onSurface.withValues(alpha: 0.75))),
+              ),
+            ],
+          ),
+        );
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(26)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Center(child: SheetHandle()),
+          SizedBox(height: context.rs(10)),
+          Text(t.finReqLearnTitle,
+              style: TextStyle(
+                  fontSize: context.rf(15), fontWeight: FontWeight.w800)),
+          SizedBox(height: context.rs(12)),
+          Segmented(
+            options: [t.finReqSaudi, t.finReqResident],
+            selectedIndex: _tab,
+            onSelected: (i) => setState(() => _tab = i),
+          ),
+          SizedBox(height: context.rs(16)),
+          Text(t.finReqDialogReqs,
+              style: TextStyle(
+                  fontSize: context.rf(13), fontWeight: FontWeight.w800)),
+          SizedBox(height: context.rs(8)),
+          for (final r in requirements) bullet(Icons.check_rounded, r),
+          SizedBox(height: context.rs(10)),
+          Text(t.finReqDialogDocs,
+              style: TextStyle(
+                  fontSize: context.rf(13), fontWeight: FontWeight.w800)),
+          SizedBox(height: context.rs(8)),
+          for (final d in documents) bullet(Icons.description_outlined, d),
+          SizedBox(height: context.rs(14)),
+          FilledButton(
+            onPressed: () => Navigator.of(context).maybePop(),
+            style:
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+            child: Text(t.commonDone),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 final class _FinancePersonal extends StatelessWidget {
   const _FinancePersonal({super.key});
 
@@ -882,10 +1071,20 @@ final class _FinancePersonal extends StatelessWidget {
     final cubit = context.read<FinanceFormCubit>();
     final state = context.watch<FinanceFormCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
+    final sheet = context.read<CarSheetCubit>();
 
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
+        // Compact collapsible order summary — the website's "Order details".
+        OrderSummaryCard(
+          vehicle: cubit.vehicle,
+          color: sheet.state.color,
+          downPayment: sheet.downPayment,
+        ),
+        SizedBox(height: context.rs(4)),
+        // "Autofill from Absher" — website AbsherAutofill on the personal step.
+        AbsherAutofillButton(onFilled: cubit.applyAbsher),
         PickerField<CustGroup>(
           label: t.formApplicant,
           value: cubit.settings.custGroups
@@ -1098,13 +1297,8 @@ final class _FinanceDocs extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
         // Financing entity — the "Pick a bank" cards, not a dropdown.
+        // Optional, like the website (bankID may be omitted).
         FieldLabel(t.formFinanceBank),
-        if (state.errors['financeBank'] != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 6),
-            child: Text(t.authRequiredField,
-                style: const TextStyle(color: Color(0xFFE5484D), fontSize: 11.5)),
-          ),
         BankCardList(
           banks: banks,
           selectedBankId: state.financeBankId,
@@ -1262,11 +1456,31 @@ final class SheetSuccess extends StatelessWidget {
             ),
           ],
           SizedBox(height: context.rs(26)),
-          FilledButton(
-            onPressed: () => Navigator.of(context).maybePop(),
-            style: FilledButton.styleFrom(minimumSize: Size(context.rs(180), 50)),
-            child: Text(t.successClose),
-          ),
+          // Deposit paid → continue the purchase steps (website's
+          // /car/complete/{orderGuid} continuation).
+          if ((state.orderGuid ?? '').isNotEmpty) ...[
+            FilledButton.icon(
+              onPressed: () =>
+                  PurchaseCompleteScreen.open(context, state.orderGuid!),
+              style:
+                  FilledButton.styleFrom(minimumSize: Size(context.rs(220), 50)),
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+              label: Text(t.cpcCompletePurchase),
+            ),
+            SizedBox(height: context.rs(10)),
+            OutlinedButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              style: OutlinedButton.styleFrom(
+                  minimumSize: Size(context.rs(220), 48)),
+              child: Text(t.successClose),
+            ),
+          ] else
+            FilledButton(
+              onPressed: () => Navigator.of(context).maybePop(),
+              style:
+                  FilledButton.styleFrom(minimumSize: Size(context.rs(180), 50)),
+              child: Text(t.successClose),
+            ),
         ],
       ),
     );

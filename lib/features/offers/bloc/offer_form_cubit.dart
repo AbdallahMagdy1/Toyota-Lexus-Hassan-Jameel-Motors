@@ -3,7 +3,10 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../auth/domain/app_user.dart';
+import '../../finance/bloc/finance_lead_cubit.dart' show kFinanceDocKinds;
 import '../../online_store/data/online_store_repository.dart';
+import '../../online_store/domain/online_store_models.dart';
+import '../../protection/data/protection_repository.dart';
 import '../data/offers_repository.dart';
 import '../domain/offer_models.dart';
 
@@ -20,6 +23,16 @@ final class OfferFormState extends Equatable {
     this.error,
     this.prefDate,
     this.prefTime,
+    this.hours = const [],
+    this.hoursLoading = false,
+    this.custGroups = const [],
+    this.custGroupId = 'G4',
+    this.needIdentity = true,
+    this.year = '',
+    this.workType = '',
+    this.docs = const {},
+    this.docNames = const {},
+    this.accepted = false,
   });
 
   final OfferFormPhase phase;
@@ -31,6 +44,30 @@ final class OfferFormState extends Equatable {
   final DateTime? prefDate;
   final String? prefTime;
 
+  /// Available time slots for [prefDate] — the same maintenance
+  /// GetAllAvailableHours source the booking flow's hour grid uses.
+  final List<String> hours;
+  final bool hoursLoading;
+
+  // ── Finance-dialog additions (website OfferFinanceDialog) ──
+  /// "Buying as" (individuals/companies) — switches the ID ↔ CR label.
+  final List<CustGroup> custGroups;
+  final String custGroupId;
+  final bool needIdentity;
+
+  /// Manufacture year picked from the vehicle's fromYear..toYear range.
+  final String year;
+
+  /// Employment sector — '' unset | 'private' | 'governmental'.
+  final String workType;
+
+  /// Attached documents: kind -> base64 (no data-url prefix).
+  final Map<String, String> docs;
+  final Map<String, String> docNames;
+
+  /// Privacy consent — gates the finance submit like the website.
+  final bool accepted;
+
   OfferFormState copyWith({
     OfferFormPhase? phase,
     int? Function()? packageId,
@@ -38,6 +75,16 @@ final class OfferFormState extends Equatable {
     String? Function()? error,
     DateTime? Function()? prefDate,
     String? Function()? prefTime,
+    List<String>? hours,
+    bool? hoursLoading,
+    List<CustGroup>? custGroups,
+    String? custGroupId,
+    bool? needIdentity,
+    String? year,
+    String? workType,
+    Map<String, String>? docs,
+    Map<String, String>? docNames,
+    bool? accepted,
   }) =>
       OfferFormState(
         phase: phase ?? this.phase,
@@ -46,11 +93,25 @@ final class OfferFormState extends Equatable {
         error: error == null ? this.error : error(),
         prefDate: prefDate == null ? this.prefDate : prefDate(),
         prefTime: prefTime == null ? this.prefTime : prefTime(),
+        hours: hours ?? this.hours,
+        hoursLoading: hoursLoading ?? this.hoursLoading,
+        custGroups: custGroups ?? this.custGroups,
+        custGroupId: custGroupId ?? this.custGroupId,
+        needIdentity: needIdentity ?? this.needIdentity,
+        year: year ?? this.year,
+        workType: workType ?? this.workType,
+        docs: docs ?? this.docs,
+        docNames: docNames ?? this.docNames,
+        accepted: accepted ?? this.accepted,
       );
 
   @override
-  List<Object?> get props =>
-      [phase, packageId, period, error, prefDate, prefTime];
+  List<Object?> get props => [
+        phase, packageId, period, error, prefDate, prefTime,
+        hours, hoursLoading,
+        custGroups, custGroupId, needIdentity, year, workType,
+        docs, docNames, accepted,
+      ];
 }
 
 /// One cubit for the three offer application flows — the same three dialogs
@@ -68,10 +129,12 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
     required this.vehicle,
     required OffersRepository offersRepo,
     required OnlineStoreRepository onlineRepo,
+    required ProtectionRepository protectionRepo,
     required this.user,
     required String lang,
   })  : _offers = offersRepo,
         _online = onlineRepo,
+        _protection = protectionRepo,
         super(OfferFormState(
           period: detail.defaultFinancePeriod ?? 60,
           packageId:
@@ -81,6 +144,22 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
     phone.text = user?.phone ?? '';
     email.text = user?.email ?? '';
     if ((vehicle?.year ?? '').isNotEmpty) year.text = vehicle!.year!;
+    // Finance dialog: default manufacture year = newest of the supported
+    // range (website years[0] ?? vehicle.year), and "Buying as" groups from
+    // the shared form settings.
+    if (kind == OfferFormKind.finance) {
+      emit(state.copyWith(
+          year: manufactureYears.firstOrNull ?? vehicle?.year ?? ''));
+      _online.formSettings().then((s) {
+        if (isClosed || s.custGroups.isEmpty) return;
+        final first = s.custGroups.first;
+        emit(state.copyWith(
+          custGroups: s.custGroups,
+          custGroupId: first.id ?? 'G4',
+          needIdentity: first.needIdentity,
+        ));
+      });
+    }
   }
 
   final OfferFormKind kind;
@@ -93,6 +172,7 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
 
   final OffersRepository _offers;
   final OnlineStoreRepository _online;
+  final ProtectionRepository _protection;
   final AppUser? user;
 
   final name = TextEditingController();
@@ -104,11 +184,70 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
   final meter = TextEditingController();
   final vin = TextEditingController();
   final note = TextEditingController();
+  final advance = TextEditingController();
+
+  /// Website yearsFor(): every year in the supported vehicle's
+  /// fromYear..toYear range, newest first; else the single `year`.
+  List<String> get manufactureYears {
+    final v = vehicle;
+    if (v == null) return const [];
+    final from = v.fromYear ?? 0;
+    final to = v.toYear ?? 0;
+    if (from > 1990 && to >= from) {
+      return [for (var y = to; y >= from; y--) '$y'];
+    }
+    return (v.year ?? '').isEmpty ? const [] : [v.year!];
+  }
 
   void selectPackage(int? id) => emit(state.copyWith(packageId: () => id));
   void selectPeriod(int p) => emit(state.copyWith(period: p));
-  void setPrefDate(DateTime? d) => emit(state.copyWith(prefDate: () => d));
   void setPrefTime(String? tm) => emit(state.copyWith(prefTime: () => tm));
+
+  /// Date picked from the SHARED availability calendar → load that day's
+  /// bookable time slots (maintenance GetAllAvailableHours cycle) and clear
+  /// any previously chosen time, exactly like the booking flow.
+  Future<void> pickPrefDate(DateTime d) async {
+    emit(state.copyWith(
+      prefDate: () => d,
+      prefTime: () => null,
+      hours: const [],
+      hoursLoading: true,
+    ));
+    final hours = await _protection.hours(d);
+    if (isClosed) return;
+    emit(state.copyWith(hours: hours, hoursLoading: false));
+  }
+  void selectYear(String y) => emit(state.copyWith(year: y));
+  void setWorkType(String v) => emit(state.copyWith(workType: v));
+  void setAccepted(bool v) => emit(state.copyWith(accepted: v));
+
+  void selectCustGroup(String? id) {
+    final g = state.custGroups.where((g) => g.id == id).firstOrNull;
+    emit(state.copyWith(
+      custGroupId: id ?? 'G4',
+      needIdentity: g?.needIdentity ?? true,
+    ));
+  }
+
+  void setDoc(String kind, String? base64, String? fileName) {
+    final docs = Map<String, String>.from(state.docs);
+    final names = Map<String, String>.from(state.docNames);
+    if (base64 == null || base64.isEmpty) {
+      docs.remove(kind);
+      names.remove(kind);
+    } else {
+      docs[kind] = base64;
+      names[kind] = fileName ?? kind;
+    }
+    emit(state.copyWith(docs: docs, docNames: names));
+  }
+
+  /// Absher/Yakeen autofill (website applyAbsher on the offer dialog).
+  void applyAbsher({String? fullName, String? mobile9, String? identityNo}) {
+    if ((fullName ?? '').trim().isNotEmpty) name.text = fullName!.trim();
+    if ((mobile9 ?? '').trim().isNotEmpty) phone.text = '+966${mobile9!.trim()}';
+    if ((identityNo ?? '').trim().isNotEmpty) identity.text = identityNo!.trim();
+  }
 
   String _fullPhone(String raw) {
     var p = raw.trim().replaceAll(RegExp(r'\s'), '');
@@ -196,25 +335,35 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
         });
         ok = res.ok;
       case OfferFormKind.finance:
-        // Website OfferFinanceDialog → finance request with source "Offer";
-        // the bank is derived server-side from the offer's BankGuid.
+        // Website OfferFinanceDialog payload, field-for-field: finance
+        // request with source "Offer"; the bank is derived server-side from
+        // the offer's BankGuid (no bankID is sent).
+        final id = identity.text.trim();
         final res = await _online.submitFinance({
+          'source': 'Offer',
+          'offerID': o.id,
           'fullNameAr': name.text.trim(),
           'fullNameEn': name.text.trim(),
           'phoneNumber': _fullPhone(phone.text),
           'webUserID': user?.userId,
           'email': email.text.trim().isEmpty ? null : email.text.trim(),
-          'custType': 'G4',
-          'identityNo':
-              identity.text.trim().isEmpty ? null : identity.text.trim(),
-          'modelYear': v?.year ??
-              (year.text.trim().isEmpty ? null : year.text.trim()),
+          'custType': state.needIdentity ? 'G4' : 'G3',
+          if (state.needIdentity)
+            'identityNo': id.isEmpty ? null : id
+          else
+            'cn': id.isEmpty ? null : id,
+          // Best available product handle for the chosen supported car.
+          'productID': v?.productTypeId ?? v?.groupId,
+          'modelYear': state.year.isNotEmpty
+              ? state.year
+              : (v?.year ?? (v?.fromYear == null ? null : '${v!.fromYear}')),
           'income': double.tryParse(income.text.trim()),
+          'firstPayment': double.tryParse(advance.text.trim()),
           'period': state.period,
-          'offerID': o.id,
-          'source': 'Offer',
-          'message':
-              note.text.trim().isEmpty ? null : note.text.trim(),
+          'message': note.text.trim().isEmpty ? null : note.text.trim(),
+          'workType': state.workType.isEmpty ? null : state.workType,
+          for (final kind in kFinanceDocKinds)
+            if ((state.docs[kind] ?? '').isNotEmpty) kind: state.docs[kind],
         });
         ok = res.ok;
     }
@@ -227,7 +376,9 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
 
   @override
   Future<void> close() {
-    for (final c in [name, phone, email, identity, income, year, meter, vin, note]) {
+    for (final c in [
+      name, phone, email, identity, income, year, meter, vin, note, advance,
+    ]) {
       c.dispose();
     }
     return super.close();

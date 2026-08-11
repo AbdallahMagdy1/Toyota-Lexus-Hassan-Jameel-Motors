@@ -7,10 +7,15 @@ import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/availability_calendar.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../finance/presentation/finance_docs_section.dart';
+import '../../finance/presentation/finance_lead_sheet.dart'
+    show AbsherAutofillButton;
 import '../../guest_home/presentation/guest_home_view.dart' show showLoginPrompt;
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../online_store/data/online_store_repository.dart';
+import '../../protection/data/protection_repository.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/offer_form_cubit.dart';
@@ -555,6 +560,7 @@ void showOfferFormSheet(
         vehicle: vehicle,
         offersRepo: OffersRepository(sl<ApiClient>()),
         onlineRepo: sl<OnlineStoreRepository>(),
+        protectionRepo: ProtectionRepository(sl<ApiClient>()),
         user: sl<AuthBloc>().state.user,
         lang: lang,
       ),
@@ -641,35 +647,145 @@ final class _OfferFormView extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 12),
                 decoration: softCardDecoration(context, radius: 14),
-                child: Row(children: [
-                  Icon(Icons.directions_car_filled_rounded,
-                      size: 18, color: scheme.primary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(t.offersVehicle,
+                child: Column(children: [
+                  Row(children: [
+                    Icon(Icons.directions_car_filled_rounded,
+                        size: 18, color: scheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t.offersVehicle,
+                              style: TextStyle(
+                                  fontSize: context.rf(10),
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.55))),
+                          Text(
+                            '${cubit.vehicle!.groupEn ?? ''} ${cubit.vehicle!.year ?? ''}'
+                                .trim(),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                                fontSize: context.rf(10),
-                                fontWeight: FontWeight.w700,
-                                color: scheme.onSurface
-                                    .withValues(alpha: 0.55))),
-                        Text(
-                          '${cubit.vehicle!.groupEn ?? ''} ${cubit.vehicle!.year ?? ''}'
-                              .trim(),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: context.rf(13),
-                              fontWeight: FontWeight.w800),
-                        ),
+                                fontSize: context.rf(13),
+                                fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(Icons.check_circle_rounded,
+                        size: 18, color: scheme.primary),
+                  ]),
+                  // Website VehicleSummary spec chips: petrol/seats/cyl/HP.
+                  if ([
+                    cubit.vehicle!.petrol,
+                    cubit.vehicle!.seatsNumber,
+                    cubit.vehicle!.cylinders,
+                    cubit.vehicle!.hp,
+                  ].any((s) => (s ?? '').isNotEmpty)) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: context.rs(6),
+                      runSpacing: context.rs(6),
+                      children: [
+                        for (final (label, value) in [
+                          (t.specFuel, cubit.vehicle!.petrol),
+                          (t.specSeats, cubit.vehicle!.seatsNumber),
+                          (t.specCylinders, cubit.vehicle!.cylinders),
+                          (t.specHp, cubit.vehicle!.hp),
+                        ])
+                          if ((value ?? '').isNotEmpty)
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: context.rs(9),
+                                  vertical: context.rs(4)),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(999),
+                                border: Border.all(
+                                    color: scheme.outline
+                                        .withValues(alpha: 0.55)),
+                              ),
+                              child: Text(
+                                '$label · $value',
+                                style: TextStyle(
+                                  fontSize: context.rf(10),
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ),
                       ],
                     ),
-                  ),
-                  Icon(Icons.check_circle_rounded,
-                      size: 18, color: scheme.primary),
+                  ],
                 ]),
+              ),
+              const SizedBox(height: 12),
+            ],
+            // Finance offer: "Financing by {bank} · {rate}%" header + Absher.
+            if (cubit.kind == OfferFormKind.finance) ...[
+              if (detail.bankName(lang).isNotEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 12),
+                  decoration: softCardDecoration(context, radius: 14),
+                  child: Row(children: [
+                    if ((detail.bankLogo ?? '').isNotEmpty)
+                      SizedBox(
+                        width: context.rs(38),
+                        height: context.rs(38),
+                        child: HomeImage(
+                            url: detail.bankLogo,
+                            fit: BoxFit.contain,
+                            logicalWidth: 40),
+                      )
+                    else
+                      Icon(Icons.account_balance_rounded,
+                          size: 20, color: scheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(t.offersFinancingBy,
+                              style: TextStyle(
+                                  fontSize: context.rf(10),
+                                  fontWeight: FontWeight.w700,
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.55))),
+                          Text(
+                            detail.financeRate != null
+                                ? '${detail.bankName(lang)} · ${detail.financeRate}%'
+                                : detail.bankName(lang),
+                            style: TextStyle(
+                                fontSize: context.rf(13),
+                                fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ]),
+                ),
+                const SizedBox(height: 12),
+              ],
+              AbsherAutofillButton(onFilled: cubit.applyAbsher),
+              const SizedBox(height: 12),
+              AppDropdown<String>(
+                label: t.finBuyingAs,
+                value: state.custGroups.any((g) => g.id == state.custGroupId)
+                    ? state.custGroupId
+                    : null,
+                items: [
+                  for (final g in state.custGroups)
+                    AppDropdownItem(
+                        value: g.id ?? '',
+                        label: g.name(lang),
+                        icon: g.needIdentity
+                            ? Icons.person_rounded
+                            : Icons.business_rounded),
+                ],
+                onChanged: cubit.selectCustGroup,
               ),
               const SizedBox(height: 12),
             ],
@@ -717,7 +833,10 @@ final class _OfferFormView extends StatelessWidget {
               const SizedBox(height: 12),
               _Field(controller: cubit.vin, label: t.offersVinOptional, ltr: true),
               const SizedBox(height: 12),
-              // Preferred slot — goes into the staff email.
+              // Preferred slot — the SAME availability calendar + hour-slot
+              // cycle the maintenance booking uses (per-day capacity badges,
+              // holidays, live GetAllAvailableHours slots). Offer rule: no
+              // same-day booking — the earliest selectable day is TOMORROW.
               Row(children: [
                 Expanded(
                   child: OutlinedButton.icon(
@@ -731,13 +850,14 @@ final class _OfferFormView extends StatelessWidget {
                     ),
                     onPressed: () async {
                       final now = DateTime.now();
-                      final d = await showDatePicker(
-                        context: context,
-                        initialDate: state.prefDate ?? now,
-                        firstDate: now,
-                        lastDate: now.add(const Duration(days: 60)),
+                      final d = await showAvailabilityCalendarSheet(
+                        context,
+                        selected: state.prefDate,
+                        // Same-day booking blocked for offer reservations.
+                        minDate: DateTime(now.year, now.month, now.day)
+                            .add(const Duration(days: 1)),
                       );
-                      if (d != null) cubit.setPrefDate(d);
+                      if (d != null) cubit.pickPrefDate(d);
                     },
                     icon: const Icon(Icons.calendar_month_outlined, size: 16),
                     label: Text(
@@ -746,6 +866,7 @@ final class _OfferFormView extends StatelessWidget {
                           : state.prefDate!
                               .toIso8601String()
                               .substring(0, 10),
+                      textDirection: TextDirection.ltr,
                       style: TextStyle(fontSize: context.rf(11.5)),
                     ),
                   ),
@@ -761,18 +882,40 @@ final class _OfferFormView extends StatelessWidget {
                           color: scheme.outline.withValues(alpha: 0.8)),
                       foregroundColor: scheme.onSurface,
                     ),
-                    onPressed: () async {
-                      final tm = await showTimePicker(
-                          context: context, initialTime: TimeOfDay.now());
-                      if (tm != null) {
-                        cubit.setPrefTime(
-                            '${tm.hour.toString().padLeft(2, '0')}:${tm.minute.toString().padLeft(2, '0')}');
-                      }
-                    },
-                    icon: const Icon(Icons.schedule_rounded, size: 16),
+                    // Enabled once a date is picked and its slots arrived.
+                    onPressed: state.prefDate == null ||
+                            state.hoursLoading ||
+                            state.hours.isEmpty
+                        ? null
+                        : () async {
+                            final h = await showAppPicker<String>(
+                              context,
+                              title: t.offersPickTime,
+                              items: [
+                                for (final h in state.hours)
+                                  AppDropdownItem(value: h, label: h),
+                              ],
+                              selected: state.prefTime,
+                            );
+                            if (h != null) cubit.setPrefTime(h);
+                          },
+                    icon: state.hoursLoading
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child:
+                                CircularProgressIndicator(strokeWidth: 2))
+                        : const Icon(Icons.schedule_rounded, size: 16),
                     label: Text(
-                      state.prefTime ?? t.offersPickTime,
+                      state.prefTime ??
+                          (state.prefDate != null &&
+                                  !state.hoursLoading &&
+                                  state.hours.isEmpty
+                              ? t.protNoHours
+                              : t.offersPickTime),
                       textDirection: TextDirection.ltr,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(fontSize: context.rf(11.5)),
                     ),
                   ),
@@ -781,9 +924,12 @@ final class _OfferFormView extends StatelessWidget {
               const SizedBox(height: 12),
             ],
             if (cubit.kind == OfferFormKind.finance) ...[
+              // Website: label switches ID ↔ CR with the buying-as choice.
               _Field(
                   controller: cubit.identity,
-                  label: t.formIdentity,
+                  label: state.needIdentity
+                      ? t.formIdentity
+                      : t.finCommercialReg,
                   keyboard: TextInputType.number,
                   ltr: true),
               const SizedBox(height: 12),
@@ -792,30 +938,77 @@ final class _OfferFormView extends StatelessWidget {
                   label: t.offersIncome,
                   keyboard: TextInputType.number),
               const SizedBox(height: 12),
-              Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(t.offersPeriod,
-                    style: TextStyle(
-                        fontSize: context.rf(12),
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface.withValues(alpha: 0.7))),
+              // Manufacture year — dropdown over fromYear..toYear (newest
+              // first); free entry only when no range exists (website).
+              if (cubit.manufactureYears.isNotEmpty) ...[
+                AppDropdown<String>(
+                  label: t.offersYear,
+                  value: cubit.manufactureYears.contains(state.year)
+                      ? state.year
+                      : null,
+                  items: [
+                    for (final y in cubit.manufactureYears)
+                      AppDropdownItem(value: y, label: y),
+                  ],
+                  onChanged: cubit.selectYear,
+                ),
+                const SizedBox(height: 12),
+              ] else ...[
+                _Field(
+                    controller: cubit.year,
+                    label: t.offersYear,
+                    keyboard: TextInputType.number,
+                    ltr: true),
+                const SizedBox(height: 12),
+              ],
+              // Finance period dropdown (website DSelect, default 60 mo).
+              AppDropdown<int>(
+                label: t.offersPeriod,
+                value: periods.contains(state.period) ? state.period : null,
+                items: [
+                  for (final p in periods)
+                    AppDropdownItem(value: p, label: '$p ${t.finMo}'),
+                ],
+                onChanged: cubit.selectPeriod,
               ),
-              const SizedBox(height: 8),
-              Row(children: [
-                for (final p in periods)
-                  Padding(
-                    padding: EdgeInsetsDirectional.only(end: context.rs(8)),
-                    child: ChoiceChip(
-                      label: Text('$p'),
-                      selected: state.period == p,
-                      onSelected: (_) => cubit.selectPeriod(p),
-                    ),
-                  ),
-              ]),
+              const SizedBox(height: 12),
+              _Field(
+                  controller: cubit.advance,
+                  label: t.finFirstPayOptional,
+                  keyboard: TextInputType.number),
               const SizedBox(height: 12),
             ],
             _Field(controller: cubit.note, label: t.formNoteOptional, maxLines: 2),
-            const SizedBox(height: 18),
+            const SizedBox(height: 12),
+            // Finance: required-documents block + privacy consent (website).
+            if (cubit.kind == OfferFormKind.finance) ...[
+              FinanceDocsSection(
+                needIdentity: state.needIdentity,
+                sector: state.workType,
+                onSector: cubit.setWorkType,
+                docs: state.docs,
+                docNames: state.docNames,
+                onDoc: cubit.setDoc,
+              ),
+              const SizedBox(height: 12),
+              Row(children: [
+                SizedBox(
+                  width: 32,
+                  child: Checkbox(
+                    value: state.accepted,
+                    onChanged: (v) => cubit.setAccepted(v ?? false),
+                  ),
+                ),
+                Expanded(
+                  child: Text(t.cmpConsent,
+                      style: TextStyle(
+                          fontSize: context.rf(10.5),
+                          height: 1.45,
+                          color: scheme.onSurface.withValues(alpha: 0.65))),
+                ),
+              ]),
+            ],
+            const SizedBox(height: 12),
             if (state.phase == OfferFormPhase.failed)
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
@@ -830,7 +1023,8 @@ final class _OfferFormView extends StatelessWidget {
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
-              onPressed: state.phase == OfferFormPhase.busy
+              onPressed: state.phase == OfferFormPhase.busy ||
+                      (cubit.kind == OfferFormKind.finance && !state.accepted)
                   ? null
                   : () => context.read<OfferFormCubit>().submit(lang),
               child: state.phase == OfferFormPhase.busy

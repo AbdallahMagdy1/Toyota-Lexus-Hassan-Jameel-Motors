@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
+import '../../../core/storage/local_store.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
@@ -17,6 +18,7 @@ import '../../cart/domain/cart_item.dart';
 import '../bloc/collections_cubits.dart';
 import '../bloc/online_store_cubit.dart';
 import 'car_sheet.dart';
+import 'purchase_complete_screen.dart';
 import 'widgets/filter_drawer.dart';
 
 /// Online car store — the website's /online grid with the sidebar filters
@@ -110,6 +112,9 @@ final class _StoreView extends StatelessWidget {
           // ── Hero header (Rentcars-style): brand gradient panel with the
           //    greeting → big title → search pill flow. ──
           const _HeroHeader(),
+          // Post-deposit continuation shortcut — a paid reservation stays
+          // reachable here (website "My bookings → Complete order" parity).
+          const _PendingPurchaseBanner(),
           Expanded(
             child: switch (state.status) {
               StoreStatus.loading =>
@@ -160,6 +165,98 @@ final class _StoreView extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Continue your car purchase" strip — shown while a deposit-paid
+/// reservation's continuation (protection & next steps) is pending. Tapping
+/// resumes the complete-purchase screen; the close icon dismisses it.
+final class _PendingPurchaseBanner extends StatefulWidget {
+  const _PendingPurchaseBanner();
+
+  @override
+  State<_PendingPurchaseBanner> createState() => _PendingPurchaseBannerState();
+}
+
+final class _PendingPurchaseBannerState extends State<_PendingPurchaseBanner> {
+  Map<String, dynamic>? _pending;
+
+  @override
+  void initState() {
+    super.initState();
+    _pending = sl<LocalStore>().pendingCarPurchase;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final guid = '${_pending?['guid'] ?? ''}';
+    if (guid.isEmpty) return const SizedBox.shrink();
+    final carName = '${_pending?['carName'] ?? ''}';
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+          context.rs(16), context.rs(10), context.rs(16), 0),
+      child: Material(
+        color: scheme.primary.withValues(alpha: 0.07),
+        borderRadius: BorderRadius.circular(14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => PurchaseCompleteScreen.open(context, guid),
+          child: Container(
+            padding: EdgeInsets.symmetric(
+                horizontal: context.rs(12), vertical: context.rs(10)),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border:
+                  Border.all(color: scheme.primary.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.directions_car_filled_rounded,
+                    size: 18, color: scheme.primary),
+                SizedBox(width: context.rs(9)),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        t.cpcResumeBanner,
+                        style: TextStyle(
+                            fontSize: context.rf(12),
+                            fontWeight: FontWeight.w800,
+                            color: scheme.primary),
+                      ),
+                      if (carName.isNotEmpty && carName != 'null')
+                        Text(
+                          carName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.rf(10.5),
+                            color: scheme.onSurface.withValues(alpha: 0.6),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () async {
+                    await sl<LocalStore>().clearPendingCarPurchase();
+                    if (mounted) setState(() => _pending = null);
+                  },
+                  iconSize: 16,
+                  visualDensity: VisualDensity.compact,
+                  icon: Icon(Icons.close_rounded,
+                      color: scheme.onSurface.withValues(alpha: 0.5)),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

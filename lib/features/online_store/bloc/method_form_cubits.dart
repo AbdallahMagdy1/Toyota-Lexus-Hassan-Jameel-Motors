@@ -1,9 +1,9 @@
 import 'dart:convert';
 
 import 'package:equatable/equatable.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../auth/domain/app_user.dart';
 import '../../home/domain/home_models.dart';
@@ -102,6 +102,14 @@ final class ContactFormCubit extends Cubit<ContactFormState> {
   void setCustGroup(String id) => emit(state.copyWith(custGroupId: id));
   void setCity(String? id) => emit(state.copyWith(cityId: id));
   void setQuantity(int q) => emit(state.copyWith(quantity: q.clamp(1, 20)));
+
+  /// Absher/Yakeen autofill (website applyAbsher on the callback form).
+  void applyAbsher({String? fullName, String? mobile9, String? identityNo}) {
+    if ((fullName ?? '').trim().isNotEmpty) name.text = fullName!.trim();
+    final m = (mobile9 ?? '').replaceAll(RegExp(r'\D'), '');
+    if (m.isNotEmpty) phone.text = m.length > 9 ? m.substring(m.length - 9) : m;
+    if ((identityNo ?? '').trim().isNotEmpty) identity.text = identityNo!.trim();
+  }
 
   /// Website `valid` (OnlineConfirm L1211): name≥2, phone 9 digits, email
   /// required, city, identity 10 digits, quantity ≥ 1.
@@ -428,7 +436,6 @@ final class FinanceFormCubit extends Cubit<FinanceFormState> {
   final String lang;
   final AppUser? user;
   final CarColor? _color;
-  final _picker = ImagePicker();
 
   // Personal
   final fullNameAr = TextEditingController();
@@ -466,11 +473,24 @@ final class FinanceFormCubit extends Cubit<FinanceFormState> {
       });
   void setFinanceBank(String? id) => emit(state.copyWith(financeBankId: id));
 
-  /// Pick an image (gallery), 4MB cap like the website FileField.
+  /// Absher/Yakeen autofill (website applyAbsher on the personal step).
+  void applyAbsher({String? fullName, String? mobile9, String? identityNo}) {
+    if ((fullName ?? '').trim().isNotEmpty) fullNameAr.text = fullName!.trim();
+    final m = (mobile9 ?? '').replaceAll(RegExp(r'\D'), '');
+    if (m.isNotEmpty) phone.text = m.length > 9 ? m.substring(m.length - 9) : m;
+    if ((identityNo ?? '').trim().isNotEmpty) identity.text = identityNo!.trim();
+  }
+
+  /// Pick an image OR a PDF, 4MB cap — the website FileField accepts
+  /// `image/*,application/pdf` with the same size limit.
   Future<void> pickDoc(String key) async {
-    final file = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
-    if (file == null || isClosed) return;
-    final bytes = await file.readAsBytes();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'heic', 'pdf'],
+      withData: true,
+    );
+    final bytes = result?.files.firstOrNull?.bytes;
+    if (bytes == null || isClosed) return;
     if (bytes.lengthInBytes > 4 * 1024 * 1024) {
       emit(state.copyWith(errors: {...state.errors, key: 'tooBig'}));
       return;
@@ -505,7 +525,8 @@ final class FinanceFormCubit extends Cubit<FinanceFormState> {
           e['questions'] = 'required';
         }
       case 2:
-        if (state.financeBankId == null) e['financeBank'] = 'required';
+        // Website docsValid: the financing entity is OPTIONAL — only the
+        // documents are required.
         for (final k in requiredDocKeys) {
           if (!state.docs.containsKey(k)) e[k] = 'required';
         }

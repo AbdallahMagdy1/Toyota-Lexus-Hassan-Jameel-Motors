@@ -73,4 +73,27 @@ final class LocalStore {
   List<String> get partsCart => _prefs.getStringList(_kPartsCart) ?? const [];
   Future<void> setPartsCart(List<String> v) =>
       _prefs.setStringList(_kPartsCart, v);
+
+  // Pending car-purchase continuation (post-deposit) — the deposit's
+  // OrderGUID + car name, so the "complete your purchase" flow stays
+  // reachable after the app is closed (website: /car/complete/{orderGuid}).
+  static const _kPendingCarPurchase = 'hj_pending_car_purchase';
+
+  Map<String, dynamic>? get pendingCarPurchase {
+    final raw = _prefs.getString(_kPendingCarPurchase);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> setPendingCarPurchase({required String guid, String? carName}) =>
+      _prefs.setString(_kPendingCarPurchase,
+          jsonEncode({'guid': guid, 'carName': carName}));
+
+  Future<void> clearPendingCarPurchase() async {
+    await _prefs.remove(_kPendingCarPurchase);
+  }
 }

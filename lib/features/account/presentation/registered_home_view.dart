@@ -18,11 +18,9 @@ import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../home/data/home_repository.dart';
-import '../../home/domain/home_models.dart' show OnlineVehicle, SliderVehicle;
+import '../../home/domain/home_models.dart' show SliderVehicle;
 import '../../onboarding/data/onboarding_repository.dart';
 import '../../onboarding/domain/onboarding_slide.dart';
-import '../../online_store/data/online_store_repository.dart';
-import '../../online_store/presentation/car_sheet.dart' show openCarSheet;
 import '../../../shared/navigation/side_menu.dart' show MenuCubit;
 import '../../content/contact_screen.dart' show showBranchesSheet;
 import '../../coupons/presentation/coupon_banner_carousel.dart';
@@ -205,13 +203,18 @@ final class _HeroCarSlider extends StatefulWidget {
 }
 
 final class _HeroCarSliderState extends State<_HeroCarSlider> {
-  int _tab = 0; // 0 = my cars, 1 = brand store
   int _page = 0;
-  Future<List<OnlineVehicle>>? _storeFuture;
 
   /// Dashboard 'car_bg' slides: TitleEn = model key ('corolla 2026'),
   /// media = the background image/GIF drawn behind that model.
   List<OnboardingSlide> _bgs = const [];
+
+  /// Dashboard 'garage_bg' placement: ONE brand-level background
+  /// (image/GIF/video) shown behind ALL of the user's cars — takes priority
+  /// over per-model artwork when uploaded. The slide's Overlay checkbox
+  /// controls the bottom→center primary gradient on top of it.
+  String? _garageBg;
+  bool _garageBgOverlay = false;
 
   /// Guest-feed vehicles (SliderVehicle) — the source of the per-model
   /// shared "Background" artwork used when no 'car_bg' placement matches.
@@ -227,6 +230,18 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
     final brandKey = sl<settings.ThemeCubit>().state.brandKey;
     sl<OnboardingRepository>().fetch(brandKey, placement: 'car_bg').then((s) {
       if (mounted) setState(() => _bgs = s);
+    }).catchError((_) {});
+    sl<OnboardingRepository>()
+        .fetch(brandKey, placement: 'garage_bg')
+        .then((s) {
+      final slide =
+          s.where((x) => (x.mediaUrl ?? '').isNotEmpty).firstOrNull;
+      if (mounted && slide != null) {
+        setState(() {
+          _garageBg = slide.mediaUrl;
+          _garageBgOverlay = slide.overlay;
+        });
+      }
     }).catchError((_) {});
     _loadFeedVehicles(brandKey);
   }
@@ -299,36 +314,20 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
     return best?.mediaUrl;
   }
 
-  void _selectTab(int i) {
-    if (i == _tab) return;
-    setState(() {
-      _tab = i;
-      _page = 0;
-      // Lazy-load the store lineup once (SWR cache makes this instant later).
-      _storeFuture ??= OnlineStoreRepository(sl<ApiClient>()).vehicles();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
     final cars = garageForBrand(widget.home.garage, brandKey);
-    if (cars.isEmpty && _tab == 0) {
+    if (cars.isEmpty) {
       // No garage yet — nothing to hero; the add-car flows live below.
       return const SizedBox.shrink();
     }
-    final storeLabel =
-        brandKey == 'lexus' ? t.acStoreLexus : t.acStoreToyota;
 
     // Full-bleed immersive hero (the reference design): the slider fills
-    // edge-to-edge behind a transparent header + floating tabs; the
-    // car-trio panel stacks over the hero bottom on a theme-colored sheet.
-    final effectiveTab = cars.isEmpty ? 1 : _tab;
-    if (cars.isEmpty && _storeFuture == null) {
-      _storeFuture = OnlineStoreRepository(sl<ApiClient>()).vehicles();
-    }
+    // edge-to-edge behind a transparent header; the car-trio panel stacks
+    // over the hero bottom on a theme-colored sheet.
     // The hero extends under the status bar, so every fixed position below
     // offsets by the top inset or the rows collide.
     final topInset = MediaQuery.paddingOf(context).top;
@@ -336,126 +335,43 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
       height: context.rs(492) + topInset,
       child: Stack(children: [
         Positioned.fill(
-          child: effectiveTab == 0
-              ? _slider(
-                  count: cars.length,
-                  itemBuilder: (context, i) {
-                    final car = cars[i];
-                    final meter = car.meterReading;
-                    return _HeroSlide(
-                      image: car.image,
-                      // car_bg placement match → model shared Background →
-                      // brand-glow gradient (inside _HeroSlide).
-                      background: _bgFor(
-                              car.groupEn ?? car.displayName('en'), car.year) ??
-                          _modelBgFor(
-                              productGroupId: car.productGroupId,
-                              nameEn: car.groupEn ?? car.modelEn,
-                              year: car.year),
-                      title: car.displayName(widget.lang),
-                      subtitle: [
-                        if (meter != null && meter > 0)
-                          '${NumberFormat.decimalPattern().format(meter)} ${t.acKm}',
-                        if ((car.year ?? '').isNotEmpty) '${car.year}',
-                      ].join(' • '),
-                      onTap: () {
-                        sl<ActiveCarCubit>().select(car.vin);
-                        showVehicleHubSheet(context,
-                            car: car,
-                            onChanged:
-                                context.read<RegisteredHomeCubit>().load);
-                      },
-                    );
-                  },
-                )
-              : FutureBuilder<List<OnlineVehicle>>(
-                  future: _storeFuture,
-                  builder: (context, snap) {
-                    if (snap.connectionState != ConnectionState.done) {
-                      return const Center(
-                          child: CircularProgressIndicator());
-                    }
-                    final all = snap.data ?? const <OnlineVehicle>[];
-                    // Store lineup scoped to the active brand theme.
-                    final needle =
-                        brandKey == 'lexus' ? 'lexus' : 'toyota';
-                    var items = all
-                        .where((v) => (v.brandEn ?? '')
-                            .toLowerCase()
-                            .contains(needle))
-                        .toList();
-                    if (items.isEmpty) items = all;
-                    if (items.isEmpty) {
-                      return Center(child: Text(t.modelsNoData));
-                    }
-                    return _slider(
-                      count: items.length,
-                      itemBuilder: (context, i) {
-                        final v = items[i];
-                        return _HeroSlide(
-                          image: v.image,
-                          background: _bgFor(v.groupEn ?? '', v.year) ??
-                              v.background(widget.lang) ??
-                              _modelBgFor(
-                                  productGroupId: v.carGroupId,
-                                  nameEn: v.groupEn,
-                                  year: v.year),
-                          title:
-                              '${v.name(widget.lang)} ${v.year ?? ''}'.trim(),
-                          subtitle: v.minPrice == null
-                              ? ''
-                              : '${t.homeFrom} ${NumberFormat.decimalPattern().format(v.minPrice)}',
-                          onTap: () => openCarSheet(context, v),
-                        );
-                      },
-                    );
-                  },
-                ),
+          child: _slider(
+            count: cars.length,
+            itemBuilder: (context, i) {
+              final car = cars[i];
+              final meter = car.meterReading;
+              return _HeroSlide(
+                image: car.image,
+                // Brand-level garage_bg (dashboard) → car_bg placement
+                // match → model shared Background → brand-glow gradient
+                // (inside _HeroSlide).
+                background: _garageBg ??
+                    _bgFor(
+                        car.groupEn ?? car.displayName('en'), car.year) ??
+                    _modelBgFor(
+                        productGroupId: car.productGroupId,
+                        nameEn: car.groupEn ?? car.modelEn,
+                        year: car.year),
+                primaryOverlay: _garageBg != null && _garageBgOverlay,
+                title: car.displayName(widget.lang),
+                subtitle: [
+                  if (meter != null && meter > 0)
+                    '${NumberFormat.decimalPattern().format(meter)} ${t.acKm}',
+                  if ((car.year ?? '').isNotEmpty) '${car.year}',
+                ].join(' • '),
+                onTap: () {
+                  sl<ActiveCarCubit>().select(car.vin);
+                  showVehicleHubSheet(context,
+                      car: car,
+                      onChanged: context.read<RegisteredHomeCubit>().load);
+                },
+              );
+            },
+          ),
         ),
         // ── Transparent header ON the hero: avatar | centered logo | icons ──
         const PositionedDirectional(
           top: 0, start: 0, end: 0, child: _HeroHeader()),
-        // ── Floating tabs: سياراتي | متجر تويوتا/لكزس ──
-        PositionedDirectional(
-          top: topInset + context.rs(56),
-          start: context.rs(16),
-          child: Row(children: [
-            for (final (i, label) in [t.acTabMyCars, storeLabel].indexed)
-              Padding(
-                padding: EdgeInsetsDirectional.only(end: context.rs(7)),
-                child: GestureDetector(
-                  onTap: () => _selectTab(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.rs(14),
-                        vertical: context.rs(7)),
-                    decoration: BoxDecoration(
-                      color: i == effectiveTab
-                          ? scheme.primary
-                          : Colors.white.withValues(alpha: 0.14),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: i == effectiveTab
-                            ? scheme.primary
-                            : Colors.white.withValues(alpha: 0.35),
-                      ),
-                    ),
-                    child: Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: context.rf(11.5),
-                        fontWeight: FontWeight.w800,
-                        color: i == effectiveTab
-                            ? scheme.onPrimary
-                            : Colors.white.withValues(alpha: 0.9),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ]),
-        ),
         // ── Dots (above the trio panel, red like the mock) ──
         Positioned(
           bottom: context.rs(128),
@@ -521,6 +437,7 @@ final class _HeroSlide extends StatelessWidget {
     required this.subtitle,
     required this.onTap,
     this.background,
+    this.primaryOverlay = false,
   });
 
   final String? image;
@@ -528,6 +445,10 @@ final class _HeroSlide extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+
+  /// garage_bg Overlay flag: brand-primary gradient rising from the hero
+  /// bottom and fading out at the center.
+  final bool primaryOverlay;
 
   @override
   Widget build(BuildContext context) {
@@ -597,6 +518,21 @@ final class _HeroSlide extends StatelessWidget {
                 ),
               ),
             ),
+            // garage_bg overlay: brand-primary glow rising from the bottom
+            // edge and dissolving at the center (dashboard Overlay toggle).
+            if (primaryOverlay)
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.center,
+                    colors: [
+                      scheme.primary.withValues(alpha: 0.85),
+                      scheme.primary.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
+              ),
             // ── Ground shadow: elliptical pool right above the trio panel
             // so the car reads as sitting ON the ledge, not floating. ──
             PositionedDirectional(

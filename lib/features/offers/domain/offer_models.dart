@@ -164,6 +164,10 @@ final class OfferVehicle extends Equatable {
     this.packageId,
     this.productTypeId,
     this.image,
+    this.petrol,
+    this.hp,
+    this.cylinders,
+    this.seatsNumber,
   });
 
   final String? nameAr;
@@ -178,6 +182,11 @@ final class OfferVehicle extends Equatable {
   final int? packageId;
   final String? productTypeId;
   final String? image;
+  // Spec chips on the dialogs' car card (website VehicleSummary).
+  final String? petrol;
+  final String? hp;
+  final String? cylinders;
+  final String? seatsNumber;
 
   String name(String lang) =>
       (lang == 'ar' ? nameAr : nameEn) ?? nameEn ?? nameAr ?? '';
@@ -195,6 +204,10 @@ final class OfferVehicle extends Equatable {
         packageId: _i(j['packageId']),
         productTypeId: _s(j['productTypeId']),
         image: _s(j['image']),
+        petrol: _s(j['petrol']),
+        hp: _s(j['hp']),
+        cylinders: _s(j['cylinders']),
+        seatsNumber: _s(j['seatsNumber']),
       );
 
   @override

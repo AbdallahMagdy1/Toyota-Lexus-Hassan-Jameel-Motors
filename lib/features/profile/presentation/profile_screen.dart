@@ -17,7 +17,6 @@ import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/profile_cubit.dart';
 import '../data/profile_repository.dart';
 import 'sheets/contact_data_sheet.dart';
-import 'sheets/delete_account_sheet.dart';
 import 'sheets/my_cars_sheet.dart';
 import 'sheets/my_data_sheet.dart';
 import 'sheets/notifications_sheet.dart';
@@ -268,41 +267,6 @@ final class _ProfileView extends StatelessWidget {
                     context.read<AuthBloc>().add(const AuthSignOutRequested()),
                 icon: const Icon(Icons.logout_rounded, size: 18),
                 label: Text(t.homeSignOut),
-              ),
-              SizedBox(height: context.rs(22)),
-              // Destructive zone — separated at the very bottom.
-              Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => showDeleteAccountSheet(context, cubit),
-                  child: Container(
-                    constraints: const BoxConstraints(minHeight: 52),
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.rs(13), vertical: context.rs(11)),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                          color: scheme.error.withValues(alpha: 0.45)),
-                      color: scheme.error.withValues(alpha: 0.05),
-                    ),
-                    child: Row(children: [
-                      Icon(Icons.delete_outline_rounded,
-                          size: 19, color: scheme.error),
-                      SizedBox(width: context.rs(11)),
-                      Expanded(
-                        child: Text(t.pfDeleteAccount,
-                            style: TextStyle(
-                                fontSize: context.rf(13),
-                                fontWeight: FontWeight.w800,
-                                color: scheme.error)),
-                      ),
-                      Icon(Icons.chevron_right_rounded,
-                          color: scheme.error.withValues(alpha: 0.55)),
-                    ]),
-                  ),
-                ),
               ),
             ],
           ],

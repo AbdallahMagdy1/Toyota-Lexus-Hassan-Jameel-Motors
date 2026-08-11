@@ -25,6 +25,8 @@ dependencies:
   # Finance-request document uploads (gallery → base64), like the website's
   # FileField.
   image_picker: ^1.2.1
+  # Image OR PDF finance documents (the website FileField accepts both).
+  file_picker: ^10.0.0
 
   # Dashboard-controlled video banners (auth / welcome placements).
   video_player: ^2.10.0

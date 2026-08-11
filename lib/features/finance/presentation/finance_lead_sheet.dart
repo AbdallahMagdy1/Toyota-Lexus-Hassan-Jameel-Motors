@@ -1,9 +1,6 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/constants/api_paths.dart';
@@ -12,7 +9,6 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
-import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../guest_home/presentation/guest_home_view.dart' show showLoginPrompt;
 import '../../home/presentation/widgets/home_bits.dart';
@@ -20,6 +16,7 @@ import '../../online_store/data/online_store_repository.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../bloc/finance_lead_cubit.dart';
 import '../domain/finance_models.dart';
+import 'finance_docs_section.dart';
 
 /// Opens the finance application — the website FinanceRequestModal as a
 /// mobile sheet: live installment panel, Absher autofill, documents upload.
@@ -115,7 +112,8 @@ final class _LeadView extends StatelessWidget {
     }
 
     final est = cubit.estimate;
-    final periods = [60, 48, 36, 24]
+    // Website order: 24 / 36 / 48 / 60, capped by the bank's max period.
+    final periods = [24, 36, 48, 60]
         .where((p) => p <= cubit.bank.maxFinancePeriod)
         .toList();
 
@@ -275,38 +273,23 @@ final class _LeadView extends StatelessWidget {
             const SizedBox(height: 16),
 
             // ── تعبئة البيانات من أبشر ──
-            _AbsherButton(onFilled: cubit.applyAbsher),
+            AbsherAutofillButton(onFilled: cubit.applyAbsher),
             const SizedBox(height: 14),
 
-            if (cubit.custGroups.isNotEmpty) ...[
-              AppDropdown<String>(
-                label: t.finBuyingAs,
-                value: state.custGroupId,
-                items: [
-                  for (final g in cubit.custGroups)
-                    AppDropdownItem(
-                        value: g.id ?? '',
-                        label: g.name(lang),
-                        icon: g.needIdentity
-                            ? Icons.person_rounded
-                            : Icons.business_rounded),
-                ],
-                onChanged: cubit.selectCustGroup,
-              ),
-              const SizedBox(height: 12),
-            ],
+            // Website FinanceRequestModal: NO "Buying as" selector — applicants
+            // are individuals (identity number).
+            _Field(
+                controller: cubit.identity,
+                label: t.formIdentity,
+                keyboard: TextInputType.number,
+                ltr: true),
+            const SizedBox(height: 12),
             _Field(controller: cubit.name, label: t.finFullName),
             const SizedBox(height: 12),
             _Field(
                 controller: cubit.phone,
                 label: t.formPhone,
                 keyboard: TextInputType.phone,
-                ltr: true),
-            const SizedBox(height: 12),
-            _Field(
-                controller: cubit.identity,
-                label: state.needIdentity ? t.formIdentity : t.finCommercialReg,
-                keyboard: TextInputType.number,
                 ltr: true),
             const SizedBox(height: 12),
             _Field(
@@ -323,14 +306,42 @@ final class _LeadView extends StatelessWidget {
             _Field(
                 controller: cubit.advanceCtrl,
                 label: t.finFirstPayOptional,
-                keyboard: TextInputType.number),
+                keyboard: TextInputType.number,
+                // Website placeholder: the bank's minimum advance payment.
+                hint: formatPrice(est.minFirstPay)),
             const SizedBox(height: 12),
             _Field(controller: cubit.note, label: t.finNotes, maxLines: 2),
             const SizedBox(height: 16),
 
-            // ── المستندات المطلوبة ──
-            const _DocsSection(),
-            const SizedBox(height: 18),
+            // ── المستندات المطلوبة (website FinanceDocUploads) ──
+            FinanceDocsSection(
+              needIdentity: true,
+              sector: state.workType,
+              onSector: cubit.setWorkType,
+              docs: state.docs,
+              docNames: state.docNames,
+              onDoc: cubit.setDoc,
+            ),
+            const SizedBox(height: 12),
+
+            // Privacy consent — gates submit like the website PrivacyConsent.
+            Row(children: [
+              SizedBox(
+                width: 32,
+                child: Checkbox(
+                  value: state.accepted,
+                  onChanged: (v) => cubit.setAccepted(v ?? false),
+                ),
+              ),
+              Expanded(
+                child: Text(t.cmpConsent,
+                    style: TextStyle(
+                        fontSize: context.rf(10.5),
+                        height: 1.45,
+                        color: scheme.onSurface.withValues(alpha: 0.65))),
+              ),
+            ]),
+            const SizedBox(height: 10),
 
             if (state.phase == FinanceLeadPhase.failed || state.error)
               Padding(
@@ -348,7 +359,7 @@ final class _LeadView extends StatelessWidget {
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
-              onPressed: state.phase == FinanceLeadPhase.busy
+              onPressed: state.phase == FinanceLeadPhase.busy || !state.accepted
                   ? null
                   : () => context.read<FinanceLeadCubit>().submit(),
               child: state.phase == FinanceLeadPhase.busy
@@ -407,8 +418,11 @@ final class _Stat extends StatelessWidget {
 
 /* ───────────────────── Absher autofill (two-step OTP) ───────────────────── */
 
-final class _AbsherButton extends StatelessWidget {
-  const _AbsherButton({required this.onFilled});
+/// Absher/Yakeen autofill entry — public so the online-store checkout forms
+/// reuse it (website AbsherAutofill parity). Returns the verified
+/// {fullName, mobile9, identityNo} via [onFilled].
+final class AbsherAutofillButton extends StatelessWidget {
+  const AbsherAutofillButton({super.key, required this.onFilled});
 
   final void Function({String? fullName, String? mobile9, String? identityNo})
       onFilled;
@@ -678,206 +692,6 @@ final class _AbsherSheetState extends State<_AbsherSheet> {
   }
 }
 
-/* ─────────────────────── المستندات المطلوبة ─────────────────────── */
-
-final class _DocsSection extends StatelessWidget {
-  const _DocsSection();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final cubit = context.watch<FinanceLeadCubit>();
-    final state = cubit.state;
-    final scheme = Theme.of(context).colorScheme;
-
-    final docs = <(String, String)>[
-      ('identityImage', state.needIdentity ? t.finIdDoc : t.finCommercialReg),
-      ('license', t.finLicenseDoc),
-      ('salaryDefinitionLetter', t.finSalaryDoc),
-      if (state.workType == 'private') ('insurance', t.finInsuranceDoc),
-      ('accountStatement', t.finStatementDoc),
-    ];
-
-    return Container(
-      padding: EdgeInsets.all(context.rs(14)),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(t.finDocs,
-              style: TextStyle(
-                  fontSize: context.rf(13.5), fontWeight: FontWeight.w800)),
-          SizedBox(height: context.rs(3)),
-          Text(t.finDocsHint,
-              style: TextStyle(
-                  fontSize: context.rf(10.5),
-                  height: 1.5,
-                  color: scheme.onSurface.withValues(alpha: 0.55))),
-          SizedBox(height: context.rs(11)),
-          // جهة العمل segmented toggle.
-          Text(t.finWorkSector,
-              style: TextStyle(
-                  fontSize: context.rf(11),
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface.withValues(alpha: 0.6))),
-          SizedBox(height: context.rs(6)),
-          Row(
-            children: [
-              for (final (v, label) in [
-                ('private', t.finPrivate),
-                ('governmental', t.finGov),
-              ]) ...[
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => cubit.setWorkType(v),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: EdgeInsets.symmetric(vertical: context.rs(9)),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: state.workType == v
-                            ? scheme.primary
-                            : scheme.surface,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: state.workType == v
-                              ? scheme.primary
-                              : scheme.outline.withValues(alpha: 0.6),
-                        ),
-                      ),
-                      child: Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: context.rf(11.5),
-                          fontWeight: FontWeight.w800,
-                          color: state.workType == v
-                              ? scheme.onPrimary
-                              : scheme.onSurface.withValues(alpha: 0.7),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (v == 'private') SizedBox(width: context.rs(8)),
-              ],
-            ],
-          ),
-          SizedBox(height: context.rs(12)),
-          for (final (kind, label) in docs)
-            Padding(
-              padding: EdgeInsets.only(bottom: context.rs(8)),
-              child: _DocRow(kind: kind, label: label),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-final class _DocRow extends StatelessWidget {
-  const _DocRow({required this.kind, required this.label});
-
-  final String kind;
-  final String label;
-
-  Future<void> _pick(BuildContext context) async {
-    final t = AppLocalizations.of(context);
-    final cubit = context.read<FinanceLeadCubit>();
-    final picked = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, imageQuality: 82);
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
-    if (bytes.lengthInBytes > 4 * 1024 * 1024) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(t.finFileTooBig)));
-      }
-      return;
-    }
-    cubit.setDoc(kind, base64Encode(bytes), picked.name);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final cubit = context.watch<FinanceLeadCubit>();
-    final attached = (cubit.state.docs[kind] ?? '').isNotEmpty;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: context.rs(12), vertical: context.rs(9)),
-      decoration: BoxDecoration(
-        color: scheme.surface,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(
-          color: attached
-              ? scheme.primary.withValues(alpha: 0.5)
-              : scheme.outline.withValues(alpha: 0.45),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            attached
-                ? Icons.check_circle_rounded
-                : Icons.description_outlined,
-            size: 18,
-            color: attached
-                ? scheme.primary
-                : scheme.onSurface.withValues(alpha: 0.4),
-          ),
-          SizedBox(width: context.rs(9)),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: TextStyle(
-                        fontSize: context.rf(11.5),
-                        fontWeight: FontWeight.w700)),
-                if (attached)
-                  Text(
-                    cubit.state.docNames[kind] ?? t.finUploaded,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        fontSize: context.rf(9.5),
-                        color: scheme.primary),
-                  ),
-              ],
-            ),
-          ),
-          if (attached)
-            IconButton(
-              visualDensity: VisualDensity.compact,
-              onPressed: () => cubit.setDoc(kind, null, null),
-              icon: Icon(Icons.close_rounded,
-                  size: 16,
-                  color: scheme.onSurface.withValues(alpha: 0.5)),
-            )
-          else
-            TextButton.icon(
-              onPressed: () => _pick(context),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                foregroundColor: scheme.primary,
-              ),
-              icon: const Icon(Icons.upload_rounded, size: 15),
-              label: Text(t.finUpload,
-                  style: TextStyle(
-                      fontSize: context.rf(11),
-                      fontWeight: FontWeight.w800)),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
 final class _Field extends StatelessWidget {
   const _Field({
     required this.controller,
@@ -885,6 +699,7 @@ final class _Field extends StatelessWidget {
     this.keyboard,
     this.maxLines = 1,
     this.ltr = false,
+    this.hint,
   });
 
   final TextEditingController controller;
@@ -892,6 +707,7 @@ final class _Field extends StatelessWidget {
   final TextInputType? keyboard;
   final int maxLines;
   final bool ltr;
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -902,6 +718,7 @@ final class _Field extends StatelessWidget {
       textDirection: ltr ? TextDirection.ltr : null,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hint,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),

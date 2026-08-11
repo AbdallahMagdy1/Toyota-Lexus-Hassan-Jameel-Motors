@@ -22,31 +22,32 @@ final class FinanceLeadState extends Equatable {
   const FinanceLeadState({
     this.phase = FinanceLeadPhase.editing,
     this.period = 60,
-    this.custGroupId,
-    this.needIdentity = true,
     this.advance,
     this.error = false,
-    this.workType = 'private',
+    this.workType = '',
     this.docs = const {},
     this.docNames = const {},
+    this.accepted = false,
     this.reference,
   });
 
   final FinanceLeadPhase phase;
   final int period;
-  final String? custGroupId;
-  final bool needIdentity;
 
   /// Optional down-payment override (null = bank's own advance rate).
   final double? advance;
   final bool error;
 
-  /// جهة العمل — 'private' | 'governmental' (website workType).
+  /// جهة العمل — '' unset | 'private' | 'governmental' (website FinanceSector;
+  /// unset by default, tap again to deselect).
   final String workType;
 
   /// Attached documents: kind -> base64 (no data-url prefix).
   final Map<String, String> docs;
   final Map<String, String> docNames;
+
+  /// Privacy consent — the website's PrivacyConsent gate on submit.
+  final bool accepted;
 
   /// Ticket number returned by the backend on success.
   final String? reference;
@@ -54,39 +55,38 @@ final class FinanceLeadState extends Equatable {
   FinanceLeadState copyWith({
     FinanceLeadPhase? phase,
     int? period,
-    String? Function()? custGroupId,
-    bool? needIdentity,
     double? Function()? advance,
     bool? error,
     String? workType,
     Map<String, String>? docs,
     Map<String, String>? docNames,
+    bool? accepted,
     String? Function()? reference,
   }) =>
       FinanceLeadState(
         phase: phase ?? this.phase,
         period: period ?? this.period,
-        custGroupId: custGroupId == null ? this.custGroupId : custGroupId(),
-        needIdentity: needIdentity ?? this.needIdentity,
         advance: advance == null ? this.advance : advance(),
         error: error ?? this.error,
         workType: workType ?? this.workType,
         docs: docs ?? this.docs,
         docNames: docNames ?? this.docNames,
+        accepted: accepted ?? this.accepted,
         reference: reference == null ? this.reference : reference(),
       );
 
   @override
   List<Object?> get props => [
-        phase, period, custGroupId, needIdentity, advance, error,
-        workType, docs, docNames, reference,
+        phase, period, advance, error,
+        workType, docs, docNames, accepted, reference,
       ];
 }
 
 /// The website's FinanceRequestModal: a live computeFinance estimate next to
 /// a lead form, POSTing /online/finance-requests with source "FinancePage".
 /// The bank FK travels via offerID (the bank's finance record), exactly like
-/// the website.
+/// the website. NOTE: the website removed the "Buying as" selector here —
+/// finance-page applicants are always individuals (custType G4, national ID).
 final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
   FinanceLeadCubit({
     required this.bank,
@@ -99,8 +99,6 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
   })  : _online = onlineRepo,
         super(FinanceLeadState(
           period: initialPeriod ?? bank.defaultFinancePeriod,
-          custGroupId: custGroups.firstOrNull?.id,
-          needIdentity: custGroups.firstOrNull?.needIdentity ?? true,
         )) {
     name.text = user?.displayName(lang) ?? '';
     phone.text = user?.phone ?? '';
@@ -138,15 +136,9 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
 
   void selectPeriod(int p) => emit(state.copyWith(period: p));
 
-  void selectCustGroup(String? id) {
-    final g = custGroups.where((g) => g.id == id).firstOrNull;
-    emit(state.copyWith(
-      custGroupId: () => id,
-      needIdentity: g?.needIdentity ?? true,
-    ));
-  }
-
   void setWorkType(String v) => emit(state.copyWith(workType: v));
+
+  void setAccepted(bool v) => emit(state.copyWith(accepted: v));
 
   void setDoc(String kind, String? base64, String? fileName) {
     final docs = Map<String, String>.from(state.docs);
@@ -177,9 +169,9 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
   }
 
   Future<bool> submit() async {
+    // Website handleSubmit gates: name, phone (\+?\d{10,15}) and net income.
     final ok = name.text.trim().isNotEmpty &&
         RegExp(r'^\+?\d{10,15}$').hasMatch(_fullPhone(phone.text)) &&
-        (state.custGroupId ?? '').isNotEmpty &&
         (double.tryParse(income.text.trim()) ?? 0) > 0;
     if (!ok) {
       emit(state.copyWith(error: true));
@@ -193,12 +185,13 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
       'phoneNumber': _fullPhone(phone.text),
       'webUserID': user?.userId,
       'email': email.text.trim().isEmpty ? null : email.text.trim(),
-      'custType': state.custGroupId,
-      if (state.needIdentity)
-        'identityNo': identity.text.trim()
-      else
-        'cn': identity.text.trim(),
+      // Website: applicants here are individuals — custType fixed G4,
+      // the number is always an identity number (never a CR).
+      'custType': 'G4',
+      'identityNo': identity.text.trim().isEmpty ? null : identity.text.trim(),
       'productID': car.productId,
+      'colorID': car.colorId,
+      'colorGroup': car.colorGroupId,
       'modelYear': car.year,
       'offerID': bank.offerId,
       'source': 'FinancePage',
@@ -207,8 +200,9 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
       'firstPayment': est.firstPay.roundToDouble(),
       'period': est.period,
       'message': note.text.trim().isEmpty ? null : note.text.trim(),
-      // Website FinanceDocUploads payload: جهة العمل + base64 documents.
-      'workType': state.workType,
+      // Website FinanceDocUploads payload: جهة العمل (only when picked)
+      // + base64 documents.
+      'workType': state.workType.isEmpty ? null : state.workType,
       for (final kind in kFinanceDocKinds)
         if ((state.docs[kind] ?? '').isNotEmpty) kind: state.docs[kind],
     });

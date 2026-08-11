@@ -8,6 +8,7 @@ import '../../../settings/bloc/locale_cubit.dart';
 import '../../bloc/profile_cubit.dart';
 import '../../domain/profile_models.dart';
 import '../widgets/profile_bits.dart';
+import 'delete_account_sheet.dart';
 
 /// بياناتي — the website profile's personal-data tab as one sheet:
 /// Arabic/English names, gender, country → city, address, then account
@@ -354,6 +355,119 @@ final class _MyDataSheetState extends State<_MyDataSheet> {
         ),
       gap(22),
       ProfileSaveButton(label: t.pfSave, busy: _busy, onPressed: _save),
+      gap(26),
+      // ── Danger zone: delete account lives here (moved from the profile
+      // list) — note + confirm dialog before the destructive flow. ──
+      _deleteZone(t),
     ];
+  }
+
+  Widget _deleteZone(AppLocalizations t) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: EdgeInsets.all(context.rs(13)),
+      decoration: BoxDecoration(
+        color: scheme.error.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.error.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.warning_amber_rounded, size: 18, color: scheme.error),
+            SizedBox(width: context.rs(8)),
+            Expanded(
+              child: Text(
+                t.pfDeleteAccount,
+                style: TextStyle(
+                    fontSize: context.rf(13.5),
+                    fontWeight: FontWeight.w800,
+                    color: scheme.error),
+              ),
+            ),
+          ]),
+          SizedBox(height: context.rs(8)),
+          Text(
+            t.pfDeleteNote,
+            style: TextStyle(
+              fontSize: context.rf(11.5),
+              height: 1.55,
+              fontWeight: FontWeight.w600,
+              color: scheme.onSurface.withValues(alpha: 0.75),
+            ),
+          ),
+          SizedBox(height: context.rs(12)),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: scheme.error,
+                side: BorderSide(
+                    color: scheme.error.withValues(alpha: 0.55)),
+                shape: const StadiumBorder(),
+                minimumSize: const Size.fromHeight(44),
+              ),
+              onPressed: _confirmDelete,
+              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+              label: Text(
+                t.pfDeleteAccount,
+                style: TextStyle(
+                    fontSize: context.rf(12.5), fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmDelete() async {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final cubit = context.read<ProfileCubit>();
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape:
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(children: [
+          Icon(Icons.warning_amber_rounded, color: scheme.error, size: 22),
+          SizedBox(width: context.rs(8)),
+          Expanded(
+            child: Text(t.pfDeleteDialogTitle,
+                style: TextStyle(
+                    fontSize: context.rf(15.5),
+                    fontWeight: FontWeight.w800)),
+          ),
+        ]),
+        content: Text(
+          t.pfDeleteDialogBody,
+          style: TextStyle(fontSize: context.rf(12.5), height: 1.6),
+        ),
+        actionsPadding:
+            EdgeInsets.fromLTRB(context.rs(14), 0, context.rs(14), context.rs(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(t.pfCancel,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(t.pfDeleteAccount,
+                style: const TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || sure != true) return;
+    // Final safety: the existing destructive flow (type "حذف" to confirm).
+    showDeleteAccountSheet(context, cubit);
   }
 }

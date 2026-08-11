@@ -81,6 +81,8 @@ final class FinanceVehicle extends Equatable {
     this.descriptionAr,
     this.descriptionEn,
     this.type,
+    this.colorId,
+    this.colorGroupId,
     this.minPrice,
     this.image,
     this.category,
@@ -99,6 +101,8 @@ final class FinanceVehicle extends Equatable {
   final String? descriptionAr;
   final String? descriptionEn;
   final String? type; // productTypeID
+  final String? colorId; // website payload colorID
+  final String? colorGroupId; // website payload colorGroup
   final double? minPrice;
   final String? image;
   final String? category; // SEDAN / SUV / MVP / COUPES / COMMERCIAL
@@ -125,6 +129,8 @@ final class FinanceVehicle extends Equatable {
         descriptionAr: _s(j['descriptionAr']),
         descriptionEn: _s(j['descriptionEn']),
         type: _s(j['type']),
+        colorId: _s(j['colorId']),
+        colorGroupId: _s(j['colorGroupId']),
         minPrice: _d(j['minPrice']),
         image: _s(j['image']),
         category: _s(j['category']),

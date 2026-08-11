@@ -1,23 +1,20 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/di/injector.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
-import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/slope_hero.dart';
-import '../../../shared/widgets/swipe_action.dart';
 import '../../finance/data/finance_repository.dart';
 import '../../finance/domain/finance_math.dart';
 import '../../finance/domain/finance_models.dart';
 import '../../finance/presentation/finance_lead_sheet.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
-import '../../protection/data/protection_repository.dart';
-import '../../protection/domain/protection_models.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/car_sheet_cubit.dart';
@@ -527,208 +524,99 @@ final class _ColorRow extends StatelessWidget {
 
 /* ───────────── Methods page — the website's three-way checkout ───────────── */
 
-/// The OLD mobile-store buy popup, faithful: نوع الشراء → طريقة الدفع →
-/// طريقة الاستلام dropdowns, then a swipe-to-buy control that springs back
-/// when validation fails (the old SwipeableButton behaviour). Routing is the
-/// old popup's exact ladder: أونلاين→حجز سريع (paid reservation), أمر شراء→
-/// كاش (purchase-order request) / تمويل (finance form).
-final class _MethodsPage extends StatefulWidget {
+/// The website's OnlineCheckout method picker, 1:1: three selectable cards
+/// (Quick reservation — BEST CHOICE, down payment + "Refundable"; Apply for
+/// finance — FREE; Request a callback — FREE) each with its benefit bullet
+/// list, then the T&C checkbox (tappable policy links) and Continue. Cars not
+/// buyable online collapse to the callback card only, like the website.
+final class _MethodsPage extends StatelessWidget {
   const _MethodsPage({super.key, required this.vehicle});
 
   final OnlineVehicle vehicle;
-
-  @override
-  State<_MethodsPage> createState() => _MethodsPageState();
-}
-
-final class _MethodsPageState extends State<_MethodsPage> {
-  String? _buyType; // online | order
-  String? _payType; // reserve | cash | finance
-  String? _delivery; // branch | address
-  MaintBranch? _branch;
-  final _address = TextEditingController();
-  List<MaintBranch> _branches = const [];
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    ProtectionRepository(sl<ApiClient>()).branches().then((b) {
-      if (mounted) setState(() => _branches = b);
-    });
-  }
-
-  @override
-  void dispose() {
-    _address.dispose();
-    super.dispose();
-  }
-
-  List<(String, String)> _payOptions(AppLocalizations t) => switch (_buyType) {
-        // The old popup: online → fast reserve only (cash is disabled there).
-        'online' => [('reserve', t.mbuyFastReserve)],
-        'order' => [('cash', t.mbuyCash), ('finance', t.methodFinanceTitle)],
-        _ => const [],
-      };
-
-  /// The old handelValdating: everything picked + delivery data present.
-  bool _validate(AppLocalizations t) {
-    if (_buyType == null ||
-        _payType == null ||
-        _delivery == null ||
-        (_delivery == 'branch' && _branch == null) ||
-        (_delivery == 'address' && _address.text.trim().isEmpty)) {
-      setState(() => _error = t.formCheckFields);
-      return false;
-    }
-    setState(() => _error = null);
-    return true;
-  }
-
-  /// Swipe confirmed → same routing ladder as the old popup.
-  Future<bool> _confirm() async {
-    final t = AppLocalizations.of(context);
-    final cubit = context.read<CarSheetCubit>();
-    if (!_validate(t)) return false; // swipe springs back, like the old UI
-    switch (_payType) {
-      case 'reserve':
-        cubit.selectMethod(PurchaseMethod.reserve);
-      case 'finance':
-        cubit.selectMethod(PurchaseMethod.finance);
-      default: // cash → purchase-order request (CRM follow-up)
-        cubit.selectMethod(PurchaseMethod.contact);
-    }
-    cubit.continueToForm();
-    return true;
-  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final cubit = context.read<CarSheetCubit>();
     final state = context.watch<CarSheetCubit>().state;
-    final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
 
-    InputDecoration deco(String label) => InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        );
+    // Website: cars NOT available online only offer the callback method.
+    final availableOnline = state.detail?.buyOnline ?? true;
+    if (!availableOnline && state.method != PurchaseMethod.contact) {
+      // Keep the cubit selection legal for the collapsed card set.
+      WidgetsBinding.instance.addPostFrameCallback(
+          (_) => cubit.selectMethod(PurchaseMethod.contact));
+    }
+
+    final downPayment = Text.rich(
+      TextSpan(children: [
+        TextSpan(children: [
+          riyalSpan(fontSize: context.rf(13), color: scheme.primary),
+          TextSpan(text: formatPrice(cubit.downPayment)),
+        ]),
+        TextSpan(
+            text: '\n${t.methodRefundable}',
+            style: TextStyle(
+                fontSize: context.rf(9.5),
+                fontStyle: FontStyle.normal,
+                color: scheme.onSurface.withValues(alpha: 0.6))),
+      ]),
+      textAlign: TextAlign.end,
+      textDirection: TextDirection.ltr,
+      style: TextStyle(
+          fontSize: context.rf(13),
+          fontWeight: FontWeight.w800,
+          fontStyle: FontStyle.italic,
+          color: scheme.primary),
+    );
+
+    Widget free() => _FreeBadge(text: t.methodFree);
 
     return Column(
       children: [
         SheetTopBar(title: t.sheetHowToBuy, onBack: cubit.backToOverview),
         Expanded(
           child: ListView(
-            padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+            padding: EdgeInsets.fromLTRB(
+                context.rs(20), context.rs(8), context.rs(20), context.rs(16)),
             children: [
-              SizedBox(height: context.rs(6)),
-              // Down-payment strip (the old popup shows it up top for reserve).
-              Container(
-                padding: EdgeInsets.all(context.rs(13)),
-                decoration: BoxDecoration(
-                  color: scheme.primary.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(children: [
-                  Icon(Icons.bolt_rounded, size: 18, color: scheme.primary),
-                  SizedBox(width: context.rs(8)),
-                  Expanded(
-                    child: Text(t.methodReserveTitle,
-                        style: TextStyle(
-                            fontSize: context.rf(12),
-                            fontWeight: FontWeight.w800)),
-                  ),
-                  Text.rich(
-                    TextSpan(children: [
-                      riyalSpan(
-                          fontSize: context.rf(12), color: scheme.primary),
-                      TextSpan(text: formatPrice(cubit.downPayment)),
-                    ]),
-                    textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                        fontSize: context.rf(12),
-                        fontWeight: FontWeight.w800,
-                        fontStyle: FontStyle.italic,
-                        color: scheme.primary),
-                  ),
-                ]),
-              ),
-              SizedBox(height: context.rs(14)),
-
-              // نوع الشراء
-              AppDropdown<String>(
-                label: t.mbuyType,
-                value: _buyType,
-                hint: t.mbuySelect,
-                items: [
-                  AppDropdownItem(value: 'online', label: t.mbuyOnline),
-                  AppDropdownItem(value: 'order', label: t.mbuyOrder),
-                ],
-                onChanged: (v) => setState(() {
-                  _buyType = v;
-                  _payType = null;
-                }),
-              ),
-              SizedBox(height: context.rs(12)),
-
-              // طريقة الدفع (تعتمد على نوع الشراء — زي القديم بالظبط)
-              AppDropdown<String>(
-                label: t.pcPayMethod,
-                value: _payType,
-                hint: t.mbuySelect,
-                enabled: _buyType != null,
-                items: [
-                  for (final (v, label) in _payOptions(t))
-                    AppDropdownItem(value: v, label: label),
-                ],
-                onChanged: (v) => setState(() => _payType = v),
-              ),
-              SizedBox(height: context.rs(12)),
-
-              // طريقة الاستلام: فرع / عنوان
-              AppDropdown<String>(
-                label: t.mbuyDelivery,
-                value: _delivery,
-                hint: t.mbuySelect,
-                items: [
-                  AppDropdownItem(value: 'branch', label: t.mbuyBranch),
-                  AppDropdownItem(value: 'address', label: t.mbuyAddress),
-                ],
-                onChanged: (v) => setState(() => _delivery = v),
-              ),
-              if (_delivery == 'branch') ...[
-                SizedBox(height: context.rs(12)),
-                AppDropdown<MaintBranch>(
-                  label: t.pcChooseBranch,
-                  value: _branch,
-                  hint: t.mbuySelect,
-                  items: [
-                    for (final b in _branches)
-                      AppDropdownItem(value: b, label: b.name(lang)),
+              if (availableOnline) ...[
+                MethodCard(
+                  method: PurchaseMethod.reserve,
+                  selected: state.method == PurchaseMethod.reserve,
+                  title: t.methodReserveTitle,
+                  badge: t.methodReserveBadge,
+                  authBadge: t.methodSignIn,
+                  price: downPayment,
+                  bullets: [
+                    t.methodReserveB1,
+                    t.methodReserveB2,
+                    t.methodReserveB3,
                   ],
-                  onChanged: (b) => setState(() => _branch = b),
+                  onTap: () => cubit.selectMethod(PurchaseMethod.reserve),
+                ),
+                MethodCard(
+                  method: PurchaseMethod.finance,
+                  selected: state.method == PurchaseMethod.finance,
+                  title: t.methodFinanceTitle,
+                  price: free(),
+                  bullets: [
+                    t.methodFinanceB1,
+                    t.methodFinanceB2,
+                    t.methodFinanceB3,
+                  ],
+                  onTap: () => cubit.selectMethod(PurchaseMethod.finance),
                 ),
               ],
-              if (_delivery == 'address') ...[
-                SizedBox(height: context.rs(12)),
-                TextField(
-                  controller: _address,
-                  onChanged: (_) => setState(() {}),
-                  decoration: deco(t.mbuyAddressHint),
-                ),
-              ],
-              if (_error != null)
-                Padding(
-                  padding: EdgeInsets.only(top: context.rs(10)),
-                  child: Text(_error!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: scheme.error, fontSize: context.rf(12))),
-                ),
-              SizedBox(height: context.rs(20)),
+              MethodCard(
+                method: PurchaseMethod.contact,
+                selected: state.method == PurchaseMethod.contact,
+                title: t.methodContactTitle,
+                price: free(),
+                bullets: [t.methodContactB1, t.methodContactB2],
+                onTap: () => cubit.selectMethod(PurchaseMethod.contact),
+              ),
             ],
           ),
         ),
@@ -749,27 +637,97 @@ final class _MethodsPageState extends State<_MethodsPage> {
                   onChanged: (v) => cubit.toggleAccepted(v ?? false),
                 ),
               ),
-              Expanded(
-                child: Text(
-                  t.sheetTerms,
-                  style: TextStyle(
-                    fontSize: context.rf(10.5),
-                    color: scheme.onSurface.withValues(alpha: 0.65),
-                  ),
-                ),
-              ),
+              const Expanded(child: TermsText()),
             ]),
             SizedBox(height: context.rs(8)),
-            // The old SwipeableButton — green swipe-to-buy, springs back on
-            // validation failure.
-            SwipeAction(
-              label: t.mbuySwipe,
-              enabled: state.accepted,
-              onConfirm: _confirm,
+            FilledButton(
+              onPressed: state.accepted ? cubit.continueToForm : null,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                textStyle: TextStyle(
+                    fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
+              ),
+              child: Text(t.sheetContinue),
             ),
           ]),
         ),
       ],
     ).animate().fadeIn(duration: 220.ms);
+  }
+}
+
+final class _FreeBadge extends StatelessWidget {
+  const _FreeBadge({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: scheme.primary.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: context.rf(10),
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.6,
+          color: scheme.primary,
+        ),
+      ),
+    );
+  }
+}
+
+/// "I have read the [terms & conditions] and [privacy policy]." — the
+/// website's checkbox label with both policies as tappable links.
+final class TermsText extends StatelessWidget {
+  const TermsText({super.key});
+
+  static const _termsUrl = 'https://hassanjameel.com.sa/website-policy';
+  static const _privacyUrl = 'https://hassanjameel.com.sa/privacy';
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    TextStyle link() => TextStyle(
+          color: scheme.primary,
+          fontWeight: FontWeight.w800,
+          decoration: TextDecoration.underline,
+          decorationColor: scheme.primary,
+        );
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontSize: context.rf(10.5),
+          height: 1.45,
+          color: scheme.onSurface.withValues(alpha: 0.65),
+        ),
+        children: [
+          TextSpan(text: t.termsPrefix),
+          TextSpan(
+            text: t.linkTerms,
+            style: link(),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => launchUrl(Uri.parse(_termsUrl),
+                  mode: LaunchMode.externalApplication),
+          ),
+          TextSpan(text: t.termsJoin),
+          TextSpan(
+            text: t.linkPrivacy,
+            style: link(),
+            recognizer: TapGestureRecognizer()
+              ..onTap = () => launchUrl(Uri.parse(_privacyUrl),
+                  mode: LaunchMode.externalApplication),
+          ),
+          TextSpan(text: t.termsSuffix),
+        ],
+      ),
+    );
   }
 }

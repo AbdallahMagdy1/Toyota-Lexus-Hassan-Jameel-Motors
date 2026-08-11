@@ -25,6 +25,7 @@ final class CarSheetState extends Equatable {
     this.accepted = false,
     this.page = SheetPage.overview,
     this.reference,
+    this.orderGuid,
   });
 
   final bool loading;
@@ -38,6 +39,7 @@ final class CarSheetState extends Equatable {
   final bool accepted;
   final SheetPage page;
   final String? reference; // HJ-… on success
+  final String? orderGuid; // deposit OrderGUID → "complete purchase" resume
 
   CarSheetState copyWith({
     bool? loading,
@@ -51,6 +53,7 @@ final class CarSheetState extends Equatable {
     bool? accepted,
     SheetPage? page,
     String? reference,
+    String? orderGuid,
   }) =>
       CarSheetState(
         loading: loading ?? this.loading,
@@ -64,6 +67,7 @@ final class CarSheetState extends Equatable {
         accepted: accepted ?? this.accepted,
         page: page ?? this.page,
         reference: reference ?? this.reference,
+        orderGuid: orderGuid ?? this.orderGuid,
       );
 
   @override
@@ -79,6 +83,7 @@ final class CarSheetState extends Equatable {
         accepted,
         page,
         reference,
+        orderGuid,
       ];
 }
 
@@ -129,6 +134,7 @@ final class CarSheetCubit extends Cubit<CarSheetState> {
 
   void backToOverview() => emit(state.copyWith(page: SheetPage.overview));
   void backToMethods() => emit(state.copyWith(page: SheetPage.methods));
-  void showSuccess(String? reference) =>
-      emit(state.copyWith(page: SheetPage.success, reference: reference));
+  void showSuccess(String? reference, {String? orderGuid}) =>
+      emit(state.copyWith(
+          page: SheetPage.success, reference: reference, orderGuid: orderGuid));
 }

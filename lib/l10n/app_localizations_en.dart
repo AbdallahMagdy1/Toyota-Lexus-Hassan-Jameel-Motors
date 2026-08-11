@@ -2527,4 +2527,331 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get contactPopCall => 'Call us';
+
+  @override
+  String get osOrderDetails => 'Order details';
+
+  @override
+  String get osInclVat => 'Including Value Added Tax';
+
+  @override
+  String get osExteriorColor => 'Exterior color';
+
+  @override
+  String get osInnerColor => 'Inner color';
+
+  @override
+  String get osTotal => 'Total';
+
+  @override
+  String get osAmountRequired => 'Amount required to be paid';
+
+  @override
+  String get osHowYouPay => 'How you pay';
+
+  @override
+  String get osPayHint =>
+      'The down payment is paid by Visa or Mada; the remaining amount via SADAD.';
+
+  @override
+  String get formPayConfirm => 'Pay & confirm';
+
+  @override
+  String get reserveWillPay => 'You will pay now';
+
+  @override
+  String get linkTerms => 'terms & conditions';
+
+  @override
+  String get linkPrivacy => 'privacy policy';
+
+  @override
+  String get termsPrefix => 'I have read the ';
+
+  @override
+  String get termsJoin => ' and ';
+
+  @override
+  String get termsSuffix => '.';
+
+  @override
+  String get finReqLearnTitle =>
+      'What are the financing requirements & required documents?';
+
+  @override
+  String get finReqLearnMore => 'Learn more';
+
+  @override
+  String get finReqDialogReqs => 'Financing requirements:';
+
+  @override
+  String get finReqDialogDocs => 'Required documents:';
+
+  @override
+  String get finReqSaudi => 'Saudi';
+
+  @override
+  String get finReqResident => 'Resident';
+
+  @override
+  String get finReqAge => 'Client age from 21 years';
+
+  @override
+  String get finReqWorkDuration => 'Employment duration of 95 days';
+
+  @override
+  String get finReqSalarySaudi => 'Salary from SAR 3,000';
+
+  @override
+  String get finReqSalaryResident => 'Salary from SAR 5,000';
+
+  @override
+  String get finReqDoc1 => 'Valid national ID';
+
+  @override
+  String get finReqDoc2 => 'Valid driving license';
+
+  @override
+  String get finReqDoc3 =>
+      'Recent GOSI (insurance) print — no older than 10 days';
+
+  @override
+  String get finReqDoc4 =>
+      'Salary certificate attested by the Chamber of Commerce — no older than 2 months';
+
+  @override
+  String get finReqDoc5 => 'Bank statement for the last 3 months';
+
+  @override
+  String get cpcTitle => 'Complete your purchase';
+
+  @override
+  String get cpcDepositBanner =>
+      'Your deposit is received and your car is reserved. Continue the purchase steps below.';
+
+  @override
+  String get cpcYourCar => 'Your car';
+
+  @override
+  String get cpcStepProtection => 'Protection & Shading';
+
+  @override
+  String get cpcStepContract => 'Contract & signature';
+
+  @override
+  String get cpcStepDelivery => 'Delivery scheduling';
+
+  @override
+  String get cpcStepPayment => 'Remaining payment';
+
+  @override
+  String get cpcProtectionHint =>
+      'Choose any protection & shading packages to add to your car (optional).';
+
+  @override
+  String get cpcNoPackages =>
+      'No protection packages are available for this vehicle. You can continue without adding any.';
+
+  @override
+  String get cpcNoneSelected => 'None selected';
+
+  @override
+  String cpcSelectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get cpcByChoice => 'By selection';
+
+  @override
+  String get cpcConfirmSelection => 'Confirm selection';
+
+  @override
+  String get cpcContinueWithout => 'Continue without adding';
+
+  @override
+  String get cpcLockedStep =>
+      'This step is coming soon in the app — our team will contact you to complete it.';
+
+  @override
+  String get cpcNotFound =>
+      'We couldn\'t find the car reservation for this link.';
+
+  @override
+  String get cpcResumeBanner => 'Continue your car purchase';
+
+  @override
+  String get cpcSelectionDone =>
+      'Your selection is noted — the next steps will be completed with our team.';
+
+  @override
+  String get cpcCompletePurchase => 'Complete purchase';
+
+  @override
+  String get cpcBack => 'Back';
+
+  @override
+  String get cpcSignInFirst => 'Sign in to continue your car purchase steps.';
+
+  @override
+  String get cpcContractTitle => 'Sales contract & signature';
+
+  @override
+  String get cpcAddons => 'Add-ons:';
+
+  @override
+  String get cpcContractPreparing =>
+      'Creating your sales order and preparing the contract, please don\'t close this screen…';
+
+  @override
+  String get cpcContractFailed => 'Could not create the sales order.';
+
+  @override
+  String get cpcContractReady => 'Your sales contract is ready.';
+
+  @override
+  String get cpcViewContract => 'View contract (PDF)';
+
+  @override
+  String get cpcAgreeContract =>
+      'I agree to the terms & conditions of the sales contract.';
+
+  @override
+  String get cpcAgreeFirst => 'Please agree to the terms first.';
+
+  @override
+  String get cpcNoIdentity => 'Your account has no valid identity number.';
+
+  @override
+  String get cpcSignAbsher => 'Sign with Absher';
+
+  @override
+  String get cpcSignOtpHint =>
+      'Enter the Absher verification code sent to your phone';
+
+  @override
+  String get cpcSignConfirm => 'Confirm signature';
+
+  @override
+  String get cpcSignResend => 'Resend code';
+
+  @override
+  String get cpcSignSendFailed =>
+      'Couldn\'t send the verification code, try again.';
+
+  @override
+  String get cpcSignInvalidOtp => 'Invalid verification code.';
+
+  @override
+  String get cpcTestModeSign => 'Test mode: signing without Absher.';
+
+  @override
+  String get cpcSignTest => 'Sign contract (test)';
+
+  @override
+  String get cpcAlreadySigned => 'The contract is signed.';
+
+  @override
+  String get cpcContinue => 'Continue';
+
+  @override
+  String get cpcDeliveryHint => 'Choose a date and time to receive your car.';
+
+  @override
+  String get cpcDeliveryLoading => 'Loading delivery scheduling…';
+
+  @override
+  String get cpcDeliveryNotReady =>
+      'Delivery scheduling will open once your order is confirmed (usually within one working day). You can continue to payment now and schedule delivery later.';
+
+  @override
+  String get cpcDeliveryDate => 'Date';
+
+  @override
+  String get cpcDeliveryTimes => 'Available times';
+
+  @override
+  String get cpcDeliveryNoSlots =>
+      'No available times on this day. Try another date.';
+
+  @override
+  String get cpcDeliveryBooked => 'Delivery slot booked';
+
+  @override
+  String get cpcDeliveryBookFailed => 'Couldn\'t book the slot, try again.';
+
+  @override
+  String get cpcDeliveryConfirm => 'Confirm slot';
+
+  @override
+  String get cpcDeliveryLater => 'Schedule later';
+
+  @override
+  String get cpcContinuePayment => 'Continue to payment';
+
+  @override
+  String get cpcPayTitle => 'Pay the remaining amount';
+
+  @override
+  String get cpcPayCar => 'Car price (incl. VAT)';
+
+  @override
+  String get cpcPayAddons => 'Add-ons (protection & shading)';
+
+  @override
+  String get cpcPayDeposit => 'Deposit paid';
+
+  @override
+  String get cpcPayRemaining => 'Remaining amount';
+
+  @override
+  String get cpcPayProceed => 'Proceed to payment';
+
+  @override
+  String get cpcSadadOpenBank =>
+      'Open your bank app → SADAD and enter the number to pay.';
+
+  @override
+  String get cpcPayDone => 'Your car purchase is complete';
+
+  @override
+  String get cpcPayProcessing => 'Payment is being processed';
+
+  @override
+  String get cpcPayThanks =>
+      'Thank you for choosing Hassan Jameel. Your delivery details will follow shortly.';
+
+  @override
+  String get cpcPayConfirming => 'Confirming your payment…';
+
+  @override
+  String get cpcTestModePay =>
+      'Test mode: payment is marked complete without going to the gateway.';
+
+  @override
+  String get cpcPayTest => 'Complete purchase (test)';
+
+  @override
+  String get cpcTestPaid => 'Purchase completed (test mode)';
+
+  @override
+  String get cpcTestPaidHint =>
+      'All steps passed successfully without a real charge.';
+
+  @override
+  String get offersFinancingBy => 'Financing by';
+
+  @override
+  String get pfDeleteNote =>
+      'Warning: this will permanently delete your account and hide all your data — it cannot be undone from the app.';
+
+  @override
+  String get pfDeleteDialogTitle => 'Delete account?';
+
+  @override
+  String get pfDeleteDialogBody =>
+      'Are you sure you want to delete your account? Your data will be hidden from the app and this cannot be undone.';
+
+  @override
+  String get pfCancel => 'Cancel';
 }

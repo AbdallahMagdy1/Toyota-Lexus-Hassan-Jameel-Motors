@@ -130,6 +130,92 @@ final class ReservationSettings extends Equatable {
   List<Object?> get props => [toyotaDownPayment, lexusDownPayment];
 }
 
+/// One car reservation (draft) loaded by its deposit OrderGUID —
+/// CarReservationDto from /api/app/online/reservations/by-guid, the same
+/// row the website's /car/complete/{orderGuid} continuation resumes from.
+final class CarReservation extends Equatable {
+  const CarReservation({
+    this.descriptionAr,
+    this.descriptionEn,
+    this.orderId,
+    this.image,
+    this.sn,
+    this.slug,
+    this.orderGuid,
+    this.statusAr,
+    this.statusEn,
+    this.productId,
+    this.productGroupId,
+    this.type,
+    this.colorId,
+    this.brandEn,
+    this.year,
+    this.salePrice,
+    this.total,
+    this.reqDownPayment,
+    this.sadadNumber,
+  });
+
+  final String? descriptionAr;
+  final String? descriptionEn;
+  final String? orderId;
+  final String? image;
+  final String? sn; // stock VIN
+  final String? slug;
+  final String? orderGuid;
+  final String? statusAr;
+  final String? statusEn;
+  final String? productId;
+  final String? productGroupId;
+  final String? type; // ProductModelType — feeds protection-by-model
+  final String? colorId;
+  final String? brandEn;
+  final String? year;
+  final double? salePrice;
+  final double? total;
+  final double? reqDownPayment;
+  final String? sadadNumber;
+
+  String name(String lang) =>
+      ((lang == 'ar' ? descriptionAr : descriptionEn) ??
+              descriptionEn ??
+              descriptionAr ??
+              '')
+          .trim();
+  String status(String lang) =>
+      ((lang == 'ar' ? statusAr : statusEn) ?? statusEn ?? statusAr ?? '')
+          .trim();
+
+  /// Website: brandEn contains "lexus" → brandId 2, otherwise Toyota (1).
+  String get protectionBrandId =>
+      (brandEn ?? '').toLowerCase().contains('lexus') ? '2' : '1';
+
+  factory CarReservation.fromJson(Map<String, dynamic> j) => CarReservation(
+        descriptionAr: _s(j['descriptionAr']),
+        descriptionEn: _s(j['descriptionEn']),
+        orderId: _s(j['orderId']),
+        image: _s(j['image']),
+        sn: _s(j['sn']),
+        slug: _s(j['slug']),
+        orderGuid: _s(j['orderGuid']),
+        statusAr: _s(j['statusAr']),
+        statusEn: _s(j['statusEn']),
+        productId: _s(j['productId']),
+        productGroupId: _s(j['productGroupId']),
+        type: _s(j['type']),
+        colorId: _s(j['colorId']),
+        brandEn: _s(j['brandEn']),
+        year: _s(j['year']),
+        salePrice: _d(j['salePrice']),
+        total: _d(j['total']),
+        reqDownPayment: _d(j['reqDownPayment']),
+        sadadNumber: _s(j['sadadNumber']),
+      );
+
+  @override
+  List<Object?> get props => [orderGuid, orderId];
+}
+
 final class SubmissionResult extends Equatable {
   const SubmissionResult({required this.ok, this.error, this.reference});
 

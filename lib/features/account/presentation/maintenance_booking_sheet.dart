@@ -2,13 +2,13 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../core/constants/api_paths.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/availability_calendar.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/domain/app_user.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -46,17 +46,6 @@ void showMaintenanceBookingSheet(BuildContext context, {GarageCar? car}) {
 
 enum _Phase { editing, busy, done, failed }
 
-final class _CalDay extends Equatable {
-  const _CalDay({required this.date, required this.type, required this.hoursCount});
-
-  final DateTime date;
-  final int type; // 1 available, 0 holiday, -1 unavailable
-  final int hoursCount;
-
-  @override
-  List<Object?> get props => [date, type];
-}
-
 final class _BookingState extends Equatable {
   const _BookingState({
     this.step = 1,
@@ -83,9 +72,6 @@ final class _BookingState extends Equatable {
     // step 3
     this.branches = const [],
     this.branchId,
-    this.calMonth,
-    this.days = const [],
-    this.daysLoading = false,
     this.date,
     this.hours = const [],
     this.hoursLoading = false,
@@ -119,9 +105,6 @@ final class _BookingState extends Equatable {
 
   final List<MaintBranch> branches;
   final String? branchId;
-  final DateTime? calMonth;
-  final List<_CalDay> days;
-  final bool daysLoading;
   final DateTime? date;
   final List<String> hours;
   final bool hoursLoading;
@@ -152,9 +135,6 @@ final class _BookingState extends Equatable {
     String? Function()? modelId,
     List<MaintBranch>? branches,
     String? Function()? branchId,
-    DateTime? calMonth,
-    List<_CalDay>? days,
-    bool? daysLoading,
     DateTime? Function()? date,
     List<String>? hours,
     bool? hoursLoading,
@@ -183,9 +163,6 @@ final class _BookingState extends Equatable {
         modelId: modelId == null ? this.modelId : modelId(),
         branches: branches ?? this.branches,
         branchId: branchId == null ? this.branchId : branchId(),
-        calMonth: calMonth ?? this.calMonth,
-        days: days ?? this.days,
-        daysLoading: daysLoading ?? this.daysLoading,
         date: date == null ? this.date : date(),
         hours: hours ?? this.hours,
         hoursLoading: hoursLoading ?? this.hoursLoading,
@@ -199,7 +176,7 @@ final class _BookingState extends Equatable {
         step, phase, services, serviceIndex, sub1, sub1Loading, sub1Id,
         packages, packagesLoading, packageId,
         garage, mine, myCarIndex, groups, models, year, groupId, modelId,
-        branches, branchId, calMonth, days, daysLoading, date, hours,
+        branches, branchId, date, hours,
         hoursLoading, hour, error, bookingId,
       ];
 }
@@ -412,36 +389,9 @@ final class _BookingCubit extends Cubit<_BookingState> {
       emit(state.copyWith(groupId: () => id, modelId: () => null));
   void selectModel(String? id) => emit(state.copyWith(modelId: () => id));
 
-  /* step 3 — availability calendar (website /available-days cycle) */
-  Future<void> loadMonth(DateTime month) async {
-    emit(state.copyWith(calMonth: month, daysLoading: true));
-    try {
-      final res = await sl<ApiClient>().get<List<dynamic>>(
-        ApiPaths.maintDays,
-        query: {'month': month.month},
-      );
-      if (isClosed) return;
-      final days = (res.data ?? [])
-          .whereType<Map<String, dynamic>>()
-          .map((j) {
-            final d = DateTime.tryParse('${j['date']}');
-            return d == null
-                ? null
-                : _CalDay(
-                    date: d,
-                    type: (j['type'] as num?)?.toInt() ?? -1,
-                    hoursCount:
-                        (j['availableHoursCount'] as num?)?.toInt() ?? 0,
-                  );
-          })
-          .whereType<_CalDay>()
-          .toList();
-      emit(state.copyWith(days: days, daysLoading: false));
-    } catch (_) {
-      if (!isClosed) emit(state.copyWith(daysLoading: false));
-    }
-  }
-
+  /* step 3 — the availability calendar itself lives in the SHARED
+     showAvailabilityCalendarSheet (same website /available-days cycle);
+     the cubit only reacts to a picked date by loading its hour slots. */
   Future<void> selectDate(DateTime d) async {
     emit(state.copyWith(date: () => d, hour: () => null, hoursLoading: true));
     final hours = await _repo.hours(d);
@@ -1194,208 +1144,15 @@ final class _Step3 extends StatelessWidget {
     );
   }
 
-  void _openCalendar(BuildContext context, _BookingCubit cubit) {
-    cubit.loadMonth(cubit.state.calMonth ?? DateTime.now());
-    showModalBottomSheet<void>(
-      context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (_) => BlocProvider.value(
-        value: cubit,
-        child: const _CalendarSheet(),
-      ),
+  Future<void> _openCalendar(
+      BuildContext context, _BookingCubit cubit) async {
+    // SHARED availability calendar (same sheet the maintenance-offer
+    // reservation uses) — resolves with the picked date.
+    final picked = await showAvailabilityCalendarSheet(
+      context,
+      selected: cubit.state.date,
     );
-  }
-}
-
-/// The website's MaintenanceCalendarDialog: month grid, availability tint,
-/// holiday/unavailable states, capacity badge, legend.
-final class _CalendarSheet extends StatelessWidget {
-  const _CalendarSheet();
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final cubit = context.watch<_BookingCubit>();
-    final state = cubit.state;
-    final scheme = Theme.of(context).colorScheme;
-    final month = state.calMonth ?? DateTime.now();
-    final today = DateTime.now();
-    final byDay = {
-      for (final d in state.days)
-        '${d.date.year}-${d.date.month}-${d.date.day}': d
-    };
-    final first = DateTime(month.year, month.month, 1);
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    // Week starts Sunday (الأحد), like the website grid.
-    final leading = first.weekday % 7;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SheetHandle(),
-          const SizedBox(height: 12),
-          Row(children: [
-            IconButton(
-              onPressed: () => cubit
-                  .loadMonth(DateTime(month.year, month.month - 1, 1)),
-              icon: const Icon(Icons.chevron_left_rounded),
-            ),
-            Expanded(
-              child: Text(
-                '${month.year}/${month.month.toString().padLeft(2, '0')}',
-                textAlign: TextAlign.center,
-                textDirection: TextDirection.ltr,
-                style: TextStyle(
-                    fontSize: context.rf(15),
-                    fontWeight: FontWeight.w800,
-                    color: scheme.primary),
-              ),
-            ),
-            IconButton(
-              onPressed: () => cubit
-                  .loadMonth(DateTime(month.year, month.month + 1, 1)),
-              icon: const Icon(Icons.chevron_right_rounded),
-            ),
-          ]),
-          if (state.daysLoading)
-            const Padding(
-              padding: EdgeInsets.all(30),
-              child: CircularProgressIndicator(),
-            )
-          else ...[
-            Row(children: [
-              for (final d in [
-                t.calSun, t.calMon, t.calTue, t.calWed,
-                t.calThu, t.calFri, t.calSat
-              ])
-                Expanded(
-                  child: Text(d,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          fontSize: context.rf(9.5),
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface.withValues(alpha: 0.5))),
-                ),
-            ]),
-            const SizedBox(height: 6),
-            GridView.count(
-              crossAxisCount: 7,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 5,
-              crossAxisSpacing: 5,
-              children: [
-                for (var i = 0; i < leading; i++) const SizedBox.shrink(),
-                for (var day = 1; day <= daysInMonth; day++)
-                  Builder(builder: (context) {
-                    final date = DateTime(month.year, month.month, day);
-                    final info = byDay['${month.year}-${month.month}-$day'];
-                    final isPast = date.isBefore(
-                        DateTime(today.year, today.month, today.day));
-                    final clickable =
-                        (info?.type ?? -1) == 1 && !isPast;
-                    final selected = state.date != null &&
-                        state.date!.year == date.year &&
-                        state.date!.month == date.month &&
-                        state.date!.day == date.day;
-                    final holiday = info?.type == 0;
-
-                    return InkWell(
-                      borderRadius: BorderRadius.circular(10),
-                      onTap: clickable
-                          ? () {
-                              cubit.selectDate(date);
-                              Navigator.of(context).pop();
-                            }
-                          : null,
-                      child: Stack(children: [
-                        Container(
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: selected
-                                ? scheme.primary
-                                : clickable
-                                    ? scheme.primary.withValues(alpha: 0.1)
-                                    : scheme.onSurface
-                                        .withValues(alpha: 0.04),
-                          ),
-                          child: Text(
-                            '$day',
-                            style: TextStyle(
-                              fontSize: context.rf(12),
-                              fontWeight: FontWeight.w700,
-                              color: selected
-                                  ? scheme.onPrimary
-                                  : clickable
-                                      ? scheme.primary
-                                      : scheme.onSurface
-                                          .withValues(alpha: 0.35),
-                            ),
-                          ),
-                        ),
-                        if (holiday)
-                          const PositionedDirectional(
-                            top: 2,
-                            end: 3,
-                            child: Icon(Icons.wb_sunny_outlined, size: 9),
-                          )
-                        else if (clickable && (info?.hoursCount ?? 0) > 0)
-                          PositionedDirectional(
-                            top: 2,
-                            start: 3,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 4, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: scheme.primary,
-                                borderRadius: BorderRadius.circular(99),
-                              ),
-                              child: Text(
-                                '${info!.hoursCount}',
-                                style: TextStyle(
-                                    fontSize: 7.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: scheme.onPrimary),
-                              ),
-                            ),
-                          ),
-                      ]),
-                    );
-                  }),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final (color, label) in [
-                  (scheme.primary, t.calAvailable),
-                  (scheme.onSurface.withValues(alpha: 0.3), t.calHoliday),
-                  (scheme.onSurface.withValues(alpha: 0.15), t.calUnavailable),
-                ]) ...[
-                  Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                          color: color,
-                          borderRadius: BorderRadius.circular(3))),
-                  const SizedBox(width: 4),
-                  Text(label, style: TextStyle(fontSize: context.rf(9.5))),
-                  const SizedBox(width: 12),
-                ],
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
+    if (picked != null) cubit.selectDate(picked);
   }
 }
 

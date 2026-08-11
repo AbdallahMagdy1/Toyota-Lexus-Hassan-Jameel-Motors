@@ -4981,6 +4981,612 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Call us'**
   String get contactPopCall;
+
+  /// No description provided for @osOrderDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Order details'**
+  String get osOrderDetails;
+
+  /// No description provided for @osInclVat.
+  ///
+  /// In en, this message translates to:
+  /// **'Including Value Added Tax'**
+  String get osInclVat;
+
+  /// No description provided for @osExteriorColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Exterior color'**
+  String get osExteriorColor;
+
+  /// No description provided for @osInnerColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Inner color'**
+  String get osInnerColor;
+
+  /// No description provided for @osTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get osTotal;
+
+  /// No description provided for @osAmountRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Amount required to be paid'**
+  String get osAmountRequired;
+
+  /// No description provided for @osHowYouPay.
+  ///
+  /// In en, this message translates to:
+  /// **'How you pay'**
+  String get osHowYouPay;
+
+  /// No description provided for @osPayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The down payment is paid by Visa or Mada; the remaining amount via SADAD.'**
+  String get osPayHint;
+
+  /// No description provided for @formPayConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay & confirm'**
+  String get formPayConfirm;
+
+  /// No description provided for @reserveWillPay.
+  ///
+  /// In en, this message translates to:
+  /// **'You will pay now'**
+  String get reserveWillPay;
+
+  /// No description provided for @linkTerms.
+  ///
+  /// In en, this message translates to:
+  /// **'terms & conditions'**
+  String get linkTerms;
+
+  /// No description provided for @linkPrivacy.
+  ///
+  /// In en, this message translates to:
+  /// **'privacy policy'**
+  String get linkPrivacy;
+
+  /// No description provided for @termsPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'I have read the '**
+  String get termsPrefix;
+
+  /// No description provided for @termsJoin.
+  ///
+  /// In en, this message translates to:
+  /// **' and '**
+  String get termsJoin;
+
+  /// No description provided for @termsSuffix.
+  ///
+  /// In en, this message translates to:
+  /// **'.'**
+  String get termsSuffix;
+
+  /// No description provided for @finReqLearnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'What are the financing requirements & required documents?'**
+  String get finReqLearnTitle;
+
+  /// No description provided for @finReqLearnMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Learn more'**
+  String get finReqLearnMore;
+
+  /// No description provided for @finReqDialogReqs.
+  ///
+  /// In en, this message translates to:
+  /// **'Financing requirements:'**
+  String get finReqDialogReqs;
+
+  /// No description provided for @finReqDialogDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'Required documents:'**
+  String get finReqDialogDocs;
+
+  /// No description provided for @finReqSaudi.
+  ///
+  /// In en, this message translates to:
+  /// **'Saudi'**
+  String get finReqSaudi;
+
+  /// No description provided for @finReqResident.
+  ///
+  /// In en, this message translates to:
+  /// **'Resident'**
+  String get finReqResident;
+
+  /// No description provided for @finReqAge.
+  ///
+  /// In en, this message translates to:
+  /// **'Client age from 21 years'**
+  String get finReqAge;
+
+  /// No description provided for @finReqWorkDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Employment duration of 95 days'**
+  String get finReqWorkDuration;
+
+  /// No description provided for @finReqSalarySaudi.
+  ///
+  /// In en, this message translates to:
+  /// **'Salary from SAR 3,000'**
+  String get finReqSalarySaudi;
+
+  /// No description provided for @finReqSalaryResident.
+  ///
+  /// In en, this message translates to:
+  /// **'Salary from SAR 5,000'**
+  String get finReqSalaryResident;
+
+  /// No description provided for @finReqDoc1.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid national ID'**
+  String get finReqDoc1;
+
+  /// No description provided for @finReqDoc2.
+  ///
+  /// In en, this message translates to:
+  /// **'Valid driving license'**
+  String get finReqDoc2;
+
+  /// No description provided for @finReqDoc3.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent GOSI (insurance) print — no older than 10 days'**
+  String get finReqDoc3;
+
+  /// No description provided for @finReqDoc4.
+  ///
+  /// In en, this message translates to:
+  /// **'Salary certificate attested by the Chamber of Commerce — no older than 2 months'**
+  String get finReqDoc4;
+
+  /// No description provided for @finReqDoc5.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank statement for the last 3 months'**
+  String get finReqDoc5;
+
+  /// No description provided for @cpcTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete your purchase'**
+  String get cpcTitle;
+
+  /// No description provided for @cpcDepositBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Your deposit is received and your car is reserved. Continue the purchase steps below.'**
+  String get cpcDepositBanner;
+
+  /// No description provided for @cpcYourCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Your car'**
+  String get cpcYourCar;
+
+  /// No description provided for @cpcStepProtection.
+  ///
+  /// In en, this message translates to:
+  /// **'Protection & Shading'**
+  String get cpcStepProtection;
+
+  /// No description provided for @cpcStepContract.
+  ///
+  /// In en, this message translates to:
+  /// **'Contract & signature'**
+  String get cpcStepContract;
+
+  /// No description provided for @cpcStepDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery scheduling'**
+  String get cpcStepDelivery;
+
+  /// No description provided for @cpcStepPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining payment'**
+  String get cpcStepPayment;
+
+  /// No description provided for @cpcProtectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose any protection & shading packages to add to your car (optional).'**
+  String get cpcProtectionHint;
+
+  /// No description provided for @cpcNoPackages.
+  ///
+  /// In en, this message translates to:
+  /// **'No protection packages are available for this vehicle. You can continue without adding any.'**
+  String get cpcNoPackages;
+
+  /// No description provided for @cpcNoneSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'None selected'**
+  String get cpcNoneSelected;
+
+  /// No description provided for @cpcSelectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String cpcSelectedCount(int count);
+
+  /// No description provided for @cpcByChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'By selection'**
+  String get cpcByChoice;
+
+  /// No description provided for @cpcConfirmSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm selection'**
+  String get cpcConfirmSelection;
+
+  /// No description provided for @cpcContinueWithout.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue without adding'**
+  String get cpcContinueWithout;
+
+  /// No description provided for @cpcLockedStep.
+  ///
+  /// In en, this message translates to:
+  /// **'This step is coming soon in the app — our team will contact you to complete it.'**
+  String get cpcLockedStep;
+
+  /// No description provided for @cpcNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'We couldn\'t find the car reservation for this link.'**
+  String get cpcNotFound;
+
+  /// No description provided for @cpcResumeBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue your car purchase'**
+  String get cpcResumeBanner;
+
+  /// No description provided for @cpcSelectionDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your selection is noted — the next steps will be completed with our team.'**
+  String get cpcSelectionDone;
+
+  /// No description provided for @cpcCompletePurchase.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete purchase'**
+  String get cpcCompletePurchase;
+
+  /// No description provided for @cpcBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get cpcBack;
+
+  /// No description provided for @cpcSignInFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to continue your car purchase steps.'**
+  String get cpcSignInFirst;
+
+  /// No description provided for @cpcContractTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales contract & signature'**
+  String get cpcContractTitle;
+
+  /// No description provided for @cpcAddons.
+  ///
+  /// In en, this message translates to:
+  /// **'Add-ons:'**
+  String get cpcAddons;
+
+  /// No description provided for @cpcContractPreparing.
+  ///
+  /// In en, this message translates to:
+  /// **'Creating your sales order and preparing the contract, please don\'t close this screen…'**
+  String get cpcContractPreparing;
+
+  /// No description provided for @cpcContractFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create the sales order.'**
+  String get cpcContractFailed;
+
+  /// No description provided for @cpcContractReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sales contract is ready.'**
+  String get cpcContractReady;
+
+  /// No description provided for @cpcViewContract.
+  ///
+  /// In en, this message translates to:
+  /// **'View contract (PDF)'**
+  String get cpcViewContract;
+
+  /// No description provided for @cpcAgreeContract.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the terms & conditions of the sales contract.'**
+  String get cpcAgreeContract;
+
+  /// No description provided for @cpcAgreeFirst.
+  ///
+  /// In en, this message translates to:
+  /// **'Please agree to the terms first.'**
+  String get cpcAgreeFirst;
+
+  /// No description provided for @cpcNoIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has no valid identity number.'**
+  String get cpcNoIdentity;
+
+  /// No description provided for @cpcSignAbsher.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign with Absher'**
+  String get cpcSignAbsher;
+
+  /// No description provided for @cpcSignOtpHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the Absher verification code sent to your phone'**
+  String get cpcSignOtpHint;
+
+  /// No description provided for @cpcSignConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm signature'**
+  String get cpcSignConfirm;
+
+  /// No description provided for @cpcSignResend.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend code'**
+  String get cpcSignResend;
+
+  /// No description provided for @cpcSignSendFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t send the verification code, try again.'**
+  String get cpcSignSendFailed;
+
+  /// No description provided for @cpcSignInvalidOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid verification code.'**
+  String get cpcSignInvalidOtp;
+
+  /// No description provided for @cpcTestModeSign.
+  ///
+  /// In en, this message translates to:
+  /// **'Test mode: signing without Absher.'**
+  String get cpcTestModeSign;
+
+  /// No description provided for @cpcSignTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign contract (test)'**
+  String get cpcSignTest;
+
+  /// No description provided for @cpcAlreadySigned.
+  ///
+  /// In en, this message translates to:
+  /// **'The contract is signed.'**
+  String get cpcAlreadySigned;
+
+  /// No description provided for @cpcContinue.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get cpcContinue;
+
+  /// No description provided for @cpcDeliveryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a date and time to receive your car.'**
+  String get cpcDeliveryHint;
+
+  /// No description provided for @cpcDeliveryLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading delivery scheduling…'**
+  String get cpcDeliveryLoading;
+
+  /// No description provided for @cpcDeliveryNotReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery scheduling will open once your order is confirmed (usually within one working day). You can continue to payment now and schedule delivery later.'**
+  String get cpcDeliveryNotReady;
+
+  /// No description provided for @cpcDeliveryDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Date'**
+  String get cpcDeliveryDate;
+
+  /// No description provided for @cpcDeliveryTimes.
+  ///
+  /// In en, this message translates to:
+  /// **'Available times'**
+  String get cpcDeliveryTimes;
+
+  /// No description provided for @cpcDeliveryNoSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'No available times on this day. Try another date.'**
+  String get cpcDeliveryNoSlots;
+
+  /// No description provided for @cpcDeliveryBooked.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery slot booked'**
+  String get cpcDeliveryBooked;
+
+  /// No description provided for @cpcDeliveryBookFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t book the slot, try again.'**
+  String get cpcDeliveryBookFailed;
+
+  /// No description provided for @cpcDeliveryConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm slot'**
+  String get cpcDeliveryConfirm;
+
+  /// No description provided for @cpcDeliveryLater.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule later'**
+  String get cpcDeliveryLater;
+
+  /// No description provided for @cpcContinuePayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue to payment'**
+  String get cpcContinuePayment;
+
+  /// No description provided for @cpcPayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pay the remaining amount'**
+  String get cpcPayTitle;
+
+  /// No description provided for @cpcPayCar.
+  ///
+  /// In en, this message translates to:
+  /// **'Car price (incl. VAT)'**
+  String get cpcPayCar;
+
+  /// No description provided for @cpcPayAddons.
+  ///
+  /// In en, this message translates to:
+  /// **'Add-ons (protection & shading)'**
+  String get cpcPayAddons;
+
+  /// No description provided for @cpcPayDeposit.
+  ///
+  /// In en, this message translates to:
+  /// **'Deposit paid'**
+  String get cpcPayDeposit;
+
+  /// No description provided for @cpcPayRemaining.
+  ///
+  /// In en, this message translates to:
+  /// **'Remaining amount'**
+  String get cpcPayRemaining;
+
+  /// No description provided for @cpcPayProceed.
+  ///
+  /// In en, this message translates to:
+  /// **'Proceed to payment'**
+  String get cpcPayProceed;
+
+  /// No description provided for @cpcSadadOpenBank.
+  ///
+  /// In en, this message translates to:
+  /// **'Open your bank app → SADAD and enter the number to pay.'**
+  String get cpcSadadOpenBank;
+
+  /// No description provided for @cpcPayDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Your car purchase is complete'**
+  String get cpcPayDone;
+
+  /// No description provided for @cpcPayProcessing.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment is being processed'**
+  String get cpcPayProcessing;
+
+  /// No description provided for @cpcPayThanks.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you for choosing Hassan Jameel. Your delivery details will follow shortly.'**
+  String get cpcPayThanks;
+
+  /// No description provided for @cpcPayConfirming.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirming your payment…'**
+  String get cpcPayConfirming;
+
+  /// No description provided for @cpcTestModePay.
+  ///
+  /// In en, this message translates to:
+  /// **'Test mode: payment is marked complete without going to the gateway.'**
+  String get cpcTestModePay;
+
+  /// No description provided for @cpcPayTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete purchase (test)'**
+  String get cpcPayTest;
+
+  /// No description provided for @cpcTestPaid.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase completed (test mode)'**
+  String get cpcTestPaid;
+
+  /// No description provided for @cpcTestPaidHint.
+  ///
+  /// In en, this message translates to:
+  /// **'All steps passed successfully without a real charge.'**
+  String get cpcTestPaidHint;
+
+  /// No description provided for @offersFinancingBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Financing by'**
+  String get offersFinancingBy;
+
+  /// No description provided for @pfDeleteNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning: this will permanently delete your account and hide all your data — it cannot be undone from the app.'**
+  String get pfDeleteNote;
+
+  /// No description provided for @pfDeleteDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account?'**
+  String get pfDeleteDialogTitle;
+
+  /// No description provided for @pfDeleteDialogBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete your account? Your data will be hidden from the app and this cannot be undone.'**
+  String get pfDeleteDialogBody;
+
+  /// No description provided for @pfCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get pfCancel;
 }
 
 class _AppLocalizationsDelegate

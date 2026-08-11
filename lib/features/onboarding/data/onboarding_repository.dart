@@ -17,6 +17,9 @@ final class OnboardingRepository {
     final fallback = switch (placement) {
       'welcome' => kWelcomeFallback,
       'auth' => kAuthFallback,
+      // Background placements have no bundled fallback — an empty list means
+      // "use the caller's own fallback chain", never the onboarding slides.
+      'car_bg' || 'garage_bg' => const <OnboardingSlide>[],
       _ => kDefaultSlides,
     };
     try {
