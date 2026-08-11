@@ -193,7 +193,8 @@ final class ReserveFormCubit extends Cubit<ReserveFormState> {
       this.sn,
       AppUser? user,
       CarColor? color})
-      : _color = color,
+      : _user = user,
+        _color = color,
         super(ReserveFormState(
           custGroupId: settings.custGroups.isEmpty
               ? 'G4'
@@ -214,6 +215,7 @@ final class ReserveFormCubit extends Cubit<ReserveFormState> {
   final String lang;
   final double downPayment;
   final String? sn;
+  final AppUser? _user;
   final CarColor? _color;
 
   final name = TextEditingController();
@@ -239,6 +241,43 @@ final class ReserveFormCubit extends Cubit<ReserveFormState> {
     if (!_identity10(identity.text)) e['identity'] = 'identity';
     emit(state.copyWith(errors: e, clearServerError: true));
     return e.isEmpty;
+  }
+
+  /// The old store's BUY cycle, faithful to the website's OnlineConfirm:
+  /// down-payment reservation via Site_Reservation_Car_Payment. Returns the
+  /// raw result map on success (urlPayment / sadadNumber / orderId).
+  Future<Map<String, dynamic>?> payAndReserve() async {
+    if (!_validate()) return null;
+    emit(state.copyWith(busy: true));
+    final res = await _repo.reservationPay({
+      'userId': '${_user?.userId ?? ''}',
+      'productId': vehicle.productId,
+      'sn': sn,
+      'year': vehicle.year,
+      'modelName': vehicle.groupEn,
+      'city': state.cityId,
+      'paymentAmount': downPayment,
+      'miniDownPayment': downPayment,
+      'finalTotal': vehicle.minPrice ?? 0,
+      'notificationWhatsApp': 0,
+      'lang': lang,
+      'callbackUrl': 'https://hjapp.payment/online?PaymentType=full',
+    });
+    if (isClosed) return null;
+    final url = '${res?['urlPayment'] ?? ''}';
+    final sadad = '${res?['sadadNumber'] ?? ''}';
+    final status = '${res?['status'] ?? ''}'.toLowerCase();
+    final msg = '${res?['messageError'] ?? ''}';
+    // URL / Sadad WIN over messageError (legacy SP quirk, like the website).
+    final ok = res != null &&
+        ((url.isNotEmpty && url != 'null') ||
+            (sadad.isNotEmpty && sadad != 'null') ||
+            status == 'success');
+    emit(state.copyWith(
+        busy: false,
+        serverError:
+            ok ? null : (msg.isNotEmpty && msg != 'null' ? msg : 'failed')));
+    return ok ? res : null;
   }
 
   Future<SubmissionResult?> submit() async {

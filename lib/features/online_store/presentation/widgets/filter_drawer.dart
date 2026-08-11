@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_dropdown.dart';
 import '../../../home/presentation/widgets/home_bits.dart';
 import '../../bloc/online_store_cubit.dart';
 
@@ -90,19 +91,17 @@ final class StoreFilterDrawer extends StatelessWidget {
                   contentPadding: EdgeInsets.zero,
                   controlAffinity: ListTileControlAffinity.leading,
                 ),
-              label(t.storeColor),
-              DropdownButtonFormField<String?>(
-                initialValue: state.colorName,
-                isExpanded: true,
-                hint: Text(t.storeAllColors, style: TextStyle(fontSize: context.rf(13))),
-                style: TextStyle(fontSize: context.rf(13), color: scheme.onSurface),
+              SizedBox(height: context.rs(20)),
+              AppDropdown<String>(
+                label: t.storeColor,
+                value: state.colorName ?? '',
+                hint: t.storeAllColors,
                 items: [
-                  DropdownMenuItem<String?>(
-                      value: null, child: Text(t.storeAllColors)),
+                  AppDropdownItem(value: '', label: t.storeAllColors),
                   for (final name in state.availableColors)
-                    DropdownMenuItem<String?>(value: name, child: Text(name)),
+                    AppDropdownItem(value: name, label: name),
                 ],
-                onChanged: cubit.setColor,
+                onChanged: (v) => cubit.setColor(v.isEmpty ? null : v),
               ),
               SizedBox(height: context.rs(16)),
               OutlinedButton.icon(

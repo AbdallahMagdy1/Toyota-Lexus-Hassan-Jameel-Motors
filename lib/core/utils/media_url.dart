@@ -20,6 +20,13 @@ String? cleanMediaUrl(String? url) {
   return Uri.encodeFull(s);
 }
 
+/// True when the URL points at a video file — hero Background uploads may be
+/// image, GIF or video; videos render via SlideMedia instead of Image.network.
+bool isVideoUrl(String? url) {
+  final s = (url ?? '').toLowerCase();
+  return RegExp(r'\.(mp4|webm|mov|m4v)($|\?)').hasMatch(s);
+}
+
 /// Route a CDN image through the backend's /api/app/img optimizer — the
 /// mobile equivalent of the website's Next.js image pipeline. It fixes the
 /// ERP's malformed PNG-as-webp files (Flutter's codec rejects them),

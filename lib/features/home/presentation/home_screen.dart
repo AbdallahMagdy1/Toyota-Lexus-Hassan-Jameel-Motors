@@ -11,6 +11,7 @@ import '../../settings/bloc/theme_cubit.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../account/presentation/registered_home_view.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../coupons/presentation/coupon_banner_carousel.dart';
 import '../../guest_home/presentation/guest_home_view.dart';
 import '../bloc/home_cubit.dart';
 import 'widgets/home_bits.dart';
@@ -75,6 +76,9 @@ final class _HomeView extends StatelessWidget {
                             lang: lang,
                           ),
                         ),
+
+                      // 1b — Home coupon banners (renders nothing when none).
+                      const SliverToBoxAdapter(child: CouponBannerCarousel()),
 
                       // 2 — Online store rail.
                       if (state.feed.onlineVehicles.isNotEmpty) ...[

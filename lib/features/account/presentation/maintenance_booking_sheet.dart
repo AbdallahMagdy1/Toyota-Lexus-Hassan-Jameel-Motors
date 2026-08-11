@@ -8,6 +8,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/domain/app_user.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -238,15 +239,26 @@ final class _BookingCubit extends Cubit<_BookingState> {
   final note = TextEditingController();
 
   Future<void> _load(GarageCar? preselected) async {
-    final services = await _repo.mainServices();
-    final branches = await _repo.branches();
-    final (groups, models) = await _repo.settings();
-    List<GarageCar> garage = const [];
-    if (user != null) {
-      final cars = await _account.garage(user!.userId);
-      // Like the website: "my vehicle" mode needs a car of this site brand.
-      garage = cars.where((c) => c.brandDbId == lockedBrand).toList();
-    }
+    // All four catalogs in PARALLEL — the old sequential chain left step 1
+    // blank for 4 round-trips.
+    final servicesF = _repo.mainServices();
+    final branchesF = _repo.branches();
+    final settingsF = _repo.settings();
+    final garageF = user == null
+        ? Future.value(const <GarageCar>[])
+        : _account.garage(user!.userId);
+
+    // Paint the service tiles the moment they arrive.
+    final services = await servicesF;
+    if (isClosed) return;
+    emit(state.copyWith(services: services));
+
+    final branches = await branchesF;
+    final (groups, models) = await settingsF;
+    // Like the website: "my vehicle" mode needs a car of this site brand.
+    final garage = (await garageF)
+        .where((c) => c.brandDbId == lockedBrand)
+        .toList();
     if (isClosed) return;
     var myIndex = 0;
     if (preselected != null) {
@@ -254,7 +266,6 @@ final class _BookingCubit extends Cubit<_BookingState> {
       if (i >= 0) myIndex = i;
     }
     emit(state.copyWith(
-      services: services,
       branches: branches,
       groups: groups,
       models: models,
@@ -336,9 +347,16 @@ final class _BookingCubit extends Cubit<_BookingState> {
   Future<void> _loadPackages(String? mainId) async {
     if (mainId == null) return;
     emit(state.copyWith(packagesLoading: true));
-    final modelCode =
-        state.mine ? state.myCar?.modelCode : _anotherModel()?.modelCode;
-    final packages = await _repo.periodicServices(mainId, modelCode);
+    // The website's BookingCard loads the km schedule WITHOUT a model code —
+    // sending one can filter the list to nothing for unmapped models.
+    var packages = await _repo.periodicServices(mainId, null);
+    if (packages.isEmpty) {
+      final modelCode =
+          state.mine ? state.myCar?.modelCode : _anotherModel()?.modelCode;
+      if ((modelCode ?? '').isNotEmpty) {
+        packages = await _repo.periodicServices(mainId, modelCode);
+      }
+    }
     if (isClosed) return;
     emit(state.copyWith(packages: packages, packagesLoading: false));
   }
@@ -653,6 +671,11 @@ final class _Step1 extends StatelessWidget {
 
         // Main services — 2-col tiles, selected by INDEX (the legacy data
         // shares one GUID across several services).
+        if (state.services.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(48),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         GridView.count(
           crossAxisCount: 2,
           shrinkWrap: true,
@@ -926,28 +949,19 @@ final class _Step2 extends StatelessWidget {
           SizedBox(height: context.rs(14)),
         ],
         if (state.mine && state.garage.isNotEmpty) ...[
-          DropdownButtonFormField<int>(
-            initialValue: state.myCarIndex,
-            isExpanded: true,
+          AppDropdown<int>(
+            label: t.homeSelectCar,
+            value: state.myCarIndex,
             items: [
               for (var i = 0; i < state.garage.length; i++)
-                DropdownMenuItem(
+                AppDropdownItem(
                   value: i,
-                  child: Text(
-                    '${state.garage[i].displayName(lang)} ${state.garage[i].year ?? ''}'
-                        .trim(),
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                  label:
+                      '${state.garage[i].displayName(lang)} ${state.garage[i].year ?? ''}'
+                          .trim(),
                 ),
             ],
             onChanged: cubit.selectMyCar,
-            decoration: InputDecoration(
-              labelText: t.homeSelectCar,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            ),
           ),
           if ((state.myCar?.vin ?? '').isNotEmpty) ...[
             SizedBox(height: context.rs(12)),
@@ -990,61 +1004,35 @@ final class _Step2 extends StatelessWidget {
             ),
           ],
         ] else ...[
-          DropdownButtonFormField<String>(
-            key: ValueKey('y-${state.year}'),
-            initialValue: state.year,
-            isExpanded: true,
+          AppDropdown<String>(
+            label: t.offersYear,
+            value: state.year,
             items: [
-              for (final y in cubit.years())
-                DropdownMenuItem(value: y, child: Text(y)),
+              for (final y in cubit.years()) AppDropdownItem(value: y, label: y),
             ],
             onChanged: cubit.selectYear,
-            decoration: InputDecoration(
-              labelText: t.offersYear,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            ),
           ),
           SizedBox(height: context.rs(12)),
-          DropdownButtonFormField<String>(
-            key: ValueKey('g-${state.year}'),
-            initialValue: state.groupId,
-            isExpanded: true,
+          AppDropdown<String>(
+            label: t.homeSelectCar,
+            value: state.groupId,
             items: [
               for (final g in cubit.groupOptions())
-                DropdownMenuItem(value: g.id, child: Text(g.name(lang))),
+                AppDropdownItem(value: g.id ?? '', label: g.name(lang)),
             ],
             onChanged: cubit.selectGroup,
-            decoration: InputDecoration(
-              labelText: t.homeSelectCar,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            ),
           ),
           SizedBox(height: context.rs(12)),
-          DropdownButtonFormField<String>(
-            key: ValueKey('m-${state.groupId}'),
-            initialValue: state.modelId,
-            isExpanded: true,
+          AppDropdown<String>(
+            label: t.homeSelectModel,
+            value: state.modelId,
             items: [
               for (final m in cubit.modelOptions())
-                DropdownMenuItem(
-                    value: m.id,
-                    child: Text('${m.name(lang)} ${m.year ?? ''}'.trim(),
-                        overflow: TextOverflow.ellipsis)),
+                AppDropdownItem(
+                    value: m.id ?? '',
+                    label: '${m.name(lang)} ${m.year ?? ''}'.trim()),
             ],
             onChanged: cubit.selectModel,
-            decoration: InputDecoration(
-              labelText: t.homeSelectModel,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            ),
           ),
         ],
       ],
@@ -1076,21 +1064,14 @@ final class _Step3 extends StatelessWidget {
                 color: scheme.onSurface.withValues(alpha: 0.55))),
         SizedBox(height: context.rs(14)),
         if (state.branches.length > 1) ...[
-          DropdownButtonFormField<String>(
-            initialValue: state.branchId,
-            isExpanded: true,
+          AppDropdown<String>(
+            label: t.protBranch,
+            value: state.branchId,
             items: [
               for (final b in state.branches)
-                DropdownMenuItem(value: b.id, child: Text(b.name(lang))),
+                AppDropdownItem(value: b.id ?? '', label: b.name(lang)),
             ],
             onChanged: cubit.selectBranch,
-            decoration: InputDecoration(
-              labelText: t.protBranch,
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            ),
           ),
           SizedBox(height: context.rs(12)),
         ],

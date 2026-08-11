@@ -49,6 +49,9 @@ final class AppHeader extends StatelessWidget {
               context.rs(16), context.rs(4), context.rs(6), context.rs(8)),
           child: Row(
             children: [
+              // No in-bar back button — back is the SYSTEM back (Android
+              // button/gesture, iOS swipe), handled by the shell PopScope
+              // which walks NavHistory for go()-based navigation.
               // Website mobile logo: brand roundel | full HJ logo.
               Image.asset(
                 brandIcon,

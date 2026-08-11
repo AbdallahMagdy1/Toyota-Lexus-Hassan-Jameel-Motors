@@ -2,8 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../account/data/account_repository.dart';
-import '../../account/domain/account_models.dart';
 import '../../auth/domain/app_user.dart';
 import '../../online_store/data/online_store_repository.dart';
 import '../data/offers_repository.dart';
@@ -17,65 +15,42 @@ enum OfferFormPhase { editing, busy, done, failed }
 final class OfferFormState extends Equatable {
   const OfferFormState({
     this.phase = OfferFormPhase.editing,
-    this.vehicleIndex,
     this.packageId,
     this.period = 60,
     this.error,
-    this.garage = const [],
-    this.useMyCar = false,
-    this.myCarIndex = 0,
     this.prefDate,
     this.prefTime,
   });
 
   final OfferFormPhase phase;
-  final int? vehicleIndex;
   final int? packageId;
   final int period;
   final String? error;
-
-  /// Signed-in user's cars that fit this offer's brands — the app extra the
-  /// user asked for ("احجز لسيارتي") on top of the website behavior.
-  final List<GarageCar> garage;
-  final bool useMyCar;
-  final int myCarIndex;
 
   /// Preferred reservation slot — included in the staff email.
   final DateTime? prefDate;
   final String? prefTime;
 
-  GarageCar? get myCar => garage.elementAtOrNull(myCarIndex);
-
   OfferFormState copyWith({
     OfferFormPhase? phase,
-    int? Function()? vehicleIndex,
     int? Function()? packageId,
     int? period,
     String? Function()? error,
-    List<GarageCar>? garage,
-    bool? useMyCar,
-    int? myCarIndex,
     DateTime? Function()? prefDate,
     String? Function()? prefTime,
   }) =>
       OfferFormState(
         phase: phase ?? this.phase,
-        vehicleIndex: vehicleIndex == null ? this.vehicleIndex : vehicleIndex(),
         packageId: packageId == null ? this.packageId : packageId(),
         period: period ?? this.period,
         error: error == null ? this.error : error(),
-        garage: garage ?? this.garage,
-        useMyCar: useMyCar ?? this.useMyCar,
-        myCarIndex: myCarIndex ?? this.myCarIndex,
         prefDate: prefDate == null ? this.prefDate : prefDate(),
         prefTime: prefTime == null ? this.prefTime : prefTime(),
       );
 
   @override
-  List<Object?> get props => [
-        phase, vehicleIndex, packageId, period, error, garage, useMyCar,
-        myCarIndex, prefDate, prefTime,
-      ];
+  List<Object?> get props =>
+      [phase, packageId, period, error, prefDate, prefTime];
 }
 
 /// One cubit for the three offer application flows — the same three dialogs
@@ -84,80 +59,38 @@ final class OfferFormState extends Equatable {
 ///  • plain vehicle offer → POST /online/contact-requests (callback lead)
 ///  • finance offer       → POST /online/finance-requests (source "Offer")
 /// The app difference: only signed-in users reach this form, so identity
-/// fields prefill from the account.
+/// fields prefill from the account, and the car is always the supported
+/// vehicle picked on the detail sheet's rail (no free car entry).
 final class OfferFormCubit extends Cubit<OfferFormState> {
   OfferFormCubit({
     required this.kind,
     required this.detail,
+    required this.vehicle,
     required OffersRepository offersRepo,
     required OnlineStoreRepository onlineRepo,
     required this.user,
     required String lang,
-    AccountRepository? accountRepo,
   })  : _offers = offersRepo,
         _online = onlineRepo,
         super(OfferFormState(
           period: detail.defaultFinancePeriod ?? 60,
-          vehicleIndex: detail.supportedVehicles.isEmpty ? null : 0,
           packageId:
               detail.packages.isNotEmpty ? detail.packages.first.id : null,
         )) {
     name.text = user?.displayName(lang) ?? '';
     phone.text = user?.phone ?? '';
     email.text = user?.email ?? '';
-    _loadGarage(accountRepo);
-  }
-
-  /// Load the user's cars matching the offer's brands, so the form can offer
-  /// "احجز لسيارتي" (VIN/meter/year prefilled) or "سيارة أخرى".
-  Future<void> _loadGarage(AccountRepository? repo) async {
-    if (repo == null || user == null) return;
-    final cars = await repo.garage(user!.userId);
-    if (isClosed || cars.isEmpty) return;
-    final offerBrands = (detail.offer.brandList ?? '')
-        .split(',')
-        .map((s) => s.trim())
-        .where((s) => s.isNotEmpty)
-        .toSet();
-    final supportedBrands = detail.supportedVehicles
-        .map((v) => v.brandId ?? '')
-        .where((s) => s.isNotEmpty)
-        .toSet();
-    final allowed = {...offerBrands, ...supportedBrands};
-    final fitting = allowed.isEmpty
-        ? cars
-        : cars.where((c) => allowed.contains(c.brandDbId)).toList();
-    if (fitting.isEmpty) return;
-    emit(state.copyWith(garage: fitting, useMyCar: true));
-    _applyMyCar(fitting.first);
-  }
-
-  void _applyMyCar(GarageCar car) {
-    if ((car.year ?? '').isNotEmpty) year.text = car.year!;
-    if (car.meterReading != null) meter.text = '${car.meterReading}';
-    if ((car.vin ?? '').isNotEmpty) vin.text = car.vin!;
-  }
-
-  void toggleMyCar(bool mine) {
-    emit(state.copyWith(useMyCar: mine));
-    if (mine && state.myCar != null) {
-      _applyMyCar(state.myCar!);
-    } else {
-      year.clear();
-      meter.clear();
-      vin.clear();
-    }
-  }
-
-  void selectMyCar(int? i) {
-    if (i == null) return;
-    emit(state.copyWith(myCarIndex: i));
-    final car = state.garage.elementAtOrNull(i);
-    if (car != null) _applyMyCar(car);
+    if ((vehicle?.year ?? '').isNotEmpty) year.text = vehicle!.year!;
   }
 
   final OfferFormKind kind;
   final OfferDetail detail;
+
+  /// The supported vehicle chosen on the detail sheet's rail — the only car
+  /// this request can be for. Null only when the offer lists no supported
+  /// vehicles (those offers keep submitting without car identifiers).
+  final OfferVehicle? vehicle;
+
   final OffersRepository _offers;
   final OnlineStoreRepository _online;
   final AppUser? user;
@@ -172,11 +105,6 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
   final vin = TextEditingController();
   final note = TextEditingController();
 
-  OfferVehicle? get vehicle => state.vehicleIndex == null
-      ? null
-      : detail.supportedVehicles.elementAtOrNull(state.vehicleIndex!);
-
-  void selectVehicle(int? i) => emit(state.copyWith(vehicleIndex: () => i));
   void selectPackage(int? id) => emit(state.copyWith(packageId: () => id));
   void selectPeriod(int p) => emit(state.copyWith(period: p));
   void setPrefDate(DateTime? d) => emit(state.copyWith(prefDate: () => d));
@@ -207,21 +135,18 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
 
     final o = detail.offer;
     final v = vehicle;
-    final mine = state.useMyCar ? state.myCar : null;
     bool ok;
     switch (kind) {
       case OfferFormKind.reserve:
         // Website OfferReserveDialog payload verbatim: subject = title —
-        // package, message packs the vehicle details. With "my car" picked,
-        // the car identity comes from the garage (VIN prefilled).
+        // package, message packs the vehicle details. The car identity is the
+        // rail-selected supported vehicle.
         final pkg = detail.packages
             .where((p) => p.id == state.packageId)
             .firstOrNull;
         final parts = <String>[
-          if (mine != null)
-            'Model: ${mine.brandEn ?? ''} ${mine.modelEn ?? ''}'.trim()
-          else if (v != null)
-            'Model: ${v.nameEn ?? v.nameAr ?? ''} ${v.groupEn ?? ''}',
+          if (v != null)
+            'Model: ${v.nameEn ?? v.nameAr ?? ''} ${v.groupEn ?? ''}'.trim(),
           if (year.text.trim().isNotEmpty) 'Year: ${year.text.trim()}',
           if (meter.text.trim().isNotEmpty) 'Meter: ${meter.text.trim()}',
           if (vin.text.trim().isNotEmpty) 'VIN: ${vin.text.trim()}',
@@ -241,23 +166,28 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
           'preferredDate':
               state.prefDate?.toIso8601String().substring(0, 10),
           'preferredTime': state.prefTime,
-          'vehicleLine': mine == null
+          'vehicleLine': v == null
               ? null
-              : '${mine.brandEn ?? ''} ${mine.modelEn ?? ''} ${mine.year ?? ''} — VIN ${mine.vin ?? ''}'
+              : ('${v.nameEn ?? v.nameAr ?? ''} ${v.groupEn ?? ''} ${v.year ?? ''}'
+                          .trim() +
+                      (vin.text.trim().isEmpty
+                          ? ''
+                          : ' — VIN ${vin.text.trim()}'))
                   .trim(),
         });
       case OfferFormKind.contact:
         // Website OfferPurchaseDialog → contact request; note carries the
-        // offer title so sales sees the source.
+        // offer title so sales sees the source. Car identifiers come from
+        // the selected supported vehicle (same payload keys as before).
         final res = await _online.submitContact({
           'name': name.text.trim(),
           'phone': _fullPhone(phone.text),
           'email': email.text.trim().isEmpty ? null : email.text.trim(),
           'quantity': 1,
-          'brandID': mine?.brandDbId ?? v?.brandId,
-          'productGroupID': mine?.productGroupId ?? v?.groupId,
-          'productTypeID': mine?.type ?? v?.productTypeId,
-          'modelYear': mine?.year ?? v?.year,
+          'brandID': v?.brandId,
+          'productGroupID': v?.groupId,
+          'productTypeID': v?.productTypeId,
+          'modelYear': v?.year,
           'custGroupID': 'G4',
           'note': [
             'Offer: ${o.titleEn ?? o.titleAr ?? o.id}',
@@ -277,8 +207,7 @@ final class OfferFormCubit extends Cubit<OfferFormState> {
           'custType': 'G4',
           'identityNo':
               identity.text.trim().isEmpty ? null : identity.text.trim(),
-          'modelYear': mine?.year ??
-              v?.year ??
+          'modelYear': v?.year ??
               (year.text.trim().isEmpty ? null : year.text.trim()),
           'income': double.tryParse(income.text.trim()),
           'period': state.period,

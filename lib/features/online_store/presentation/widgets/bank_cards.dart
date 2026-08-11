@@ -81,15 +81,6 @@ final class _BankCard extends StatelessWidget {
                     : scheme.outline.withValues(alpha: 0.6),
                 width: selected ? 1.8 : 1,
               ),
-              boxShadow: selected
-                  ? [
-                      BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.16),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ]
-                  : null,
             ),
             child: Column(
               children: [

@@ -685,13 +685,22 @@ final class _PartCard extends StatelessWidget {
     );
   }
 
-  void _showDetail(BuildContext context) {
-    showHeroBottomSheet<void>(
-      context,
-      heightFactor: 0.62,
-      builder: (_) => _PartDetailSheet(part: part, lang: lang),
-    );
-  }
+  void _showDetail(BuildContext context) =>
+      showPartDetailSheet(context, part: part, lang: lang);
+}
+
+/// Opens the part detail / add-to-cart bottom sheet (quantity + add to cart).
+/// Shared entry point — used by the parts grid and the store hub rail.
+void showPartDetailSheet(
+  BuildContext context, {
+  required PartItem part,
+  required String lang,
+}) {
+  showHeroBottomSheet<void>(
+    context,
+    heightFactor: 0.62,
+    builder: (_) => _PartDetailSheet(part: part, lang: lang),
+  );
 }
 
 final class _PartDetailSheet extends StatefulWidget {

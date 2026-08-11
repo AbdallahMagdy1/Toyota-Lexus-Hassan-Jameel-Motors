@@ -15,6 +15,7 @@ import '../../shared/widgets/app_header.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../home/presentation/widgets/home_bits.dart';
 import '../settings/bloc/locale_cubit.dart';
+import '../settings/bloc/theme_cubit.dart';
 import 'used_cars_models.dart';
 import 'used_cars_repository.dart';
 
@@ -32,11 +33,16 @@ final class UsedCarsScreen extends StatefulWidget {
 
 final class _UsedCarsScreenState extends State<UsedCarsScreen> {
   late Future<List<UsedCarItem>> _future;
+  late String _lastBrand;
+
+  /// Website behavior: the active brand theme scopes the feed.
+  String get _brand => sl<ThemeCubit>().state.brandKey;
 
   @override
   void initState() {
     super.initState();
-    _future = UsedCarsRepository(sl<ApiClient>()).list();
+    _lastBrand = _brand;
+    _future = UsedCarsRepository(sl<ApiClient>()).list(brand: _brand);
   }
 
   @override
@@ -44,14 +50,19 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
     final t = AppLocalizations.of(context);
     final lang = sl<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
+    // Refetch when the brand switch flips while this screen is open.
+    if (_brand != _lastBrand) {
+      _lastBrand = _brand;
+      _future = UsedCarsRepository(sl<ApiClient>()).list(brand: _brand);
+    }
 
     return Column(children: [
       const AppHeader(),
       Expanded(
         child: RefreshIndicator(
           onRefresh: () async {
-            setState(
-                () => _future = UsedCarsRepository(sl<ApiClient>()).list());
+            setState(() => _future =
+                UsedCarsRepository(sl<ApiClient>()).list(brand: _brand));
             await _future;
           },
           child: FutureBuilder<List<UsedCarItem>>(

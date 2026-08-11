@@ -2,8 +2,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
@@ -126,7 +126,7 @@ final class _ModelsView extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => appBack(context),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 ),
                 Expanded(

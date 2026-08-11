@@ -15,14 +15,13 @@ final class AppBottomNav extends StatelessWidget {
 
   static const tabs = [
     (Routes.home, Icons.home_rounded),
-    (Routes.favorites, Icons.favorite_border_rounded),
+    (Routes.store, Icons.storefront_rounded),
     (Routes.cart, Icons.shopping_cart_outlined),
     (Routes.profile, Icons.person_outline_rounded),
   ];
 
   /// Routes where the bar is visible.
-  static bool showsOn(String location) =>
-      tabs.any((t) => location == t.$1);
+  static bool showsOn(String location) => tabs.any((t) => location == t.$1);
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +30,12 @@ final class AppBottomNav extends StatelessWidget {
     final cartCount = context.select((CartCubit c) => c.state.length);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(context.rs(38), 0, context.rs(38), context.rs(12)),
+      padding: EdgeInsets.fromLTRB(
+        context.rs(38),
+        0,
+        context.rs(38),
+        context.rs(12),
+      ),
       child: Material(
         // Light mode = white pill, dark mode = dark pill.
         color: isDark ? const Color(0xFF1A1C21) : Colors.white,
@@ -39,7 +43,7 @@ final class AppBottomNav extends StatelessWidget {
         elevation: 8,
         shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.18),
         child: SizedBox(
-          height: context.rs(52),
+          height: context.rs(59),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -47,7 +51,9 @@ final class AppBottomNav extends StatelessWidget {
                 _NavItem(
                   icon: icon,
                   active: location == route,
-                  badge: route == Routes.cart && cartCount > 0 ? cartCount : null,
+                  badge: route == Routes.cart && cartCount > 0
+                      ? cartCount
+                      : null,
                   activeColor: scheme.primary,
                   inactiveColor: isDark
                       ? Colors.white.withValues(alpha: 0.6)
@@ -89,15 +95,14 @@ final class _NavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOut,
-        width: context.rs(46),
-        height: context.rs(38),
+        width: context.rs(50),
+        height: context.rs(44),
         decoration: BoxDecoration(
           // Reference-kit active pill: brand gradient + colored glow.
           gradient: active
-              ? LinearGradient(colors: [
-                  activeColor,
-                  activeColor.withValues(alpha: 0.78),
-                ])
+              ? LinearGradient(
+                  colors: [activeColor, activeColor.withValues(alpha: 0.78)],
+                )
               : null,
           borderRadius: BorderRadius.circular(16),
           boxShadow: active
@@ -128,7 +133,10 @@ final class _NavItem extends StatelessWidget {
                 top: 6,
                 end: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1.5),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4.5,
+                    vertical: 1.5,
+                  ),
                   decoration: BoxDecoration(
                     color: activeColor,
                     borderRadius: BorderRadius.circular(999),

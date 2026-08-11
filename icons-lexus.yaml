@@ -1,0 +1,18 @@
+# Lexus launcher icon — run before building the Lexus app:
+#   dart run flutter_launcher_icons -f icons-lexus.yaml
+# (File is deliberately NOT named flutter_launcher_icons-*.yaml — that name
+#  pattern triggers the tool's "flavor" mode, which this project doesn't use.)
+flutter_launcher_icons:
+  image_path: "assets/launcher/lexus.png"
+
+  android: true
+  # Adaptive icon: launchers mask the shape themselves, so the background is
+  # the Lexus black and the full artwork is the foreground.
+  adaptive_icon_background: "#111212"
+  adaptive_icon_foreground: "assets/launcher/lexus.png"
+
+  ios: true
+  # App Store icons must be opaque; the rounded corners of the source art are
+  # flattened onto the same Lexus black.
+  remove_alpha_ios: true
+  background_color_ios: "#111212"

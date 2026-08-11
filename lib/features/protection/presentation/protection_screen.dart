@@ -7,6 +7,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../account/data/account_repository.dart';
 import '../../account/domain/account_models.dart';
@@ -137,18 +138,14 @@ final class _Body extends StatelessWidget {
             )
           else ...[
             SectionHeader(title: t.homeProtForCar),
-            for (final (i, svc) in result.services.indexed)
-              Padding(
-                padding: EdgeInsets.fromLTRB(
-                    context.rs(16), 0, context.rs(16), context.rs(12)),
-                child: _PackageCard(
-                  package: svc,
-                  lang: lang,
-                  index: i,
-                  popular: i == 0,
-                  onBook: () => _book(context, svc),
-                ).animate(delay: (35 * (i % 5)).ms).fadeIn(duration: 220.ms),
-              ),
+            _PackagesList(
+              // Key resets the selection when the catalog changes.
+              key: ValueKey(
+                  'pkgs-${result.services.length}-${result.services.firstOrNull?.id}'),
+              services: result.services,
+              lang: lang,
+              onBook: (svc) => _book(context, svc),
+            ),
           ],
 
           // ── "لماذا تختار خدماتنا؟" ──
@@ -206,26 +203,6 @@ final class _Body extends StatelessWidget {
         ],
       ),
 
-      // ── Sticky "احجز موعد الآن" bar ──
-      if ((result?.services ?? const []).isNotEmpty)
-        PositionedDirectional(
-          start: context.rs(16),
-          end: context.rs(16),
-          bottom: context.rs(110),
-          child: FilledButton.icon(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-              shape: const StadiumBorder(),
-              elevation: 6,
-              shadowColor: scheme.primary.withValues(alpha: 0.45),
-              textStyle: TextStyle(
-                  fontSize: context.rf(14), fontWeight: FontWeight.w800),
-            ),
-            onPressed: () => _book(context, result!.services.first),
-            icon: const Icon(Icons.calendar_month_rounded, size: 18),
-            label: Text(t.protBookNow),
-          ),
-        ),
     ]);
   }
 
@@ -516,43 +493,28 @@ final class _ManualPicker extends StatelessWidget {
         decoration: softCardDecoration(context),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              initialValue: state.groupId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.homeSelectCar,
+              value: state.groupId,
               items: [
                 for (final g in state.groups)
-                  DropdownMenuItem(value: g.id, child: Text(g.name(lang))),
+                  AppDropdownItem(value: g.id ?? '', label: g.name(lang)),
               ],
               onChanged: cubit.selectGroup,
-              decoration: InputDecoration(
-                labelText: t.homeSelectCar,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             SizedBox(height: context.rs(12)),
-            DropdownButtonFormField<String>(
-              key: ValueKey('models-${state.groupId}'),
-              initialValue: state.modelId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.homeSelectModel,
+              value: state.modelId,
+              enabled: state.groupId != null,
               items: [
                 for (final m in models)
-                  DropdownMenuItem(
-                    value: m.id,
-                    child: Text('${m.name(lang)} ${m.year ?? ''}'.trim(),
-                        overflow: TextOverflow.ellipsis),
+                  AppDropdownItem(
+                    value: m.id ?? '',
+                    label: '${m.name(lang)} ${m.year ?? ''}'.trim(),
                   ),
               ],
-              onChanged: state.groupId == null ? null : cubit.selectModel,
-              decoration: InputDecoration(
-                labelText: t.homeSelectModel,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
+              onChanged: cubit.selectModel,
             ),
           ],
         ),
@@ -563,12 +525,59 @@ final class _ManualPicker extends StatelessWidget {
 
 /// Package row — the reference card: tinted icon square + name + popular
 /// badge, description, then the select CTA and the big red price.
+/// The selectable packages list: tap a card to SELECT it (brand ring +
+/// check + expanded description); "اختيار" on the selected card proceeds
+/// to the detail/booking sheet. Each card repaints independently.
+final class _PackagesList extends StatefulWidget {
+  const _PackagesList({
+    super.key,
+    required this.services,
+    required this.lang,
+    required this.onBook,
+  });
+
+  final List<ProtectionPackage> services;
+  final String lang;
+  final void Function(ProtectionPackage) onBook;
+
+  @override
+  State<_PackagesList> createState() => _PackagesListState();
+}
+
+final class _PackagesListState extends State<_PackagesList> {
+  int _selected = 0; // the popular (first) package leads by default
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      for (final (i, svc) in widget.services.indexed)
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              context.rs(16), 0, context.rs(16), context.rs(12)),
+          child: RepaintBoundary(
+            child: _PackageCard(
+              package: svc,
+              lang: widget.lang,
+              index: i,
+              popular: i == 0,
+              selected: i == _selected,
+              onSelect: () => setState(() => _selected = i),
+              onBook: () => widget.onBook(svc),
+            ),
+          ).animate(delay: (35 * (i % 5)).ms).fadeIn(duration: 220.ms),
+        ),
+    ]);
+  }
+}
+
 final class _PackageCard extends StatelessWidget {
   const _PackageCard({
     required this.package,
     required this.lang,
     required this.index,
     required this.popular,
+    required this.selected,
+    required this.onSelect,
     required this.onBook,
   });
 
@@ -576,15 +585,16 @@ final class _PackageCard extends StatelessWidget {
   final String lang;
   final int index;
   final bool popular;
+  final bool selected;
+  final VoidCallback onSelect;
   final VoidCallback onBook;
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    // First card leads with the brand tint; the rest go neutral, like the
-    // reference (red layers / gray shield / gray sparkles).
-    final (tileBg, tileFg) = popular
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final (tileBg, tileFg) = selected || popular
         ? (scheme.primary.withValues(alpha: 0.08), scheme.primary)
         : (
             scheme.onSurface.withValues(alpha: 0.05),
@@ -596,112 +606,154 @@ final class _PackageCard extends StatelessWidget {
       _ => Icons.auto_awesome_rounded,
     };
 
-    return HomeCard(
-      onTap: onBook,
-      child: Padding(
-        padding: EdgeInsets.all(context.rs(15)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: context.rs(44),
-                  height: context.rs(44),
-                  decoration: BoxDecoration(
-                    color: tileBg,
-                    borderRadius: BorderRadius.circular(13),
-                  ),
-                  child: Icon(icon, size: 20, color: tileFg),
-                ),
-                SizedBox(width: context.rs(12)),
-                Expanded(
-                  child: Padding(
-                    padding: EdgeInsets.only(top: context.rs(3)),
-                    child: Text(package.name(lang),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: context.rf(13.5),
-                            height: 1.25,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                ),
-                if (popular) ...[
-                  SizedBox(width: context.rs(8)),
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.rs(9), vertical: context.rs(4)),
-                    decoration: BoxDecoration(
-                      color: scheme.primary,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(t.protPopular,
-                        style: TextStyle(
-                            fontSize: context.rf(8.5),
-                            fontWeight: FontWeight.w800,
-                            color: scheme.onPrimary)),
-                  ),
-                ],
-              ],
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onSelect,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          padding: EdgeInsets.all(context.rs(15)),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primary.withValues(alpha: isDark ? 0.10 : 0.05)
+                : (isDark ? const Color(0xFF181B21) : scheme.surface),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected
+                  ? scheme.primary
+                  : scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
+              width: selected ? 1.6 : 1,
             ),
-            if (package.description(lang).isNotEmpty) ...[
-              SizedBox(height: context.rs(10)),
-              Text(
-                package.description(lang),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                    fontSize: context.rf(11.5),
-                    height: 1.5,
-                    color: scheme.onSurface.withValues(alpha: 0.6)),
-              ),
-            ],
-            SizedBox(height: context.rs(13)),
-            Row(children: [
-              popular
-                  ? FilledButton(
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: context.rs(22),
-                            vertical: context.rs(10)),
-                        minimumSize: Size.zero,
-                        textStyle: TextStyle(
-                            fontSize: context.rf(12),
-                            fontWeight: FontWeight.w800),
-                      ),
-                      onPressed: onBook,
-                      child: Text(t.protChoose),
-                    )
-                  : OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        padding: EdgeInsets.symmetric(
-                            horizontal: context.rs(22),
-                            vertical: context.rs(10)),
-                        minimumSize: Size.zero,
-                        side: BorderSide(
-                            color: scheme.primary.withValues(alpha: 0.7)),
-                        foregroundColor: scheme.primary,
-                        textStyle: TextStyle(
-                            fontSize: context.rf(12),
-                            fontWeight: FontWeight.w800),
-                      ),
-                      onPressed: onBook,
-                      child: Text(t.protChoose),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: context.rs(44),
+                    height: context.rs(44),
+                    decoration: BoxDecoration(
+                      color: tileBg,
+                      borderRadius: BorderRadius.circular(13),
                     ),
-              const Spacer(),
-              PriceText(
-                  price: package.price,
-                  currency: '',
-                  contactForPrice: t.homeContactForPrice,
-                  fontSize: context.rf(17)),
-            ]),
-          ],
+                    child: Icon(icon, size: 20, color: tileFg),
+                  ),
+                  SizedBox(width: context.rs(12)),
+                  Expanded(
+                    child: Padding(
+                      padding: EdgeInsets.only(top: context.rs(3)),
+                      child: Text(package.name(lang),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: context.rf(13.5),
+                              height: 1.25,
+                              fontWeight: FontWeight.w800,
+                              color: selected
+                                  ? scheme.primary
+                                  : scheme.onSurface)),
+                    ),
+                  ),
+                  SizedBox(width: context.rs(8)),
+                  // Selected check, or the popular badge on the lead card.
+                  if (selected)
+                    Container(
+                      width: context.rs(22),
+                      height: context.rs(22),
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.check_rounded,
+                          size: 14, color: scheme.onPrimary),
+                    )
+                  else if (popular)
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.rs(9),
+                          vertical: context.rs(4)),
+                      decoration: BoxDecoration(
+                        color: scheme.primary,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
+                      child: Text(t.protPopular,
+                          style: TextStyle(
+                              fontSize: context.rf(8.5),
+                              fontWeight: FontWeight.w800,
+                              color: scheme.onPrimary)),
+                    ),
+                ],
+              ),
+              if (package.description(lang).isNotEmpty) ...[
+                SizedBox(height: context.rs(10)),
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeOut,
+                  alignment: AlignmentDirectional.topStart,
+                  child: Text(
+                    package.description(lang),
+                    maxLines: selected ? 6 : 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        fontSize: context.rf(11.5),
+                        height: 1.55,
+                        color: scheme.onSurface.withValues(alpha: 0.65)),
+                  ),
+                ),
+              ],
+              SizedBox(height: context.rs(13)),
+              Row(children: [
+                selected
+                    ? FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.rs(20),
+                              vertical: context.rs(10)),
+                          minimumSize: Size.zero,
+                          textStyle: TextStyle(
+                              fontSize: context.rf(12),
+                              fontWeight: FontWeight.w800),
+                        ),
+                        onPressed: onBook,
+                        icon: const Icon(Icons.arrow_forward_rounded,
+                            size: 15),
+                        label: Text(t.protChoose),
+                      )
+                    : OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.rs(22),
+                              vertical: context.rs(10)),
+                          minimumSize: Size.zero,
+                          side: BorderSide(
+                              color:
+                                  scheme.primary.withValues(alpha: 0.7)),
+                          foregroundColor: scheme.primary,
+                          textStyle: TextStyle(
+                              fontSize: context.rf(12),
+                              fontWeight: FontWeight.w800),
+                        ),
+                        onPressed: onSelect,
+                        child: Text(t.protChoose),
+                      ),
+                const Spacer(),
+                PriceText(
+                    price: package.price,
+                    currency: '',
+                    contactForPrice: t.homeContactForPrice,
+                    fontSize: context.rf(17)),
+              ]),
+            ],
+          ),
         ),
       ),
     );

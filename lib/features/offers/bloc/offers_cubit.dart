@@ -106,11 +106,17 @@ final class OfferDetailState extends Equatable {
     this.status = OfferDetailStatus.loading,
     this.detail,
     this.activePackageId,
+    this.selectedVehicle,
   });
 
   final OfferDetailStatus status;
   final OfferDetail? detail;
   final int? activePackageId;
+
+  /// The supported vehicle picked on the rail — the single source of truth
+  /// for the request: the CTA stays disabled until one is chosen (when the
+  /// offer lists supported vehicles) and the form payload is built from it.
+  final OfferVehicle? selectedVehicle;
 
   /// Vehicles filtered by active package + brand, like the website detail page.
   List<OfferVehicle> vehicles(String? wantedDbId) {
@@ -129,16 +135,19 @@ final class OfferDetailState extends Equatable {
     OfferDetailStatus? status,
     OfferDetail? detail,
     int? Function()? activePackageId,
+    OfferVehicle? Function()? selectedVehicle,
   }) =>
       OfferDetailState(
         status: status ?? this.status,
         detail: detail ?? this.detail,
         activePackageId:
             activePackageId == null ? this.activePackageId : activePackageId(),
+        selectedVehicle:
+            selectedVehicle == null ? this.selectedVehicle : selectedVehicle(),
       );
 
   @override
-  List<Object?> get props => [status, detail, activePackageId];
+  List<Object?> get props => [status, detail, activePackageId, selectedVehicle];
 }
 
 final class OfferDetailCubit extends Cubit<OfferDetailState> {
@@ -162,6 +171,18 @@ final class OfferDetailCubit extends Cubit<OfferDetailState> {
     }
   }
 
-  void selectPackage(int? id) =>
-      emit(state.copyWith(activePackageId: () => id));
+  void selectPackage(int? id) {
+    // Switching packages re-filters the rail; drop a selection that is no
+    // longer visible so the CTA can't submit a hidden vehicle.
+    final v = state.selectedVehicle;
+    final drop = v != null && id != null && v.packageId != id;
+    emit(state.copyWith(
+      activePackageId: () => id,
+      selectedVehicle: drop ? () => null : null,
+    ));
+  }
+
+  /// Rail tap — exactly one supported vehicle selected at a time.
+  void selectVehicle(OfferVehicle v) =>
+      emit(state.copyWith(selectedVehicle: () => v));
 }

@@ -9,7 +9,7 @@ import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
-import '../../../shared/widgets/brand_switch_fab.dart';
+import '../../coupons/presentation/coupon_banner_carousel.dart';
 import '../../finance/presentation/finance_calc_sheet.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../offers/presentation/offer_detail_sheet.dart';
@@ -108,6 +108,7 @@ final class _GuestHomeBody extends StatelessWidget {
                   padding: EdgeInsets.only(bottom: context.rs(140)),
                   children: [
                     _Hero(data: state.data, lang: lang),
+                    const CouponBannerCarousel(),
                     _QuickActions(lang: lang),
                     if (state.data.categories.isNotEmpty) ...[
                       SectionHeader(
@@ -203,7 +204,7 @@ final class _Hero extends StatelessWidget {
               PositionedDirectional(
                 top: context.rs(12),
                 end: context.rs(12),
-                child: const BrandSwitchCapsule(),
+                child: const SizedBox.shrink(),
               ),
               Padding(
                 padding: EdgeInsets.all(context.rs(18)),

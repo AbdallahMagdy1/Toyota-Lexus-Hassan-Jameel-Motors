@@ -344,6 +344,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storeSearch => 'Search a model…';
 
   @override
+  String osHeroGreeting(String name) {
+    return 'Hello $name 👋';
+  }
+
+  @override
+  String get osHeroGreetingGuest => 'Welcome 👋';
+
+  @override
+  String get osHeroTitle => 'Find your perfect car';
+
+  @override
   String get storePriceUpTo => 'Price up to';
 
   @override
@@ -391,6 +402,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cartBrowse => 'Browse cars';
+
+  @override
+  String get cartTabVehicles => 'Vehicles cart';
+
+  @override
+  String get cartTabParts => 'Spare parts cart';
 
   @override
   String get favTitle => 'Favorites';
@@ -1899,4 +1916,615 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trkHubEmpty => 'Nothing to track yet.';
+
+  @override
+  String get mbuyType => 'Purchase type';
+
+  @override
+  String get mbuyOnline => 'Online';
+
+  @override
+  String get mbuyOrder => 'Purchase order';
+
+  @override
+  String get mbuyFastReserve => 'Fast reserve';
+
+  @override
+  String get mbuyCash => 'Cash';
+
+  @override
+  String get mbuyDelivery => 'Delivery method';
+
+  @override
+  String get mbuyBranch => 'Branch pickup';
+
+  @override
+  String get mbuyAddress => 'Deliver to address';
+
+  @override
+  String get mbuyAddressHint => 'Write the delivery address';
+
+  @override
+  String get mbuySwipe => 'Swipe to complete';
+
+  @override
+  String get mbuySelect => 'Select...';
+
+  @override
+  String get onboardingHello => 'Hello';
+
+  @override
+  String get modelsAvailableTrims => 'Available trims';
+
+  @override
+  String get modelsChooseTrim => 'Choose trim';
+
+  @override
+  String get modelsChosen => 'Selected';
+
+  @override
+  String get modelsDiffsOnly => 'Show differences only';
+
+  @override
+  String get modelsCompareHint => 'Pick two trims to compare side by side';
+
+  @override
+  String get modelsColorsTitle => 'Available colors';
+
+  @override
+  String get modelsSpecsFor => 'Trim specifications';
+
+  @override
+  String get pfTitle => 'My account';
+
+  @override
+  String get pfMyData => 'My data';
+
+  @override
+  String get pfMyCars => 'My cars';
+
+  @override
+  String get pfMyOrders => 'My orders';
+
+  @override
+  String get pfMyBookings => 'My bookings';
+
+  @override
+  String get pfFinanceRequests => 'Finance requests';
+
+  @override
+  String get pfFavorites => 'Favorites';
+
+  @override
+  String get pfNotifications => 'Notifications';
+
+  @override
+  String get pfContactData => 'Contact details';
+
+  @override
+  String get pfPassword => 'Password';
+
+  @override
+  String get pfDeleteAccount => 'Delete account';
+
+  @override
+  String get pfSave => 'Save changes';
+
+  @override
+  String get pfSaved => 'Saved successfully';
+
+  @override
+  String get pfSaveFailed => 'Some data could not be saved';
+
+  @override
+  String get pfNameAr => 'Name (Arabic)';
+
+  @override
+  String get pfNameEn => 'Name (English)';
+
+  @override
+  String get pfFirstName => 'First name';
+
+  @override
+  String get pfMiddleName => 'Middle name';
+
+  @override
+  String get pfLastName => 'Last name';
+
+  @override
+  String get pfGender => 'Gender';
+
+  @override
+  String get pfCountry => 'Country';
+
+  @override
+  String get pfCity => 'City';
+
+  @override
+  String get pfAddress => 'Address';
+
+  @override
+  String get pfIdentity => 'Identity number';
+
+  @override
+  String get pfCr => 'Commercial registration';
+
+  @override
+  String get pfAccountType => 'Account type';
+
+  @override
+  String get pfPhone => 'Phone number';
+
+  @override
+  String get pfEmail => 'Email';
+
+  @override
+  String get pfPhoneExists => 'Phone number already in use';
+
+  @override
+  String get pfEmailExists => 'Email already in use';
+
+  @override
+  String get pfIdentityExists => 'Identity number already in use';
+
+  @override
+  String get pfOldPassword => 'Current password';
+
+  @override
+  String get pfNewPassword => 'New password';
+
+  @override
+  String get pfConfirmPassword => 'Confirm password';
+
+  @override
+  String get pfPasswordMismatch => 'Passwords do not match';
+
+  @override
+  String get pfPasswordShort => 'At least 6 characters';
+
+  @override
+  String get pfWrongOldPassword => 'Current password is incorrect';
+
+  @override
+  String get pfChangePassword => 'Change password';
+
+  @override
+  String get pfDeleteWarning =>
+      'Your account will be deactivated and your data hidden from the app. This cannot be undone from the app.';
+
+  @override
+  String get pfDeleteConfirmHint => 'Type \"DELETE\" to confirm';
+
+  @override
+  String get pfDeleteWord => 'DELETE';
+
+  @override
+  String get pfSignedInAs => 'Signed in as';
+
+  @override
+  String get pfGuest => 'Guest';
+
+  @override
+  String get pfSignIn => 'Sign in';
+
+  @override
+  String get pfNoNotifications => 'No notifications yet';
+
+  @override
+  String get pfNoFavorites => 'No favorites yet';
+
+  @override
+  String get cmpTitle => 'Complaints';
+
+  @override
+  String get cmpSubmit => 'Submit a complaint';
+
+  @override
+  String get cmpSubmitSub =>
+      'Tell us what happened and our team will follow up step by step';
+
+  @override
+  String get cmpTrack => 'Track complaints';
+
+  @override
+  String get cmpTrackSub =>
+      'Follow your complaints and our team\'s replies step by step';
+
+  @override
+  String get cmpType => 'Complaint type';
+
+  @override
+  String get cmpTypeSales => 'Sales';
+
+  @override
+  String get cmpTypeParts => 'Spare parts';
+
+  @override
+  String get cmpTypeMaintenance => 'Maintenance';
+
+  @override
+  String get cmpTypeOther => 'Other';
+
+  @override
+  String get cmpName => 'Name';
+
+  @override
+  String get cmpPhone => 'Phone';
+
+  @override
+  String get cmpEmail => 'Email (optional)';
+
+  @override
+  String get cmpSubject => 'Subject (optional)';
+
+  @override
+  String get cmpBody => 'Complaint details';
+
+  @override
+  String get cmpBodyHint => 'Tell us exactly what happened…';
+
+  @override
+  String get cmpAttach => 'Attached photos (optional)';
+
+  @override
+  String get cmpAttachHint => 'Up to 6 photos (max 4 MB each)';
+
+  @override
+  String get cmpConsent =>
+      'I agree to the privacy policy and processing of my personal data';
+
+  @override
+  String get cmpSend => 'Submit complaint';
+
+  @override
+  String get cmpSent => 'Your complaint was received';
+
+  @override
+  String get cmpRef => 'Complaint number';
+
+  @override
+  String get cmpStageReceived => 'Complaint received';
+
+  @override
+  String get cmpStageUpdated => 'Update / reply';
+
+  @override
+  String get cmpStageSolved => 'Solved';
+
+  @override
+  String get cmpStatusNew => 'Received';
+
+  @override
+  String get cmpStatusUpdated => 'New reply';
+
+  @override
+  String get cmpStatusSolved => 'Solved';
+
+  @override
+  String get cmpConversation => 'Conversation';
+
+  @override
+  String get cmpYou => 'You';
+
+  @override
+  String get cmpStaff => 'Customer care team';
+
+  @override
+  String get cmpReplyHint => 'Write your reply…';
+
+  @override
+  String get cmpReplySend => 'Send reply';
+
+  @override
+  String get cmpEmpty => 'No complaints yet';
+
+  @override
+  String get cmpBodyText => 'Complaint text';
+
+  @override
+  String get finReqSub => 'Own your car with financing offers you can\'t miss';
+
+  @override
+  String get finAbsher => 'Autofill from Absher';
+
+  @override
+  String get finAbsherOtp => 'Verification code';
+
+  @override
+  String get finAbsherId => 'Identity number';
+
+  @override
+  String get finAbsherMobile => 'Mobile (5xxxxxxxx)';
+
+  @override
+  String get finAbsherBirth => 'Date of birth';
+
+  @override
+  String get finAbsherSend => 'Send verification code';
+
+  @override
+  String get finAbsherConfirm => 'Confirm';
+
+  @override
+  String get finAbsherFilled => 'Details filled from Absher';
+
+  @override
+  String get finDocs => 'Required documents';
+
+  @override
+  String get finDocsHint =>
+      'Optional for now — attach them to speed up your request, or our team will collect them';
+
+  @override
+  String get finWorkSector => 'Employer type';
+
+  @override
+  String get finGov => 'Governmental';
+
+  @override
+  String get finPrivate => 'Private sector';
+
+  @override
+  String get finIdDoc => 'National ID';
+
+  @override
+  String get finLicenseDoc => 'Driving license';
+
+  @override
+  String get finSalaryDoc => 'Salary letter';
+
+  @override
+  String get finInsuranceDoc => 'GOSI printout';
+
+  @override
+  String get finStatementDoc => 'Bank statement';
+
+  @override
+  String get finUpload => 'Upload';
+
+  @override
+  String get finUploaded => 'Attached';
+
+  @override
+  String get finPickFile => 'Choose a file (image or PDF)';
+
+  @override
+  String get finFileTooBig => 'Max 4 MB';
+
+  @override
+  String get finIncome => 'Net monthly income';
+
+  @override
+  String get finFirstPayOptional => 'Down payment (optional)';
+
+  @override
+  String get finLastPay => 'Final payment';
+
+  @override
+  String get finMonthly => 'Monthly installment';
+
+  @override
+  String get finFinalPrice => 'Final price';
+
+  @override
+  String get finPeriodTitle => 'Finance period';
+
+  @override
+  String get finMonths => 'months';
+
+  @override
+  String get finNotes => 'Notes';
+
+  @override
+  String get finFullName => 'Full name';
+
+  @override
+  String get finSendReq => 'Send request';
+
+  @override
+  String get finReqSent => 'Your request was received';
+
+  @override
+  String get finReqRef => 'Request number';
+
+  @override
+  String get finTrackCta => 'Track request';
+
+  @override
+  String get finBankRate => 'Financing entity';
+
+  @override
+  String get finIncomeRequired => 'Enter your net income';
+
+  @override
+  String get trkKindFinance => 'Finance';
+
+  @override
+  String get acJobCard => 'Job card';
+
+  @override
+  String get acTabMyCars => 'My cars';
+
+  @override
+  String get acStoreToyota => 'Toyota Store';
+
+  @override
+  String get acStoreLexus => 'Lexus Store';
+
+  @override
+  String get acKm => 'km';
+
+  @override
+  String get acQuickTitle => 'Quick services';
+
+  @override
+  String get cpnExclusive => 'Exclusive offer';
+
+  @override
+  String get cpnCopied => 'Code copied';
+
+  @override
+  String get cpnRemove => 'Remove';
+
+  @override
+  String get cpnCouponDiscount => 'Coupon discount';
+
+  @override
+  String get svcPartsSub => 'Genuine parts for your car — branch pickup';
+
+  @override
+  String get mhTitle => 'Maintenance services';
+
+  @override
+  String get mhHeroBadge => 'Maintenance Center';
+
+  @override
+  String get mhHeroTitle => 'Book your maintenance';
+
+  @override
+  String get mhHeroAccent => 'in 10 seconds';
+
+  @override
+  String get mhHeroSub =>
+      'Certified maintenance center with 60+ years of experience. Original parts and factory-certified technicians.';
+
+  @override
+  String get mhBadgeCertified => 'Officially certified';
+
+  @override
+  String get mhBadgeSaso => 'SASO certified';
+
+  @override
+  String get mhReserveNow => 'Reserve now';
+
+  @override
+  String get mhPeriodic => 'Periodic schedule';
+
+  @override
+  String get mhYears => 'Years of experience';
+
+  @override
+  String get mhCars => 'Cars served';
+
+  @override
+  String get mhSatisfaction => 'Satisfaction';
+
+  @override
+  String get mhBranches => 'Branches';
+
+  @override
+  String get mhJourney => 'Your maintenance journey';
+
+  @override
+  String get mhJourneySub => 'Four simple steps from booking to handover.';
+
+  @override
+  String get mhStep1 => 'Book appointment';
+
+  @override
+  String get mhStep1Sub => 'Choose the service and time that suits you';
+
+  @override
+  String get mhStep2 => 'Car inspection';
+
+  @override
+  String get mhStep2Sub => 'Our experts perform a precise comprehensive check';
+
+  @override
+  String get mhStep3 => 'Execution';
+
+  @override
+  String get mhStep3Sub =>
+      'Maintenance completed with the highest quality standards';
+
+  @override
+  String get mhStep4 => 'Delivery';
+
+  @override
+  String get mhStep4Sub => 'Receive your car ready and in best condition';
+
+  @override
+  String get mhOffers => 'Maintenance offers';
+
+  @override
+  String get mhWhyTitle => 'Why choose Hassan Jameel?';
+
+  @override
+  String get mhWhySub => 'Numbers and facts that speak for themselves.';
+
+  @override
+  String get mhFeatures => 'Features';
+
+  @override
+  String get mhUs => 'Us';
+
+  @override
+  String get mhOthers => 'Others';
+
+  @override
+  String get mhRowParts => '100% original parts';
+
+  @override
+  String get mhRowDiag => 'Factory-certified diagnostics';
+
+  @override
+  String get mhRowTeam => 'Specialized team';
+
+  @override
+  String get mhRowReport => 'Digital technical report with photos';
+
+  @override
+  String get mhRowTech => 'Factory-certified technicians';
+
+  @override
+  String get mhFeedback => 'Guest feedback';
+
+  @override
+  String get mhVerified => 'Verified';
+
+  @override
+  String get mhPeriodicTitle => 'Periodic maintenance schedule';
+
+  @override
+  String get mhPeriodicSub => 'Pick a mileage to see its scheduled tasks.';
+
+  @override
+  String get mhPeriodicEmpty => 'No periodic data available.';
+
+  @override
+  String get mhImportant => 'Important';
+
+  @override
+  String get mhReady => 'Ready to book?';
+
+  @override
+  String get mhReadySub =>
+      'Reserve your slot in seconds and drive away with confidence.';
+
+  @override
+  String get mhBookService => 'Book a service';
+
+  @override
+  String get mhWhatsApp => 'Talk on WhatsApp';
+
+  @override
+  String get alNickname => 'Nickname';
+
+  @override
+  String get alRename => 'Rename';
+
+  @override
+  String get alSaved => 'Name saved';
+
+  @override
+  String get contactPopTitle => 'Customer service';
+
+  @override
+  String get contactPopOnline => 'Online now';
+
+  @override
+  String get contactPopWhatsApp => 'WhatsApp chat';
+
+  @override
+  String get contactPopCall => 'Call us';
 }

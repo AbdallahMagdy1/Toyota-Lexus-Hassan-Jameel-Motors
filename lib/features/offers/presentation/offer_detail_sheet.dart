@@ -4,9 +4,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
-import '../../account/data/account_repository.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../guest_home/presentation/guest_home_view.dart' show showLoginPrompt;
 import '../../home/presentation/widgets/home_bits.dart';
@@ -66,6 +66,7 @@ final class _DetailView extends StatelessWidget {
               detail: state.detail!,
               vehicles: state.vehicles(wantedDbId),
               activePackageId: state.activePackageId,
+              selectedVehicle: state.selectedVehicle,
               lang: lang,
             ),
         },
@@ -79,12 +80,14 @@ final class _DetailBody extends StatelessWidget {
     required this.detail,
     required this.vehicles,
     required this.activePackageId,
+    required this.selectedVehicle,
     required this.lang,
   });
 
   final OfferDetail detail;
   final List<OfferVehicle> vehicles;
   final int? activePackageId;
+  final OfferVehicle? selectedVehicle;
   final String lang;
 
   @override
@@ -215,40 +218,16 @@ final class _DetailBody extends StatelessWidget {
                       height: context.rs(120),
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
+                        clipBehavior: Clip.none,
                         itemCount: vehicles.length,
                         separatorBuilder: (_, _) =>
                             SizedBox(width: context.rs(10)),
                         itemBuilder: (context, i) {
                           final v = vehicles[i];
-                          return SizedBox(
-                            width: context.rs(150),
-                            child: HomeCard(
-                              child: Padding(
-                                padding: EdgeInsets.all(context.rs(8)),
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Expanded(
-                                      child: Center(
-                                        child: HomeImage(
-                                            url: v.image,
-                                            fit: BoxFit.contain,
-                                            logicalWidth: 150),
-                                      ),
-                                    ),
-                                    Text(
-                                      '${v.groupEn ?? ''} ${v.year ?? ''}'.trim(),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          fontSize: context.rf(11),
-                                          fontWeight: FontWeight.w800),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                          return _VehicleCard(
+                            vehicle: v,
+                            selected: v == selectedVehicle,
+                            onTap: () => cubit.selectVehicle(v),
                           );
                         },
                       ),
@@ -305,7 +284,12 @@ final class _DetailBody extends StatelessWidget {
               textStyle: TextStyle(
                   fontSize: context.rf(14), fontWeight: FontWeight.w800),
             ),
-            onPressed: () => _onReserve(context),
+            // With a supported-vehicles rail the request is only valid for
+            // one of those cars — the CTA stays disabled (grey) until the
+            // user taps a card. Offers without a rail submit as before.
+            onPressed: vehicles.isEmpty || selectedVehicle != null
+                ? () => _onReserve(context)
+                : null,
             child: Text(
               detail.isFinanceOffer
                   ? t.offersApplyFinance
@@ -332,7 +316,89 @@ final class _DetailBody extends StatelessWidget {
         : detail.isMaintenanceOffer
             ? OfferFormKind.reserve
             : OfferFormKind.contact;
-    showOfferFormSheet(context, detail: detail, kind: kind);
+    showOfferFormSheet(context,
+        detail: detail, kind: kind, vehicle: selectedVehicle);
+  }
+}
+
+/// Rail card — tappable, mirroring the trim cards in the vehicles model
+/// sheet: brand ring + check badge when selected, one at a time.
+final class _VehicleCard extends StatelessWidget {
+  const _VehicleCard({
+    required this.vehicle,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final OfferVehicle vehicle;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        width: context.rs(150),
+        padding: EdgeInsets.all(context.rs(8)),
+        decoration: BoxDecoration(
+          color: selected
+              ? scheme.primary.withValues(alpha: 0.07)
+              : (isDark ? const Color(0xFF181B21) : scheme.surface),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: selected
+                ? scheme.primary
+                : scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
+            width: selected ? 1.5 : 1,
+          ),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Center(
+                    child: HomeImage(
+                        url: vehicle.image,
+                        fit: BoxFit.contain,
+                        logicalWidth: 150),
+                  ),
+                ),
+                Text(
+                  '${vehicle.groupEn ?? ''} ${vehicle.year ?? ''}'.trim(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: context.rf(11),
+                      fontWeight: FontWeight.w800,
+                      color: selected ? scheme.primary : scheme.onSurface),
+                ),
+              ],
+            ),
+            if (selected)
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: Container(
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: scheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.check_rounded,
+                      size: 13, color: Colors.white),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -471,6 +537,7 @@ void showOfferFormSheet(
   BuildContext context, {
   required OfferDetail detail,
   required OfferFormKind kind,
+  OfferVehicle? vehicle,
 }) {
   final lang = sl<LocaleCubit>().state.languageCode;
   showModalBottomSheet<void>(
@@ -485,11 +552,11 @@ void showOfferFormSheet(
       create: (_) => OfferFormCubit(
         kind: kind,
         detail: detail,
+        vehicle: vehicle,
         offersRepo: OffersRepository(sl<ApiClient>()),
         onlineRepo: sl<OnlineStoreRepository>(),
         user: sl<AuthBloc>().state.user,
         lang: lang,
-        accountRepo: AccountRepository(sl<ApiClient>()),
       ),
       child: const _OfferFormView(),
     ),
@@ -566,70 +633,54 @@ final class _OfferFormView extends StatelessWidget {
                   color: scheme.onSurface.withValues(alpha: 0.6)),
             ),
             const SizedBox(height: 16),
-            // "احجز لسيارتي" vs "سيارة أخرى" — my-car appears when the user
-            // owns a car fitting this offer's brands (app extra).
-            if (state.garage.isNotEmpty) ...[
-              Row(children: [
-                ChoiceChip(
-                  label: Text(t.offersForMyCar),
-                  selected: state.useMyCar,
-                  onSelected: (_) => cubit.toggleMyCar(true),
-                ),
-                const SizedBox(width: 8),
-                ChoiceChip(
-                  label: Text(t.offersAnotherCar),
-                  selected: !state.useMyCar,
-                  onSelected: (_) => cubit.toggleMyCar(false),
-                ),
-              ]),
-              const SizedBox(height: 12),
-            ],
-            if (state.useMyCar && state.garage.isNotEmpty) ...[
-              _Dropdown<int>(
-                label: t.offersVehicle,
-                value: state.myCarIndex,
-                items: [
-                  for (var i = 0; i < state.garage.length; i++)
-                    DropdownMenuItem(
-                      value: i,
-                      child: Text(
-                        '${state.garage[i].displayName(lang)} ${state.garage[i].year ?? ''}'
-                            .trim(),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+            // The car is fixed to the supported vehicle picked on the detail
+            // sheet's rail — shown read-only so the user sees what they're
+            // requesting (single source of truth: the rail selection).
+            if (cubit.vehicle != null) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 12),
+                decoration: softCardDecoration(context, radius: 14),
+                child: Row(children: [
+                  Icon(Icons.directions_car_filled_rounded,
+                      size: 18, color: scheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t.offersVehicle,
+                            style: TextStyle(
+                                fontSize: context.rf(10),
+                                fontWeight: FontWeight.w700,
+                                color: scheme.onSurface
+                                    .withValues(alpha: 0.55))),
+                        Text(
+                          '${cubit.vehicle!.groupEn ?? ''} ${cubit.vehicle!.year ?? ''}'
+                              .trim(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: context.rf(13),
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ],
                     ),
-                ],
-                onChanged: cubit.selectMyCar,
-              ),
-              const SizedBox(height: 12),
-            ] else if (detail.supportedVehicles.isNotEmpty) ...[
-              _Dropdown<int>(
-                label: t.offersVehicle,
-                value: state.vehicleIndex,
-                items: [
-                  for (var i = 0; i < detail.supportedVehicles.length; i++)
-                    DropdownMenuItem(
-                      value: i,
-                      child: Text(
-                        '${detail.supportedVehicles[i].groupEn ?? ''} '
-                        '${detail.supportedVehicles[i].year ?? ''}',
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                ],
-                onChanged: cubit.selectVehicle,
+                  ),
+                  Icon(Icons.check_circle_rounded,
+                      size: 18, color: scheme.primary),
+                ]),
               ),
               const SizedBox(height: 12),
             ],
             if (cubit.kind == OfferFormKind.reserve &&
                 detail.packages.isNotEmpty) ...[
-              _Dropdown<int>(
+              AppDropdown<int>(
                 label: t.offersPackage,
                 value: state.packageId,
                 items: [
                   for (final p in detail.packages)
-                    DropdownMenuItem(
-                        value: p.id, child: Text(p.title(lang))),
+                    AppDropdownItem(value: p.id, label: p.title(lang)),
                 ],
                 onChanged: cubit.selectPackage,
               ),
@@ -823,36 +874,6 @@ final class _Field extends StatelessWidget {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      ),
-    );
-  }
-}
-
-final class _Dropdown<T> extends StatelessWidget {
-  const _Dropdown({
-    required this.label,
-    required this.value,
-    required this.items,
-    required this.onChanged,
-  });
-
-  final String label;
-  final T? value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: value,
-      items: items,
-      onChanged: onChanged,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       ),
     );
   }

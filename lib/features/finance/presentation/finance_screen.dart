@@ -6,6 +6,7 @@ import '../../../core/di/injector.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -494,21 +495,15 @@ final class _ModelPicker extends StatelessWidget {
       groups.putIfAbsent(v.carGroupId!, () => v.group(lang));
     }
 
-    return DropdownButtonFormField<String>(
-      initialValue: state.modelGroupId,
-      isExpanded: true,
+    return AppDropdown<String>(
+      label: t.homeSelectCar,
+      value: state.modelGroupId ?? '',
       items: [
-        DropdownMenuItem(value: null, child: Text(t.homeAll)),
+        AppDropdownItem(value: '', label: t.homeAll),
         for (final e in groups.entries)
-          DropdownMenuItem(value: e.key, child: Text(e.value)),
+          AppDropdownItem(value: e.key, label: e.value),
       ],
-      onChanged: cubit.selectModelGroup,
-      decoration: InputDecoration(
-        labelText: t.homeSelectCar,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-      ),
+      onChanged: (v) => cubit.selectModelGroup(v.isEmpty ? null : v),
     );
   }
 }

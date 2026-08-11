@@ -82,6 +82,22 @@ final class OnlineStoreRepository {
   Future<SubmissionResult> submitReservation(Map<String, dynamic> body) =>
       _post('/api/app/online/reservations', body);
 
+  /// The old store's BUY: down-payment reservation via
+  /// Site_Reservation_Car_Payment (MyFatoorah). Returns the raw result
+  /// {status, urlPayment, sadadNumber, orderId, messageError}.
+  Future<Map<String, dynamic>?> reservationPay(
+      Map<String, dynamic> body) async {
+    try {
+      final res = await _api.post<Map<String, dynamic>>(
+          '/api/app/online/reservations/pay',
+          body: body);
+      return res.data;
+    } on DioException catch (e) {
+      final d = e.response?.data;
+      return d is Map<String, dynamic> ? d : null;
+    }
+  }
+
   Future<SubmissionResult> _post(String path, Map<String, dynamic> body) async {
     try {
       final res = await _api.post<Map<String, dynamic>>(path, body: body);

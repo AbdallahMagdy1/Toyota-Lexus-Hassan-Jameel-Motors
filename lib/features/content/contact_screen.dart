@@ -8,8 +8,10 @@ import '../../core/network/api_client.dart';
 import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart';
+import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/app_header.dart';
 import '../auth/bloc/auth_bloc.dart';
+import '../complaints/complaints_section.dart';
 import '../home/presentation/widgets/home_bits.dart';
 import '../settings/bloc/locale_cubit.dart';
 import 'content_models.dart';
@@ -440,6 +442,11 @@ final class _ContactView extends StatelessWidget {
                           );
                         }),
 
+                    // ── الشكاوى — submit + tracker sheets (website's
+                    // contact-page complaints cycle). ──
+                    SizedBox(height: context.rs(8)),
+                    const ComplaintsSection(),
+
                     SizedBox(height: context.rs(18)),
                     Text(t.contactFormTitle,
                         style: TextStyle(
@@ -465,22 +472,15 @@ final class _ContactView extends StatelessWidget {
                       )
                     else ...[
                       if (state.page.subjects.isNotEmpty) ...[
-                        DropdownButtonFormField<int>(
-                          initialValue: state.subjectId,
-                          isExpanded: true,
+                        AppDropdown<int>(
+                          label: t.contactSubject,
+                          value: state.subjectId,
                           items: [
                             for (final s in state.page.subjects)
-                              DropdownMenuItem(
-                                  value: s.id, child: Text(s.name(lang))),
+                              AppDropdownItem(
+                                  value: s.id, label: s.name(lang)),
                           ],
                           onChanged: cubit.selectSubject,
-                          decoration: InputDecoration(
-                            labelText: t.contactSubject,
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(14)),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 14, vertical: 6),
-                          ),
                         ),
                         SizedBox(height: context.rs(12)),
                       ],

@@ -6,9 +6,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
-import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/slide_media.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../onboarding/data/onboarding_repository.dart';
@@ -89,27 +89,11 @@ final class _WelcomeView extends StatelessWidget {
             onPageChanged: cubit.onPage,
             itemBuilder: (context, i) {
               final slide = state.slides[i];
-              final url = optimizedImageUrl(
-                slide.mediaType == 'image' ? slide.mediaUrl : null,
-                width: (MediaQuery.sizeOf(context).width *
-                        MediaQuery.devicePixelRatioOf(context))
-                    .round(),
+              // Image OR auto-playing muted video (dashboard-controlled).
+              return SlideMedia(
+                mediaType: slide.mediaType,
+                mediaUrl: slide.mediaUrl,
               );
-              return url == null
-                  ? const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0xFF23252B), Color(0xFF101116)],
-                        ),
-                      ),
-                    )
-                  : Image.network(url,
-                      fit: BoxFit.cover,
-                      gaplessPlayback: true,
-                      errorBuilder: (_, _, _) => const ColoredBox(
-                          color: Color(0xFF1A1C21)));
             },
           ),
         // Bottom-heavy dark gradient behind the content.

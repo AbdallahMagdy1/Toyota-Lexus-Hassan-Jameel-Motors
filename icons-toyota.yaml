@@ -1,0 +1,18 @@
+# Toyota launcher icon — run before building the Toyota app:
+#   dart run flutter_launcher_icons -f icons-toyota.yaml
+# (File is deliberately NOT named flutter_launcher_icons-*.yaml — that name
+#  pattern triggers the tool's "flavor" mode, which this project doesn't use.)
+flutter_launcher_icons:
+  image_path: "assets/launcher/toyota.png"
+
+  android: true
+  # Adaptive icon: launchers mask the shape themselves, so the background is
+  # the Toyota red and the full artwork is the foreground.
+  adaptive_icon_background: "#EB0A1E"
+  adaptive_icon_foreground: "assets/launcher/toyota.png"
+
+  ios: true
+  # App Store icons must be opaque; the rounded corners of the source art are
+  # flattened onto the same Toyota red.
+  remove_alpha_ios: true
+  background_color_ios: "#EB0A1E"

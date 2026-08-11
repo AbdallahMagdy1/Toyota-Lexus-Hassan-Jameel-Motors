@@ -8,6 +8,7 @@ import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/auth_text_field.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../bloc/sign_up_flow_cubit.dart';
@@ -152,21 +153,14 @@ final class _SignUpView extends StatelessWidget {
     if (state.step == SignUpStep.register) {
       return [
         // Language — the Absher record language, like the website's select.
-        Text(t.absherLanguage.toUpperCase(),
-            style: TextStyle(
-                fontSize: context.rf(11),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.1,
-                color: muted)),
-        SizedBox(height: context.rs(6)),
-        DropdownButtonFormField<String>(
-          initialValue: state.lang,
-          style: TextStyle(fontSize: context.rf(14), color: scheme.onSurface),
+        AppDropdown<String>(
+          label: t.absherLanguage,
+          value: state.lang,
           items: [
-            DropdownMenuItem(value: 'ar', child: Text(t.absherArabic)),
-            DropdownMenuItem(value: 'en', child: Text(t.absherEnglish)),
+            AppDropdownItem(value: 'ar', label: t.absherArabic),
+            AppDropdownItem(value: 'en', label: t.absherEnglish),
           ],
-          onChanged: (v) => cubit.setLang(v ?? 'ar'),
+          onChanged: (v) => cubit.setLang(v),
         ),
         SizedBox(height: context.rs(14)),
         AuthTextField(

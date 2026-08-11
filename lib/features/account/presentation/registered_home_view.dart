@@ -2,21 +2,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart' show DateFormat;
+import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/router/routes.dart';
-import '../../../core/constants/api_paths.dart';
 import '../../../core/di/injector.dart';
+import '../../../core/utils/media_url.dart' show isVideoUrl;
+import '../../../shared/widgets/slide_media.dart';
 import '../../../core/network/api_client.dart';
-import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../../shared/widgets/app_header.dart';
-import '../../../shared/widgets/brand_switch_fab.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
+import '../../../shared/widgets/page_dots.dart';
+import '../../home/data/home_repository.dart';
+import '../../home/domain/home_models.dart' show OnlineVehicle, SliderVehicle;
+import '../../onboarding/data/onboarding_repository.dart';
+import '../../onboarding/domain/onboarding_slide.dart';
+import '../../online_store/data/online_store_repository.dart';
+import '../../online_store/presentation/car_sheet.dart' show openCarSheet;
+import '../../../shared/navigation/side_menu.dart' show MenuCubit;
+import '../../content/contact_screen.dart' show showBranchesSheet;
+import '../../coupons/presentation/coupon_banner_carousel.dart';
+import '../../notifications/notifications.dart';
 import '../../offers/bloc/offers_cubit.dart';
 import '../../offers/data/offers_repository.dart';
 import '../../offers/domain/offer_models.dart';
@@ -26,6 +36,8 @@ import '../../protection/domain/protection_models.dart';
 import '../../protection/presentation/protection_detail_sheet.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart' as settings;
+import '../../jobcard/presentation/jobcard_pay_sheet.dart';
+import '../bloc/active_car_cubit.dart';
 import '../bloc/registered_home_cubit.dart';
 import '../data/account_repository.dart';
 import '../domain/account_models.dart';
@@ -53,14 +65,42 @@ final class RegisteredHomeView extends StatelessWidget {
         ),
         BlocProvider(
             create: (_) => OffersCubit(OffersRepository(sl<ApiClient>()))),
+        // Global selected-garage-car (persisted); offers + protection follow.
+        BlocProvider.value(value: sl<ActiveCarCubit>()),
       ],
       child: const _Body(),
     );
   }
 }
 
-final class _Body extends StatelessWidget {
+final class _Body extends StatefulWidget {
   const _Body();
+
+  @override
+  State<_Body> createState() => _BodyState();
+}
+
+final class _BodyState extends State<_Body> {
+  final _scroll = ScrollController();
+  final _stuck = ValueNotifier<bool>(false);
+
+  @override
+  void initState() {
+    super.initState();
+    // The solid theme-colored bar fades in once the hero header scrolls
+    // out (≈ header + tabs height).
+    _scroll.addListener(() {
+      final stuck = _scroll.hasClients && _scroll.offset > 130;
+      if (stuck != _stuck.value) _stuck.value = stuck;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _stuck.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +111,9 @@ final class _Body extends StatelessWidget {
 
     return Column(
       children: [
-        const AppHeader(),
+        // The ready state draws its own transparent header INSIDE the hero
+        // (reference design); loading/error keep the standard header.
+        if (state.status != RegisteredHomeStatus.ready) const AppHeader(),
         Expanded(
           child: switch (state.status) {
             RegisteredHomeStatus.loading =>
@@ -79,23 +121,27 @@ final class _Body extends StatelessWidget {
             RegisteredHomeStatus.error => Center(
                 child: TextButton(
                     onPressed: cubit.load, child: Text(t.homeErrorRetry))),
-            RegisteredHomeStatus.ready => RefreshIndicator(
+            RegisteredHomeStatus.ready => Stack(children: [
+              RefreshIndicator(
                 onRefresh: cubit.refresh,
                 child: ListView(
+                  controller: _scroll,
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.only(bottom: context.rs(140)),
                   children: [
+                    // Reference-UI hero FIRST: full-bleed slider with the
+                    // transparent header + tabs on top and the car-trio
+                    // panel stacked over its bottom.
+                    _HeroCarSlider(home: state.home, lang: lang)
+                        .animate()
+                        .fadeIn(duration: 280.ms),
                     _Greeting(lang: lang),
+                    const CouponBannerCarousel(),
                     _DynamicCard(home: state.home, lang: lang)
                         .animate()
                         .fadeIn(duration: 280.ms),
                     _GarageSection(home: state.home, lang: lang),
                     _QuickActions(home: state.home, lang: lang),
-                    // "All services" — a permanent titled section (no
-                    // expander), per the spec revision.
-                    SectionHeader(
-                        title: t.acAllServices, subtitle: t.acAllServicesSub),
-                    _AllServicesGrid(lang: lang),
                     if (state.home.journeys.isNotEmpty) ...[
                       SectionHeader(
                         title: t.acJourneys,
@@ -114,9 +160,904 @@ final class _Body extends StatelessWidget {
                   ],
                 ),
               ),
+              // Sticky theme-colored header — appears once the hero header
+              // scrolls away (white in light / dark in dark theme).
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _stuck,
+                  builder: (context, stuck, child) => IgnorePointer(
+                    ignoring: !stuck,
+                    child: AnimatedOpacity(
+                      opacity: stuck ? 1 : 0,
+                      duration: const Duration(milliseconds: 180),
+                      child: child,
+                    ),
+                  ),
+                  child: const AppHeader(),
+                ),
+              ),
+            ]),
           },
         ),
       ],
+    );
+  }
+}
+
+/* ────────────────────── Hero car slider (reference UI) ────────────────────── */
+
+/// The reference-kit hero: big car slider. Default tab = the user's own cars
+/// (brand-scoped, with name + odometer overlay); the متجر تويوتا/لكزس tab
+/// flips the slider to the online-store lineup. Swiping updates the dots;
+/// tapping a MY car makes it the active one and opens its hub, tapping a
+/// store car opens the store car sheet.
+final class _HeroCarSlider extends StatefulWidget {
+  const _HeroCarSlider({required this.home, required this.lang});
+
+  final HomeState home;
+  final String lang;
+
+  @override
+  State<_HeroCarSlider> createState() => _HeroCarSliderState();
+}
+
+final class _HeroCarSliderState extends State<_HeroCarSlider> {
+  int _tab = 0; // 0 = my cars, 1 = brand store
+  int _page = 0;
+  Future<List<OnlineVehicle>>? _storeFuture;
+
+  /// Dashboard 'car_bg' slides: TitleEn = model key ('corolla 2026'),
+  /// media = the background image/GIF drawn behind that model.
+  List<OnboardingSlide> _bgs = const [];
+
+  /// Guest-feed vehicles (SliderVehicle) — the source of the per-model
+  /// shared "Background" artwork used when no 'car_bg' placement matches.
+  /// Cached statically (SWR) so revisiting the home doesn't refetch.
+  List<SliderVehicle> _feedVehicles = const [];
+  static List<SliderVehicle>? _feedCache;
+  static String? _feedCacheBrand;
+  static DateTime? _feedCacheAt;
+
+  @override
+  void initState() {
+    super.initState();
+    final brandKey = sl<settings.ThemeCubit>().state.brandKey;
+    sl<OnboardingRepository>().fetch(brandKey, placement: 'car_bg').then((s) {
+      if (mounted) setState(() => _bgs = s);
+    }).catchError((_) {});
+    _loadFeedVehicles(brandKey);
+  }
+
+  /// SWR: serve the cached lineup immediately, revalidate when stale.
+  void _loadFeedVehicles(String brandKey) {
+    final cached = _feedCache;
+    if (cached != null && _feedCacheBrand == brandKey) {
+      _feedVehicles = cached;
+    }
+    final fresh = cached != null &&
+        _feedCacheBrand == brandKey &&
+        _feedCacheAt != null &&
+        DateTime.now().difference(_feedCacheAt!) <
+            const Duration(minutes: 10);
+    if (fresh) return;
+    sl<HomeRepository>().fetch(brandKey).then((feed) {
+      final vs = feed?.vehicles ?? const <SliderVehicle>[];
+      if (vs.isEmpty) return;
+      _feedCache = vs;
+      _feedCacheBrand = brandKey;
+      _feedCacheAt = DateTime.now();
+      if (mounted) setState(() => _feedVehicles = vs);
+    }).catchError((_) {});
+  }
+
+  /// The MODEL's shared Background (dashboard Cars-page upload) for a car:
+  /// match the guest feed's lineup by carGroupId == productGroupId first,
+  /// else by name containment, preferring the row with the same year.
+  String? _modelBgFor({String? productGroupId, String? nameEn, String? year}) {
+    if (_feedVehicles.isEmpty) return null;
+    final gid = (productGroupId ?? '').trim();
+    var matches = gid.isEmpty
+        ? const <SliderVehicle>[]
+        : _feedVehicles
+            .where((v) => (v.carGroupId ?? '').trim() == gid)
+            .toList();
+    if (matches.isEmpty) {
+      final name = (nameEn ?? '').trim().toLowerCase();
+      if (name.isNotEmpty) {
+        matches = _feedVehicles.where((v) {
+          final g = v.groupEn.trim().toLowerCase();
+          return g.isNotEmpty && (name.contains(g) || g.contains(name));
+        }).toList();
+      }
+    }
+    if (matches.isEmpty) return null;
+    final y = (year ?? '').trim();
+    return matches
+            .where((v) => y.isNotEmpty && (v.year ?? '').trim() == y)
+            .map((v) => v.background(widget.lang))
+            .nonNulls
+            .firstOrNull ??
+        matches.map((v) => v.background(widget.lang)).nonNulls.firstOrNull;
+  }
+
+  /// Longest matching model key wins ('corolla cross 2026' beats 'corolla').
+  String? _bgFor(String name, String? year) {
+    final hay = '$name ${year ?? ''}'.toLowerCase();
+    OnboardingSlide? best;
+    for (final s in _bgs) {
+      final key = (s.titleEn ?? '').trim().toLowerCase();
+      if (key.isEmpty || (s.mediaUrl ?? '').isEmpty) continue;
+      if (hay.contains(key) &&
+          (best == null ||
+              key.length > (best.titleEn ?? '').trim().length)) {
+        best = s;
+      }
+    }
+    return best?.mediaUrl;
+  }
+
+  void _selectTab(int i) {
+    if (i == _tab) return;
+    setState(() {
+      _tab = i;
+      _page = 0;
+      // Lazy-load the store lineup once (SWR cache makes this instant later).
+      _storeFuture ??= OnlineStoreRepository(sl<ApiClient>()).vehicles();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final cars = garageForBrand(widget.home.garage, brandKey);
+    if (cars.isEmpty && _tab == 0) {
+      // No garage yet — nothing to hero; the add-car flows live below.
+      return const SizedBox.shrink();
+    }
+    final storeLabel =
+        brandKey == 'lexus' ? t.acStoreLexus : t.acStoreToyota;
+
+    // Full-bleed immersive hero (the reference design): the slider fills
+    // edge-to-edge behind a transparent header + floating tabs; the
+    // car-trio panel stacks over the hero bottom on a theme-colored sheet.
+    final effectiveTab = cars.isEmpty ? 1 : _tab;
+    if (cars.isEmpty && _storeFuture == null) {
+      _storeFuture = OnlineStoreRepository(sl<ApiClient>()).vehicles();
+    }
+    // The hero extends under the status bar, so every fixed position below
+    // offsets by the top inset or the rows collide.
+    final topInset = MediaQuery.paddingOf(context).top;
+    return SizedBox(
+      height: context.rs(492) + topInset,
+      child: Stack(children: [
+        Positioned.fill(
+          child: effectiveTab == 0
+              ? _slider(
+                  count: cars.length,
+                  itemBuilder: (context, i) {
+                    final car = cars[i];
+                    final meter = car.meterReading;
+                    return _HeroSlide(
+                      image: car.image,
+                      // car_bg placement match → model shared Background →
+                      // brand-glow gradient (inside _HeroSlide).
+                      background: _bgFor(
+                              car.groupEn ?? car.displayName('en'), car.year) ??
+                          _modelBgFor(
+                              productGroupId: car.productGroupId,
+                              nameEn: car.groupEn ?? car.modelEn,
+                              year: car.year),
+                      title: car.displayName(widget.lang),
+                      subtitle: [
+                        if (meter != null && meter > 0)
+                          '${NumberFormat.decimalPattern().format(meter)} ${t.acKm}',
+                        if ((car.year ?? '').isNotEmpty) '${car.year}',
+                      ].join(' • '),
+                      onTap: () {
+                        sl<ActiveCarCubit>().select(car.vin);
+                        showVehicleHubSheet(context,
+                            car: car,
+                            onChanged:
+                                context.read<RegisteredHomeCubit>().load);
+                      },
+                    );
+                  },
+                )
+              : FutureBuilder<List<OnlineVehicle>>(
+                  future: _storeFuture,
+                  builder: (context, snap) {
+                    if (snap.connectionState != ConnectionState.done) {
+                      return const Center(
+                          child: CircularProgressIndicator());
+                    }
+                    final all = snap.data ?? const <OnlineVehicle>[];
+                    // Store lineup scoped to the active brand theme.
+                    final needle =
+                        brandKey == 'lexus' ? 'lexus' : 'toyota';
+                    var items = all
+                        .where((v) => (v.brandEn ?? '')
+                            .toLowerCase()
+                            .contains(needle))
+                        .toList();
+                    if (items.isEmpty) items = all;
+                    if (items.isEmpty) {
+                      return Center(child: Text(t.modelsNoData));
+                    }
+                    return _slider(
+                      count: items.length,
+                      itemBuilder: (context, i) {
+                        final v = items[i];
+                        return _HeroSlide(
+                          image: v.image,
+                          background: _bgFor(v.groupEn ?? '', v.year) ??
+                              v.background(widget.lang) ??
+                              _modelBgFor(
+                                  productGroupId: v.carGroupId,
+                                  nameEn: v.groupEn,
+                                  year: v.year),
+                          title:
+                              '${v.name(widget.lang)} ${v.year ?? ''}'.trim(),
+                          subtitle: v.minPrice == null
+                              ? ''
+                              : '${t.homeFrom} ${NumberFormat.decimalPattern().format(v.minPrice)}',
+                          onTap: () => openCarSheet(context, v),
+                        );
+                      },
+                    );
+                  },
+                ),
+        ),
+        // ── Transparent header ON the hero: avatar | centered logo | icons ──
+        const PositionedDirectional(
+          top: 0, start: 0, end: 0, child: _HeroHeader()),
+        // ── Floating tabs: سياراتي | متجر تويوتا/لكزس ──
+        PositionedDirectional(
+          top: topInset + context.rs(56),
+          start: context.rs(16),
+          child: Row(children: [
+            for (final (i, label) in [t.acTabMyCars, storeLabel].indexed)
+              Padding(
+                padding: EdgeInsetsDirectional.only(end: context.rs(7)),
+                child: GestureDetector(
+                  onTap: () => _selectTab(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.rs(14),
+                        vertical: context.rs(7)),
+                    decoration: BoxDecoration(
+                      color: i == effectiveTab
+                          ? scheme.primary
+                          : Colors.white.withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: i == effectiveTab
+                            ? scheme.primary
+                            : Colors.white.withValues(alpha: 0.35),
+                      ),
+                    ),
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: context.rf(11.5),
+                        fontWeight: FontWeight.w800,
+                        color: i == effectiveTab
+                            ? scheme.onPrimary
+                            : Colors.white.withValues(alpha: 0.9),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ]),
+        ),
+        // ── Dots (above the trio panel, red like the mock) ──
+        Positioned(
+          bottom: context.rs(128),
+          left: 0,
+          right: 0,
+          child: Center(
+            child: PageDots(
+              count: _count.clamp(0, 10),
+              index: _page.clamp(0, 9),
+              activeColor: scheme.primary,
+            ),
+          ),
+        ),
+        // ── The trio panel stacked over the hero bottom: white/dark sheet
+        // (theme scaffold color) with rounded top corners, like the mock. ──
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            height: context.rs(122),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(26)),
+            ),
+            child: _CarQuickTrio(home: widget.home, lang: widget.lang),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  int _count = 1;
+
+  Widget _slider({
+    required int count,
+    required IndexedWidgetBuilder itemBuilder,
+  }) {
+    if (_count != count) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _count = count);
+      });
+    }
+    return PageView.builder(
+      controller: PageController(initialPage: _page),
+      itemCount: count,
+      onPageChanged: (i) => setState(() => _page = i),
+      itemBuilder: itemBuilder,
+    );
+  }
+}
+
+/// The reference-design slide: a dark immersive card. Background = the
+/// dashboard 'car_bg' media for this model (image or animated GIF, full
+/// bleed) with a scrim; fallback = a brand-glow dark gradient so the design
+/// holds before any backgrounds are uploaded. Name + odometer sit top-start
+/// in white, exactly like the mock.
+final class _HeroSlide extends StatelessWidget {
+  const _HeroSlide({
+    required this.image,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.background,
+  });
+
+  final String? image;
+  final String? background; // dashboard per-model bg (image/GIF)
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return GestureDetector(
+        onTap: onTap,
+        child: Container(
+          clipBehavior: Clip.antiAlias,
+          decoration: const BoxDecoration(color: Color(0xFF121317)),
+          child: Stack(fit: StackFit.expand, children: [
+            // ── Backdrop: per-model media (image / GIF / video), else
+            // brand-glow fallback ──
+            if ((background ?? '').isNotEmpty)
+              isVideoUrl(background)
+                  ? SlideMedia(
+                      mediaType: 'video',
+                      mediaUrl: background,
+                      fit: BoxFit.cover,
+                    )
+                  : HomeImage(
+                      url: background,
+                      fit: BoxFit.cover,
+                      logicalWidth: 420,
+                    )
+            else ...[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color.lerp(scheme.primary, Colors.black, 0.55)!,
+                      const Color(0xFF121317),
+                      Color.lerp(scheme.primary, Colors.black, 0.75)!,
+                    ],
+                  ),
+                ),
+              ),
+              // Soft glow pool behind the car, like the mock's red haze.
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(0, 0.45),
+                      radius: 1.1,
+                      colors: [
+                        scheme.primary.withValues(alpha: 0.38),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            // Legibility scrim (top for the text, bottom for the dots).
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.55),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.35),
+                  ],
+                  stops: const [0, 0.45, 1],
+                ),
+              ),
+            ),
+            // ── Ground shadow: elliptical pool right above the trio panel
+            // so the car reads as sitting ON the ledge, not floating. ──
+            PositionedDirectional(
+              start: context.rs(46),
+              end: context.rs(46),
+              bottom: context.rs(112),
+              height: context.rs(30),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    radius: 0.9,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.transparent,
+                    ],
+                  ),
+                  borderRadius:
+                      BorderRadius.all(Radius.elliptical(220, 15)),
+                ),
+              ),
+            ),
+            // ── The car: anchored to the hero's bottom edge (wheels tucked
+            // just under the panel curve) with a subtle 3D perspective tilt —
+            // the mock's grounded "stage" look instead of a floating car. ──
+            PositionedDirectional(
+              start: 0,
+              end: 0,
+              top: MediaQuery.paddingOf(context).top + context.rs(118),
+              bottom: context.rs(116),
+              child: Transform(
+                alignment: Alignment.bottomCenter,
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.0012)
+                  ..rotateX(-0.12)
+                  ..scaleByDouble(1.03, 1.03, 1.03, 1),
+                child: HomeImage(
+                  url: image,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.bottomCenter,
+                  logicalWidth: 400,
+                ),
+              ),
+            ),
+            // ── Name + odometer (mock top-start block, white; sits under
+            // the floating tabs row) ──
+            PositionedDirectional(
+              top: MediaQuery.paddingOf(context).top + context.rs(98),
+              start: context.rs(16),
+              end: context.rs(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: context.rf(12),
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: TextDirection.ltr,
+                      style: TextStyle(
+                        fontSize: context.rf(20),
+                        height: 1.2,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ]),
+        ));
+  }
+}
+
+/* ───────────── Transparent hero header (reference design) ───────────── */
+
+/// The mock's app bar, fused with the hero background: user avatar at the
+/// start, brand logo dead-center, and compact white bell/location/menu
+/// icons at the end — all transparent over the dark hero.
+final class _HeroHeader extends StatelessWidget {
+  const _HeroHeader();
+
+  /// Always the transparent-over-hero variant; the sticky scroll bar uses
+  /// the main AppHeader instead.
+  static const bool solid = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = context.select((AuthBloc b) => b.state.user);
+    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Foreground: white on the hero; theme onSurface on the solid bar.
+    final fg = solid ? scheme.onSurface : Colors.white;
+    final chipBg = solid
+        ? scheme.onSurface.withValues(alpha: 0.07)
+        : Colors.white.withValues(alpha: 0.16);
+    final chipBorder = solid
+        ? scheme.outline.withValues(alpha: 0.6)
+        : Colors.white.withValues(alpha: 0.4);
+    final name = (lang == 'ar'
+            ? (user?.firstNameAr ?? user?.firstNameEn)
+            : (user?.firstNameEn ?? user?.firstNameAr))
+        ?.trim();
+    final initial =
+        (name != null && name.isNotEmpty) ? name.characters.first : null;
+    final brandIcon = brandKey == 'lexus'
+        ? 'assets/logos/lexus-ico.png'
+        : 'assets/logos/toyota-ico.png';
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final hjLogo =
+        'assets/logos/logo-${isRtl ? 'right' : 'left'}-${solid && !isDark ? 'black' : 'white'}.png';
+
+    // Equal-width wings on both sides force the logo to the TRUE center of
+    // the screen (a Stack+Center drifts when the two sides differ in width).
+    final wing = context.rs(116);
+
+    return Container(
+      decoration: solid
+          ? BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              border: Border(
+                  bottom: BorderSide(
+                      color: scheme.outline.withValues(alpha: 0.4))),
+            )
+          : null,
+      child: SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            context.rs(10), context.rs(6), context.rs(10), context.rs(6)),
+        child: SizedBox(
+          height: context.rs(44),
+          child: Row(children: [
+            // Start wing: the user's avatar roundel → profile.
+            SizedBox(
+              width: wing,
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => context.push(Routes.profile),
+                  child: Container(
+                    width: context.rs(34),
+                    height: context.rs(34),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: chipBg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: chipBorder),
+                    ),
+                    child: initial == null
+                        ? Icon(Icons.person_rounded, size: 17, color: fg)
+                        : Text(
+                            initial,
+                            style: TextStyle(
+                                fontSize: context.rf(13.5),
+                                fontWeight: FontWeight.w800,
+                                color: fg),
+                          ),
+                  ),
+                ),
+              ),
+            ),
+            // Dead-center logo (brand roundel + white HJ wordmark).
+            Expanded(
+              child: Center(
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Image.asset(brandIcon,
+                      height: context.rs(22), fit: BoxFit.contain),
+                  SizedBox(width: context.rs(7)),
+                  Image.asset(hjLogo,
+                      height: context.rs(20), fit: BoxFit.contain),
+                ]),
+              ),
+            ),
+            // End wing: compact bell / location / menu.
+            SizedBox(
+              width: wing,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerEnd,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    BlocBuilder<NotificationsCubit,
+                        (List<AppNotification>, int)>(
+                      bloc: sl<NotificationsCubit>(),
+                      builder: (context, s) => IconButton(
+                        onPressed: () => showNotificationsSheet(context),
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 34, minHeight: 34),
+                        icon: Badge(
+                          isLabelVisible: s.$2 > 0,
+                          label: Text('${s.$2}'),
+                          child: Icon(Icons.notifications_none_rounded,
+                              size: 19, color: fg),
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => showBranchesSheet(context),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 34, minHeight: 34),
+                      icon: Icon(Icons.location_on_outlined,
+                          size: 19, color: fg),
+                    ),
+                    IconButton(
+                      onPressed: () => context.read<MenuCubit>().open(),
+                      visualDensity: VisualDensity.compact,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                          minWidth: 34, minHeight: 34),
+                      icon: Icon(Icons.menu_rounded, size: 20, color: fg),
+                    ),
+                  ]),
+              ),
+            ),
+          ]),
+        ),
+      ),
+    ));
+  }
+}
+
+/* ─────────────── Under-hero trio (mock's two-card row, ×3) ─────────────── */
+
+/// The mock's row right under the hero: compact action cards tied to the
+/// ACTIVE car — spare parts, protection & tinting packages, and service
+/// booking. First card is brand-filled with a small CTA pill (like the
+/// mock's red card); the others are light with icon + chevron.
+final class _CarQuickTrio extends StatelessWidget {
+  const _CarQuickTrio({required this.home, required this.lang});
+
+  final HomeState home;
+  final String lang;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final active = resolveActiveCar(
+        home.garage, brandKey, context.watch<ActiveCarCubit>().state);
+    if (active == null) return const SizedBox.shrink();
+
+    return SizedBox(
+      height: context.rs(108),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        padding: EdgeInsets.fromLTRB(
+            context.rs(16), context.rs(12), context.rs(16), 0),
+        children: [
+          // 1) حجز صيانة للسيارة النشطة — brand-filled hero card.
+          SizedBox(
+            width: context.rs(168),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(18),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () =>
+                    showMaintenanceBookingSheet(context, car: active),
+                child: Ink(
+                  padding: EdgeInsets.all(context.rs(12)),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(18),
+                    gradient: LinearGradient(
+                      begin: AlignmentDirectional.topStart,
+                      end: AlignmentDirectional.bottomEnd,
+                      colors: [
+                        scheme.primary,
+                        Color.lerp(scheme.primary, Colors.black, 0.25)!,
+                      ],
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(children: [
+                        Container(
+                          width: context.rs(24),
+                          height: context.rs(24),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(Icons.build_rounded,
+                              size: 14, color: scheme.onPrimary),
+                        ),
+                        SizedBox(width: context.rs(7)),
+                        Expanded(
+                          child: Text(
+                            t.ghBookMaintenance,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: context.rf(12),
+                                fontWeight: FontWeight.w800,
+                                color: scheme.onPrimary),
+                          ),
+                        ),
+                      ]),
+                      const Spacer(),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              active.displayName(lang),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: context.rf(9.5),
+                                height: 1.3,
+                                color:
+                                    scheme.onPrimary.withValues(alpha: 0.8),
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: context.rs(10),
+                                vertical: context.rs(5)),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(
+                              t.homeViewAll,
+                              style: TextStyle(
+                                  fontSize: context.rf(9.5),
+                                  fontWeight: FontWeight.w800,
+                                  color: scheme.primary),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(width: context.rs(10)),
+          // 2) تتبع الصيانة — light card.
+          _TrioLightCard(
+            icon: Icons.car_repair_rounded,
+            title: t.trackTitle,
+            subtitle: active.displayName(lang),
+            onTap: () => context.push(Routes.tracking),
+          ),
+          SizedBox(width: context.rs(10)),
+          // 3) طلباتي — light card, the orders hub.
+          _TrioLightCard(
+            icon: Icons.assignment_outlined,
+            title: t.acMyOrders,
+            subtitle: active.displayName(lang),
+            onTap: () => context.push(Routes.tracking),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+final class _TrioLightCard extends StatelessWidget {
+  const _TrioLightCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      width: context.rs(158),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Container(
+            padding: EdgeInsets.all(context.rs(12)),
+            decoration: softCardDecoration(context, radius: 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Container(
+                    width: context.rs(24),
+                    height: context.rs(24),
+                    decoration: BoxDecoration(
+                      color: scheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(icon, size: 14, color: scheme.primary),
+                  ),
+                  SizedBox(width: context.rs(7)),
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                          fontSize: context.rf(12),
+                          fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ]),
+                const Spacer(),
+                Row(children: [
+                  Expanded(
+                    child: Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: context.rf(9.5),
+                        height: 1.3,
+                        color: scheme.onSurface.withValues(alpha: 0.55),
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    Directionality.of(context) == TextDirection.rtl
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                    size: 18,
+                    color: scheme.primary,
+                  ),
+                ]),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -170,9 +1111,6 @@ final class _Greeting extends StatelessWidget {
             ),
           ),
           SizedBox(width: context.rs(10)),
-          // Toyota ⇄ Lexus switch — the design's stacked header control
-          // (replaces the old floating FAB).
-          const BrandSwitchCapsule(),
         ],
       ),
     );
@@ -198,10 +1136,57 @@ final class _DynamicCard extends StatelessWidget {
         'booking' when home.booking != null =>
           _BookingCard(booking: home.booking!, lang: lang),
         'car' when home.car != null =>
-          _CarCard(car: home.car!, nextPm: home.nextPm, lang: lang),
+          _ActiveCarCard(home: home, lang: lang),
         _ => const _AddCarCard(),
       },
     );
+  }
+}
+
+/// The 'car' dynamic card, but for the SELECTED garage car: when the user
+/// taps another car the card follows it — refetching that car's next-PM
+/// instead of showing the server-picked first car's plan.
+final class _ActiveCarCard extends StatefulWidget {
+  const _ActiveCarCard({required this.home, required this.lang});
+
+  final HomeState home;
+  final String lang;
+
+  @override
+  State<_ActiveCarCard> createState() => _ActiveCarCardState();
+}
+
+final class _ActiveCarCardState extends State<_ActiveCarCard> {
+  NextPm? _pm;
+  String? _pmVin;
+
+  @override
+  Widget build(BuildContext context) {
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final activeVin = context.watch<ActiveCarCubit>().state;
+    final active =
+        resolveActiveCar(widget.home.garage, brandKey, activeVin) ??
+            widget.home.car!;
+
+    // Server already resolved the first car's plan; reuse it when it matches.
+    if (active.vin == widget.home.car?.vin) {
+      return _CarCard(
+          car: active, nextPm: widget.home.nextPm, lang: widget.lang);
+    }
+    if (_pmVin != active.vin) {
+      _pmVin = active.vin;
+      _pm = null;
+      final user = sl<AuthBloc>().state.user;
+      AccountRepository(sl<ApiClient>())
+          .nextPm(
+              vin: active.vin ?? '',
+              modelCode: active.modelCode ?? '',
+              userId: user?.userId)
+          .then((pm) {
+        if (mounted && _pmVin == active.vin) setState(() => _pm = pm);
+      });
+    }
+    return _CarCard(car: active, nextPm: _pm, lang: widget.lang);
   }
 }
 
@@ -239,13 +1224,6 @@ final class WorkOrderCard extends StatelessWidget {
             Color.lerp(scheme.primary, Colors.black, 0.2)!,
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.3),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,6 +1292,33 @@ final class WorkOrderCard extends StatelessWidget {
                       fontSize: context.rf(11),
                       color: onBrand.withValues(alpha: 0.7))),
             ],
+          ],
+          // بطاقة العمل + الدفع — the website JobCard cycle as an in-app
+          // sheet (gateways: كامل المبلغ/تابي/تمارا/سداد).
+          if ((order.guid ?? '').isNotEmpty) ...[
+            SizedBox(height: context.rs(12)),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: scheme.primary,
+                  minimumSize: const Size.fromHeight(44),
+                  shape: const StadiumBorder(),
+                  textStyle: TextStyle(
+                      fontSize: context.rf(12.5),
+                      fontWeight: FontWeight.w800),
+                ),
+                onPressed: () =>
+                    showJobCardPaySheet(context, guid: order.guid!),
+                icon: Icon(
+                    order.readyToPay
+                        ? Icons.payments_rounded
+                        : Icons.receipt_long_rounded,
+                    size: 17),
+                label: Text(order.readyToPay ? t.jdPayNow : t.acJobCard),
+              ),
+            ),
           ],
         ],
       ),
@@ -449,13 +1454,6 @@ final class _BookingCard extends StatelessWidget {
             Color.lerp(scheme.primary, Colors.black, 0.24)!,
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: scheme.primary.withValues(alpha: 0.3),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,7 +1523,11 @@ final class _BookingCard extends StatelessWidget {
                     fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
               ),
               onPressed: () {
-                final car = garage.firstOrNull;
+                final car = resolveActiveCar(
+                        garage,
+                        sl<settings.ThemeCubit>().state.brandKey,
+                        sl<ActiveCarCubit>().state) ??
+                    garage.firstOrNull;
                 if (car != null) {
                   showMaintenanceBookingSheet(context, car: car);
                 }
@@ -613,8 +1615,6 @@ final class _CarCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: context.rs(12)),
-          if (nextPm != null) NextPmLine(pm: nextPm!, car: car),
-          SizedBox(height: context.rs(12)),
           Row(children: [
             Expanded(
               child: FilledButton(
@@ -642,7 +1642,9 @@ final class _CarCard extends StatelessWidget {
                     textStyle: TextStyle(
                         fontSize: context.rf(12.5),
                         fontWeight: FontWeight.w800)),
-                onPressed: () => showVehicleHubSheet(context, car: car),
+                onPressed: () => showVehicleHubSheet(context,
+                    car: car,
+                    onChanged: context.read<RegisteredHomeCubit>().load),
                 child: Text(t.acCarDetails),
               ),
             ),
@@ -711,7 +1713,12 @@ final class _GarageSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final cubit = context.read<RegisteredHomeCubit>();
-    if (home.garage.isEmpty) return const SizedBox.shrink();
+    // Brand-scoped garage (Lexus theme → Lexus cars) + selectable active car.
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final cars = garageForBrand(home.garage, brandKey);
+    final activeVin = context.watch<ActiveCarCubit>().state;
+    final active = resolveActiveCar(home.garage, brandKey, activeVin);
+    if (cars.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -724,12 +1731,13 @@ final class _GarageSection extends StatelessWidget {
         CardRail(
           height: context.rs(244),
           itemWidth: context.rs(300),
-          itemCount: home.garage.length,
+          itemCount: cars.length,
           itemBuilder: (context, i) {
-            final car = home.garage[i];
+            final car = cars[i];
             final scheme = Theme.of(context).colorScheme;
             final isDark =
                 Theme.of(context).brightness == Brightness.dark;
+            final isActive = car.vin != null && car.vin == active?.vin;
             final subLine = [
               if ((car.year ?? '').toString().trim().isNotEmpty)
                 '${car.year}',
@@ -738,7 +1746,9 @@ final class _GarageSection extends StatelessWidget {
                   : car.maskedPlate(lang),
             ].where((s) => s.trim().isNotEmpty).join(' • ');
             return HomeCard(
-              onTap: () => showVehicleHubSheet(context, car: car),
+              // Tap = make this the active car (offers + protection follow
+              // it). The hub opens from the details roundel below.
+              onTap: () => sl<ActiveCarCubit>().select(car.vin),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -760,7 +1770,7 @@ final class _GarageSection extends StatelessWidget {
                                 fit: BoxFit.cover,
                                 logicalWidth: 300),
                           ),
-                          if (i == 0)
+                          if (isActive)
                             PositionedDirectional(
                               top: context.rs(10),
                               end: context.rs(10),
@@ -769,31 +1779,55 @@ final class _GarageSection extends StatelessWidget {
                                     horizontal: context.rs(10),
                                     vertical: context.rs(4.5)),
                                 decoration: BoxDecoration(
+                                  color: scheme.primary,
+                                  borderRadius: BorderRadius.circular(999),
+                                ),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.check_rounded,
+                                          size: 11,
+                                          color: scheme.onPrimary),
+                                      SizedBox(width: context.rs(3)),
+                                      Text(
+                                        t.acActiveBadge,
+                                        style: TextStyle(
+                                            fontSize: context.rf(9),
+                                            fontWeight: FontWeight.w800,
+                                            letterSpacing: 0.8,
+                                            color: scheme.onPrimary),
+                                      ),
+                                    ]),
+                              ),
+                            ),
+                          // Details roundel — opens the vehicle hub (tap on
+                          // the card itself now selects the car).
+                          PositionedDirectional(
+                            top: context.rs(10),
+                            start: context.rs(10),
+                            child: InkWell(
+                              customBorder: const CircleBorder(),
+                              onTap: () => showVehicleHubSheet(context,
+                                  car: car,
+                                  onChanged: context
+                                      .read<RegisteredHomeCubit>()
+                                      .load),
+                              child: Container(
+                                width: context.rs(30),
+                                height: context.rs(30),
+                                decoration: BoxDecoration(
                                   color: isDark
                                       ? const Color(0xFF181B21)
                                           .withValues(alpha: 0.9)
                                       : Colors.white
                                           .withValues(alpha: 0.92),
-                                  borderRadius: BorderRadius.circular(999),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black
-                                          .withValues(alpha: 0.12),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
+                                  shape: BoxShape.circle,
                                 ),
-                                child: Text(
-                                  t.acActiveBadge,
-                                  style: TextStyle(
-                                      fontSize: context.rf(9),
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.8,
-                                      color: scheme.onSurface),
-                                ),
+                                child: Icon(Icons.tune_rounded,
+                                    size: 15, color: scheme.onSurface),
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),
@@ -851,281 +1885,96 @@ final class _QuickActions extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final cubit = context.read<RegisteredHomeCubit>();
-    final primaryCar = home.garage.firstOrNull;
+    final primaryCar = resolveActiveCar(
+            home.garage,
+            sl<settings.ThemeCubit>().state.brandKey,
+            sl<ActiveCarCubit>().state) ??
+        home.garage.firstOrNull;
 
-    // The spec's four: book service, buy a car, spare parts, my orders —
-    // each with its own pastel tint like the reference kit.
-    final actions = <(IconData, Color, String, VoidCallback)>[
+    // Reference UI: one row of 4 compact tiles, every icon in a brand-red
+    // outlined rounded square (single tint, like the mock).
+    final actions = <(IconData, String, VoidCallback)>[
       (
         Icons.build_rounded,
-        scheme.primary,
         t.ghBookMaintenance,
         () => primaryCar != null
             ? showMaintenanceBookingSheet(context, car: primaryCar)
             : showAddCarSheet(context, onAdded: cubit.load)
       ),
-      (Icons.directions_car_rounded, const Color(0xFF8A7B4F), t.acBuyCar,
+      (Icons.directions_car_rounded, t.acBuyCar,
           () => context.push(Routes.onlineStore)),
-      (Icons.settings_rounded, const Color(0xFF64748B), t.ghSpareParts,
+      (Icons.settings_rounded, t.ghSpareParts,
           () => context.push(Routes.parts)),
-      (Icons.assignment_outlined, const Color(0xFFC26A7A), t.acMyOrders,
+      (Icons.assignment_outlined, t.acMyOrders,
           () => context.push(Routes.tracking)),
     ];
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-          context.rs(16), context.rs(18), context.rs(16), 0),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        mainAxisSpacing: context.rs(12),
-        crossAxisSpacing: context.rs(12),
-        childAspectRatio: 1.12,
-        children: [
-          for (final (icon, tint, label, onTap) in actions)
-            Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(18),
-                child: Container(
-                  padding: EdgeInsets.all(context.rs(14)),
-                  decoration: softCardDecoration(context, radius: 18),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: context.rs(46),
-                        height: context.rs(46),
-                        decoration: BoxDecoration(
-                          color: tint.withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(icon, size: 20, color: tint),
-                      ),
-                      SizedBox(height: context.rs(11)),
-                      Text(
-                        label,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: context.rf(12),
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-final class _AllServicesGrid extends StatelessWidget {
-  const _AllServicesGrid({required this.lang});
-
-  final String lang;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
-    // Built-in defaults per fixed ServiceKey (icon, title, subtitle, route) —
-    // the dashboard rows override title/subtitle/order and add the photo.
-    final defaults = <String, (IconData, String, String, String)>{
-      'protection': (Icons.shield_outlined, t.ghSvcProtection,
-          t.svcProtectionSub, Routes.protection),
-      'finance': (Icons.account_balance_outlined, t.ghSvcFinance,
-          t.svcFinanceSub, Routes.finance),
-      'offers': (Icons.local_offer_outlined, t.offersTitle, t.svcOffersSub,
-          Routes.offers),
-      'store': (Icons.storefront_outlined, t.homeOnlineStore, t.svcStoreSub,
-          Routes.onlineStore),
-      'models': (Icons.directions_car_outlined, t.homeMeetTheModels,
-          t.svcModelsSub, Routes.models),
-      'tracking': (Icons.car_repair_rounded, t.trackTitle, t.svcTrackingSub,
-          Routes.tracking),
-      'finance_requests': (Icons.request_quote_outlined, t.finReqTitle,
-          t.svcFinReqSub, Routes.financeRequests),
-      'favorites': (Icons.favorite_border_rounded, t.favTitle,
-          t.svcFavoritesSub, Routes.favorites),
-      'news': (Icons.newspaper_outlined, t.newsTitle, t.svcNewsSub,
-          Routes.news),
-      'contact': (Icons.support_agent_outlined, t.contactTitle,
-          t.svcContactSub, Routes.contact),
-    };
-
-    return FutureBuilder<List<_HomeServiceCfg>>(
-      future: _HomeServiceCfg.load(),
-      builder: (context, snap) {
-        final cfg = snap.data ?? const <_HomeServiceCfg>[];
-        // (icon, title, subtitle, route, photo)
-        final rows = <(IconData, String, String, String, String?)>[];
-        if (cfg.isEmpty) {
-          for (final d in defaults.values) {
-            rows.add((d.$1, d.$2, d.$3, d.$4, null));
-          }
-        } else {
-          for (final c in cfg) {
-            final d = defaults[c.key];
-            if (d == null) continue;
-            rows.add((
-              d.$1,
-              c.title(lang) ?? d.$2,
-              c.subtitle(lang) ?? d.$3,
-              d.$4,
-              c.image,
-            ));
-          }
-        }
-
-        // The mock's tile: small red icon + title + one-line subtitle, with
-        // a large faint watermark (dashboard photo when assigned, else the
-        // service's outline icon) on the bottom-end corner.
-        return Padding(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SectionHeader(title: t.acQuickTitle),
+        Padding(
           padding: EdgeInsets.symmetric(horizontal: context.rs(16)),
-          child: GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: context.rs(12),
-            crossAxisSpacing: context.rs(12),
-            childAspectRatio: 1.5,
+          child: Row(
             children: [
-              for (final (icon, label, sub, route, photo) in rows)
-                Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(18),
-                  child: InkWell(
-                    onTap: () => context.push(route),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Ink(
-                      decoration: softCardDecoration(context, radius: 18),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(18),
-                        child: Stack(children: [
-                          PositionedDirectional(
-                            bottom: context.rs(-4),
-                            end: context.rs(6),
-                            child: photo == null || photo.isEmpty
-                                ? Icon(icon,
-                                    size: 52,
-                                    color: scheme.onSurface
-                                        .withValues(alpha: 0.07))
-                                : ClipRRect(
-                                    borderRadius:
-                                        BorderRadius.circular(12),
-                                    child: Opacity(
-                                      opacity: 0.85,
-                                      child: Image.network(
-                                        optimizedImageUrl(photo,
-                                                width: 144) ??
-                                            photo,
-                                        width: context.rs(48),
-                                        height: context.rs(40),
-                                        fit: BoxFit.cover,
-                                        gaplessPlayback: true,
-                                        errorBuilder: (_, _, _) =>
-                                            const SizedBox.shrink(),
-                                      ),
-                                    ),
-                                  ),
-                          ),
-                          Padding(
-                            padding: EdgeInsets.all(context.rs(13)),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Icon(icon,
-                                    size: 18, color: scheme.primary),
-                                SizedBox(height: context.rs(9)),
-                                Text(label,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        fontSize: context.rf(12),
-                                        height: 1.2,
-                                        fontWeight: FontWeight.w800)),
-                                SizedBox(height: context.rs(2)),
-                                Text(sub,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                        fontSize: context.rf(9.5),
-                                        color: scheme.onSurface
-                                            .withValues(alpha: 0.5))),
-                              ],
+              for (final (i, (icon, label, onTap)) in actions.indexed) ...[
+                Expanded(
+                  child: Material(
+                    color: Colors.transparent,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: onTap,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding:
+                            EdgeInsets.symmetric(vertical: context.rs(12)),
+                        decoration: softCardDecoration(context, radius: 16),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: context.rs(44),
+                              height: context.rs(44),
+                              decoration: BoxDecoration(
+                                color:
+                                    scheme.primary.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(13),
+                                border: Border.all(
+                                  color: scheme.primary
+                                      .withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: Icon(icon,
+                                  size: 20, color: scheme.primary),
                             ),
-                          ),
-                        ]),
+                            SizedBox(height: context.rs(8)),
+                            Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: context.rs(4)),
+                              child: Text(
+                                label,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: context.rf(10),
+                                    height: 1.25,
+                                    fontWeight: FontWeight.w800),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
+                if (i != actions.length - 1)
+                  SizedBox(width: context.rs(9)),
+              ],
             ],
           ),
-        );
-      },
+        ),
+      ],
     );
-  }
-}
-
-/// Dashboard-managed "All Services" row config (App_Home_Services via
-/// /api/app/home/services), memoized per app session for instant paint.
-final class _HomeServiceCfg {
-  const _HomeServiceCfg({
-    required this.key,
-    this.titleAr,
-    this.titleEn,
-    this.subAr,
-    this.subEn,
-    this.image,
-  });
-
-  final String key;
-  final String? titleAr;
-  final String? titleEn;
-  final String? subAr;
-  final String? subEn;
-  final String? image;
-
-  String? title(String lang) {
-    final v = lang == 'ar' ? titleAr : titleEn;
-    return (v == null || v.trim().isEmpty) ? null : v;
-  }
-
-  String? subtitle(String lang) {
-    final v = lang == 'ar' ? subAr : subEn;
-    return (v == null || v.trim().isEmpty) ? null : v;
-  }
-
-  static Future<List<_HomeServiceCfg>>? _memo;
-  static Future<List<_HomeServiceCfg>> load() => _memo ??= _fetch();
-
-  static Future<List<_HomeServiceCfg>> _fetch() async {
-    try {
-      final res =
-          await sl<ApiClient>().get<List<dynamic>>(ApiPaths.homeServices);
-      return (res.data ?? const <dynamic>[])
-          .whereType<Map<String, dynamic>>()
-          .map((j) => _HomeServiceCfg(
-                key: '${j['serviceKey'] ?? ''}',
-                titleAr: j['titleAr'] as String?,
-                titleEn: j['titleEn'] as String?,
-                subAr: j['subtitleAr'] as String?,
-                subEn: j['subtitleEn'] as String?,
-                image: j['imageUrl'] as String?,
-              ))
-          .toList();
-    } catch (_) {
-      _memo = null; // retry next build if the fetch failed
-      return const [];
-    }
   }
 }
 
@@ -1700,10 +2549,17 @@ final class _ProtectionForCar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final cars =
-        garage.where((c) => (c.type ?? '').isNotEmpty).toList();
+    // Brand-scoped + the ACTIVE garage car leads (its packages by default).
+    final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
+    final activeVin = context.watch<ActiveCarCubit>().state;
+    final active = resolveActiveCar(garage, brandKey, activeVin);
+    final cars = garageForBrand(garage, brandKey)
+        .where((c) => (c.type ?? '').isNotEmpty)
+        .toList()
+      ..sort((a, b) => (b.vin == active?.vin ? 1 : 0)
+          .compareTo(a.vin == active?.vin ? 1 : 0));
     return BlocProvider(
-      key: ValueKey('prot-${cars.length}'),
+      key: ValueKey('prot-${cars.length}-${active?.vin}'),
       create: (_) => _ProtCarCubit(cars),
       child: Builder(builder: (context) {
         final (sel, packages, loading) =
@@ -1749,16 +2605,6 @@ final class _ProtectionForCar extends StatelessWidget {
                                 0.2)!,
                           ],
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .primary
-                                .withValues(alpha: 0.3),
-                            blurRadius: 14,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
                       ),
                       child: Row(children: [
                         Container(
@@ -1944,25 +2790,26 @@ final class _OffersTabs extends StatelessWidget {
     // "لسيارتك" badge + ordering.
     final themeBrand = context.select(
         (settings.ThemeCubit c) => c.state.brandKey == 'lexus' ? '2' : '1');
-    final car = home.garage.firstOrNull;
+    // "لك" matches against ALL the user's cars: an offer shows only when
+    // one of their cars is in its supported list.
+    final cars = home.garage;
 
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: OffersRepository(sl<ApiClient>()).supportedMap(),
       builder: (context, snap) {
         final matched = <int>{};
-        if (car != null) {
-          for (final row in snap.data ?? const <Map<String, dynamic>>[]) {
-            final offerId =
-                int.tryParse('${row['offerId'] ?? row['OfferId']}');
-            if (offerId == null) continue;
-            final type = '${row['productTypeId'] ?? row['ProductTypeId'] ?? ''}';
-            final group = '${row['groupId'] ?? row['GroupId'] ?? ''}';
-            final brand = '${row['brandId'] ?? row['BrandId'] ?? ''}';
-            final hit = (type.isNotEmpty && type == car.type) ||
-                (group.isNotEmpty && group == car.productGroupId) ||
-                (type.isEmpty && group.isEmpty && brand == car.brandDbId);
-            if (hit) matched.add(offerId);
-          }
+        for (final row in snap.data ?? const <Map<String, dynamic>>[]) {
+          final offerId =
+              int.tryParse('${row['offerId'] ?? row['OfferId']}');
+          if (offerId == null) continue;
+          final type = '${row['productTypeId'] ?? row['ProductTypeId'] ?? ''}';
+          final group = '${row['groupId'] ?? row['GroupId'] ?? ''}';
+          final brand = '${row['brandId'] ?? row['BrandId'] ?? ''}';
+          final hit = cars.any((car) =>
+              (type.isNotEmpty && type == car.type) ||
+              (group.isNotEmpty && group == car.productGroupId) ||
+              (type.isEmpty && group.isEmpty && brand == car.brandDbId));
+          if (hit) matched.add(offerId);
         }
         return _OffersTabsBody(
           offers: offersState.offers,
@@ -2007,7 +2854,8 @@ final class _OffersTabsBody extends StatelessWidget {
           return switch (tab) {
             1 => o.typeId == 2 && visible,
             2 => o.typeId == 3 && visible,
-            _ => visible,
+            // "لك": ONLY offers whose supported cars include one of mine.
+            _ => visible && matchedOfferIds.contains(o.id),
           };
         }).toList()
           // "لك": offers matching my car float to the front.
@@ -2035,7 +2883,7 @@ final class _OffersTabsBody extends StatelessWidget {
               )
             else
               CardRail(
-                height: context.rs(438),
+                height: context.rs(392),
                 itemWidth: context.rs(310),
                 itemCount: filtered.length,
                 itemBuilder: (context, i) => OfferCard(

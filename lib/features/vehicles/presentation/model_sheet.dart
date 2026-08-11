@@ -8,9 +8,11 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
+import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/slope_hero.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../bloc/model_sheet_cubit.dart';
-import '../domain/vehicle_models.dart';
+import '../domain/specs_matrix.dart';
 import 'widgets/color_arc_picker.dart';
 
 /// Opens the model detail sheet — the website vehicle page as a bottom
@@ -115,50 +117,22 @@ final class _OverviewTab extends StatelessWidget {
     final image = state.imageFor(vehicle.image(lang));
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(24)),
+      padding: EdgeInsets.zero,
       children: [
-        SizedBox(height: context.rs(10)),
-        // Eyebrow: BRAND · YEAR — like the website "TOYOTA · 2026".
-        Text(
-          '${vehicle.brandEn.toUpperCase()} · ${vehicle.year ?? ''}',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: context.rf(11),
-            fontWeight: FontWeight.w800,
-            letterSpacing: 3,
-            color: scheme.primary,
-          ),
-        ),
-        SizedBox(height: context.rs(6)),
-        // Huge model name.
-        Text(
-          vehicle.name(lang),
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: context.rf(40),
-            height: 1.05,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -1,
-          ),
-        ),
-        if (description.isNotEmpty) ...[
-          SizedBox(height: context.rs(10)),
-          Text(
-            description,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: context.rf(12.5),
-              height: 1.6,
-              color: scheme.onSurface.withValues(alpha: 0.6),
-            ),
-          ),
-        ],
-        SizedBox(height: context.rs(10)),
-        // Car image — swaps with the selected color.
-        Hero(
-          tag: 'model-${vehicle.slug}',
-          child: SizedBox(
-            height: context.rs(190),
+        // ── Reference-mock header: curved slope blob (car_bg match → model
+        // shared Background → brand gradient) with the eyebrow + model name
+        // on it; the color-following car image overlaps its bottom curve. ──
+        SlopeHero(
+          eyebrow: '${vehicle.brandEn.toUpperCase()} · ${vehicle.year ?? ''}',
+          title: vehicle.name(lang),
+          modelKey: vehicle.groupEn,
+          year: vehicle.year,
+          background: (state.detail ?? vehicle).background(lang) ??
+              vehicle.background(lang),
+          slopeHeight: 230,
+          // Car image — KEEPS the color-swap wiring (state.imageFor).
+          car: Hero(
+            tag: 'model-${vehicle.slug}',
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 320),
               switchInCurve: Curves.easeOut,
@@ -171,6 +145,27 @@ final class _OverviewTab extends StatelessWidget {
             ),
           ),
         ),
+        SizedBox(height: context.rs(8)),
+        _overviewBody(context, t, cubit, state, lang, scheme, description),
+      ],
+    ).animate().fadeIn(duration: 240.ms);
+  }
+
+  /// Everything under the overlapping car — unchanged content, reflowed.
+  Widget _overviewBody(
+    BuildContext context,
+    AppLocalizations t,
+    ModelSheetCubit cubit,
+    ModelSheetState state,
+    String lang,
+    ColorScheme scheme,
+    String description,
+  ) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: context.rs(24)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
         // The dashed-arc mover — cycles COLORS instead of rotating the car.
         if (state.colors.isNotEmpty) ...[
           SizedBox(height: context.rs(4)),
@@ -194,6 +189,18 @@ final class _OverviewTab extends StatelessWidget {
             padding: EdgeInsets.all(20),
             child: Center(child: CircularProgressIndicator()),
           ),
+        if (description.isNotEmpty) ...[
+          SizedBox(height: context.rs(12)),
+          Text(
+            description,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: context.rf(12.5),
+              height: 1.6,
+              color: scheme.onSurface.withValues(alpha: 0.6),
+            ),
+          ),
+        ],
         // Price line.
         if (vehicle.minPrice != null) ...[
           SizedBox(height: context.rs(14)),
@@ -217,9 +224,134 @@ final class _OverviewTab extends StatelessWidget {
             ),
           ),
         ],
+        // الفئات المتوفرة — selecting a trim reloads its color palette.
+        if (state.trims.isNotEmpty) ...[
+          SizedBox(height: context.rs(22)),
+          Padding(
+            padding: EdgeInsetsDirectional.only(start: context.rs(2)),
+            child: Text(
+              t.modelsAvailableTrims,
+              style: TextStyle(
+                  fontSize: context.rf(16), fontWeight: FontWeight.w800),
+            ),
+          ),
+          SizedBox(height: context.rs(10)),
+          SizedBox(
+            height: context.rs(148),
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              itemCount: state.trims.length,
+              separatorBuilder: (_, _) => SizedBox(width: context.rs(10)),
+              itemBuilder: (context, i) {
+                final trim = state.trims[i];
+                final selected = i == state.trimIndex;
+                return GestureDetector(
+                  onTap: () => cubit.selectTrim(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: context.rs(172),
+                    padding: EdgeInsets.all(context.rs(13)),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? scheme.primary.withValues(alpha: 0.07)
+                          : scheme.surfaceContainerHighest
+                              .withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: selected
+                            ? scheme.primary
+                            : scheme.outline.withValues(alpha: 0.4),
+                        width: selected ? 1.5 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                trim.name(lang),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: context.rf(12.5),
+                                  height: 1.25,
+                                  fontWeight: FontWeight.w800,
+                                  color: selected
+                                      ? scheme.primary
+                                      : scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (selected)
+                              Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: scheme.primary,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.check_rounded,
+                                    size: 13, color: Colors.white),
+                              ),
+                          ],
+                        ),
+                        const Spacer(),
+                        Text(
+                          t.homeFrom,
+                          style: TextStyle(
+                            fontSize: context.rf(9.5),
+                            color: scheme.onSurface.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        PriceText(
+                          price: trim.minPrice,
+                          currency: t.currency,
+                          contactForPrice: t.homeContactForPrice,
+                          fontSize: context.rf(15),
+                        ),
+                        SizedBox(height: context.rs(8)),
+                        Container(
+                          width: double.infinity,
+                          padding:
+                              EdgeInsets.symmetric(vertical: context.rs(6)),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? scheme.primary
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: selected
+                                  ? scheme.primary
+                                  : scheme.outline.withValues(alpha: 0.7),
+                            ),
+                          ),
+                          child: Text(
+                            selected ? t.modelsChosen : t.modelsChooseTrim,
+                            style: TextStyle(
+                              fontSize: context.rf(10.5),
+                              fontWeight: FontWeight.w800,
+                              color: selected
+                                  ? scheme.onPrimary
+                                  : scheme.onSurface.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
         SizedBox(height: context.rs(30)),
-      ],
-    ).animate().fadeIn(duration: 240.ms);
+        ],
+      ),
+    );
   }
 }
 
@@ -267,7 +399,6 @@ final class _SpecsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final state = context.watch<ModelSheetCubit>().state;
-    final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
     if (state.loading) return const Center(child: CircularProgressIndicator());
 
@@ -315,48 +446,208 @@ final class _SpecsTab extends StatelessWidget {
               ),
           ],
         ),
-        if (state.trims.isNotEmpty) ...[
+        // Per-trim specification matrix (website buildSpecsMatrix).
+        if (state.equipments.isNotEmpty && state.trims.isNotEmpty) ...[
           SizedBox(height: context.rs(22)),
-          Text(t.modelsTrims,
-              style:
-                  TextStyle(fontSize: context.rf(16), fontWeight: FontWeight.w800)),
+          Text(t.modelsSpecsFor,
+              style: TextStyle(
+                  fontSize: context.rf(16), fontWeight: FontWeight.w800)),
           SizedBox(height: context.rs(10)),
-          for (final trim in state.trims)
-            Container(
-              margin: EdgeInsets.only(bottom: context.rs(8)),
-              padding: EdgeInsets.symmetric(
-                  horizontal: context.rs(14), vertical: context.rs(12)),
-              decoration: BoxDecoration(
-                border:
-                    Border.all(color: scheme.outline.withValues(alpha: 0.6)),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      trim.name(lang),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: context.rf(12.5),
-                          fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                  SizedBox(width: context.rs(8)),
-                  PriceText(
-                    price: trim.minPrice,
-                    currency: t.currency,
-                    contactForPrice: t.homeContactForPrice,
-                    fontSize: context.rf(13),
-                  ),
-                ],
-              ),
-            ),
+          const _SpecsMatrixView(),
         ],
         if (stats.isEmpty && state.trims.isEmpty) _Empty(text: t.modelsNoData),
       ],
     ).animate().fadeIn(duration: 240.ms);
+  }
+}
+
+/// Trim chips + one-trim spec sections, from the shared matrix transform.
+final class _SpecsMatrixView extends StatefulWidget {
+  const _SpecsMatrixView();
+
+  @override
+  State<_SpecsMatrixView> createState() => _SpecsMatrixViewState();
+}
+
+final class _SpecsMatrixViewState extends State<_SpecsMatrixView> {
+  int _trim = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<ModelSheetCubit>().state;
+    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final scheme = Theme.of(context).colorScheme;
+
+    final trims = trimsInMatrix(state.trims, state.equipments);
+    if (trims.isEmpty) return const SizedBox.shrink();
+    final trim = trims[_trim.clamp(0, trims.length - 1)];
+    final sections = buildSpecsMatrix(
+        state.equipments.where((e) => e.trimSlug == trim.slug).toList(), lang);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          height: context.rs(36),
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
+            itemCount: trims.length,
+            separatorBuilder: (_, _) => SizedBox(width: context.rs(7)),
+            itemBuilder: (context, i) {
+              final selected = i == _trim;
+              return GestureDetector(
+                onTap: () => setState(() => _trim = i),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  padding:
+                      EdgeInsets.symmetric(horizontal: context.rs(14)),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? scheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: selected
+                          ? scheme.primary
+                          : scheme.outline.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  child: Text(
+                    trims[i].name(lang),
+                    style: TextStyle(
+                      fontSize: context.rf(11),
+                      fontWeight: FontWeight.w800,
+                      color: selected
+                          ? scheme.onPrimary
+                          : scheme.onSurface.withValues(alpha: 0.65),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        SizedBox(height: context.rs(12)),
+        for (final section in sections) ...[
+          _SectionHeader(title: section.title),
+          SizedBox(height: context.rs(6)),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < section.rows.length; i++)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.rs(13),
+                        vertical: context.rs(9)),
+                    decoration: BoxDecoration(
+                      border: i == 0
+                          ? null
+                          : Border(
+                              top: BorderSide(
+                                  color: scheme.outline
+                                      .withValues(alpha: 0.25))),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            section.rows[i].label,
+                            style: TextStyle(
+                                fontSize: context.rf(11.5), height: 1.4),
+                          ),
+                        ),
+                        SizedBox(width: context.rs(10)),
+                        _SpecValue(
+                            value:
+                                section.rows[i].values[trim.slug] ?? '—'),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: context.rs(12)),
+        ],
+      ],
+    );
+  }
+}
+
+final class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Row(
+      children: [
+        Container(
+          width: 3.5,
+          height: 15,
+          decoration: BoxDecoration(
+            color: scheme.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        SizedBox(width: context.rs(7)),
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+                fontSize: context.rf(12.5), fontWeight: FontWeight.w800),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// '✓' renders as a round brand check chip; '—' muted; text otherwise.
+final class _SpecValue extends StatelessWidget {
+  const _SpecValue({required this.value});
+
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final v = value.trim();
+    final lower = v.toLowerCase();
+    if (v == '✓' || lower == 'yes' || lower == 'check') {
+      return Container(
+        width: 19,
+        height: 19,
+        decoration: BoxDecoration(
+          color: scheme.primary.withValues(alpha: 0.12),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.check_rounded, size: 13, color: scheme.primary),
+      );
+    }
+    if (v.isEmpty || v == '—') {
+      return Text('—',
+          style:
+              TextStyle(color: scheme.onSurface.withValues(alpha: 0.3)));
+    }
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+          maxWidth: MediaQuery.sizeOf(context).width * 0.4),
+      child: Text(
+        v,
+        textAlign: TextAlign.end,
+        style: TextStyle(
+            fontSize: context.rf(11.5),
+            fontWeight: FontWeight.w700,
+            height: 1.35),
+      ),
+    );
   }
 }
 
@@ -428,8 +719,15 @@ final class _FeaturesTab extends StatelessWidget {
 
 /* ─────────────────────────── Comparison ─────────────────────────── */
 
-final class _ComparisonTab extends StatelessWidget {
+final class _ComparisonTab extends StatefulWidget {
   const _ComparisonTab({super.key});
+
+  @override
+  State<_ComparisonTab> createState() => _ComparisonTabState();
+}
+
+final class _ComparisonTabState extends State<_ComparisonTab> {
+  bool _diffsOnly = false;
 
   @override
   Widget build(BuildContext context) {
@@ -439,50 +737,74 @@ final class _ComparisonTab extends StatelessWidget {
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
     if (state.loading) return const Center(child: CircularProgressIndicator());
-    if (state.trims.length < 2 || state.equipments.isEmpty) {
+
+    final trims = trimsInMatrix(state.trims, state.equipments);
+    if (trims.length < 2 || state.equipments.isEmpty) {
       return _Empty(text: t.modelsNoData);
     }
 
-    final a = state.trims[state.trimA.clamp(0, state.trims.length - 1)];
-    final b = state.trims[state.trimB.clamp(0, state.trims.length - 1)];
+    final ia = state.trimA.clamp(0, trims.length - 1);
+    var ib = state.trimB.clamp(0, trims.length - 1);
+    if (ib == ia) ib = (ia + 1) % trims.length;
+    final a = trims[ia];
+    final b = trims[ib];
+    final slugs = [a.slug ?? '', b.slug ?? ''];
 
-    List<String> equipFor(VehicleTrim trim, String section) => state.equipments
-        .where((e) => e.trimSlug == trim.slug && e.section(lang) == section)
-        .map((e) => e.description(lang))
-        .where((s) => s.isNotEmpty)
-        .toList();
+    final matrix = buildSpecsMatrix(state.equipments, lang);
+    final sections = _diffsOnly
+        ? [
+            for (final s in matrix)
+              if (s.rows.any((r) => r.differsAcross(slugs)))
+                SpecSection(
+                  title: s.title,
+                  rows: s.rows.where((r) => r.differsAcross(slugs)).toList(),
+                ),
+          ]
+        : matrix;
 
-    final sections = <String>[];
-    for (final e in state.equipments) {
-      final s = e.section(lang);
-      if (s.isNotEmpty && !sections.contains(s)) sections.add(s);
-    }
-
-    Widget trimPicker(int value, ValueChanged<int> onChanged) => Expanded(
-          child: DropdownButtonFormField<int>(
-            initialValue: value.clamp(0, state.trims.length - 1),
-            isExpanded: true,
-            style: TextStyle(fontSize: context.rf(11.5), color: scheme.onSurface),
-            items: [
-              for (var i = 0; i < state.trims.length; i++)
-                DropdownMenuItem(
-                    value: i,
-                    child: Text(state.trims[i].name(lang),
-                        overflow: TextOverflow.ellipsis)),
-            ],
-            onChanged: (v) => onChanged(v ?? 0),
-          ),
-        );
+    List<AppDropdownItem<int>> trimItems() => [
+          for (var i = 0; i < trims.length; i++)
+            AppDropdownItem(
+              value: i,
+              label: trims[i].name(lang),
+              icon: Icons.directions_car_filled_rounded,
+            ),
+        ];
 
     return ListView(
       padding: EdgeInsets.all(context.rs(16)),
       children: [
-        Row(children: [
-          trimPicker(state.trimA, cubit.setTrimA),
-          SizedBox(width: context.rs(10)),
-          trimPicker(state.trimB, cubit.setTrimB),
-        ]),
-        SizedBox(height: context.rs(8)),
+        Text(
+          t.modelsCompareHint,
+          style: TextStyle(
+            fontSize: context.rf(11.5),
+            color: scheme.onSurface.withValues(alpha: 0.55),
+          ),
+        ),
+        SizedBox(height: context.rs(12)),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: AppDropdown<int>(
+                label: '${t.modelsChooseTrim} 1',
+                value: ia,
+                items: trimItems(),
+                onChanged: cubit.setTrimA,
+              ),
+            ),
+            SizedBox(width: context.rs(10)),
+            Expanded(
+              child: AppDropdown<int>(
+                label: '${t.modelsChooseTrim} 2',
+                value: ib,
+                items: trimItems(),
+                onChanged: cubit.setTrimB,
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: context.rs(6)),
         Row(children: [
           Expanded(
               child: PriceText(
@@ -498,73 +820,130 @@ final class _ComparisonTab extends StatelessWidget {
                   contactForPrice: t.homeContactForPrice,
                   fontSize: context.rf(13))),
         ]),
-        SizedBox(height: context.rs(12)),
-        for (final section in sections) ...[
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.symmetric(
-                horizontal: context.rs(12), vertical: context.rs(8)),
-            decoration: BoxDecoration(
-              color: scheme.primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              section,
-              style: TextStyle(
-                  fontSize: context.rf(11.5),
-                  fontWeight: FontWeight.w800,
-                  color: scheme.primary),
-            ),
-          ),
-          SizedBox(height: context.rs(8)),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _EquipList(items: equipFor(a, section))),
-              SizedBox(width: context.rs(10)),
-              Expanded(child: _EquipList(items: equipFor(b, section))),
-            ],
-          ),
-          SizedBox(height: context.rs(14)),
-        ],
-      ],
-    ).animate().fadeIn(duration: 240.ms);
-  }
-}
-
-final class _EquipList extends StatelessWidget {
-  const _EquipList({required this.items});
-
-  final List<String> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (items.isEmpty) {
-      return Text('—',
-          style: TextStyle(color: scheme.onSurface.withValues(alpha: 0.35)));
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final s in items)
-          Padding(
-            padding: EdgeInsets.only(bottom: context.rs(5)),
+        SizedBox(height: context.rs(10)),
+        // إظهار الاختلافات فقط
+        InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => setState(() => _diffsOnly = !_diffsOnly),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: context.rs(6)),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.check_rounded, size: 12, color: scheme.primary),
-                SizedBox(width: context.rs(5)),
-                Expanded(
-                  child: Text(s,
-                      style:
-                          TextStyle(fontSize: context.rf(10.5), height: 1.4)),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 21,
+                  height: 21,
+                  decoration: BoxDecoration(
+                    color: _diffsOnly ? scheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(
+                      color: _diffsOnly
+                          ? scheme.primary
+                          : scheme.outline.withValues(alpha: 0.9),
+                      width: 1.4,
+                    ),
+                  ),
+                  child: _diffsOnly
+                      ? const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.white)
+                      : null,
+                ),
+                SizedBox(width: context.rs(8)),
+                Text(
+                  t.modelsDiffsOnly,
+                  style: TextStyle(
+                      fontSize: context.rf(12),
+                      fontWeight: FontWeight.w700),
                 ),
               ],
             ),
           ),
+        ),
+        SizedBox(height: context.rs(8)),
+        for (final section in sections) ...[
+          _SectionHeader(title: section.title),
+          SizedBox(height: context.rs(6)),
+          Container(
+            decoration: BoxDecoration(
+              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              children: [
+                for (var i = 0; i < section.rows.length; i++)
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.rs(12),
+                        vertical: context.rs(9)),
+                    decoration: BoxDecoration(
+                      color: section.rows[i].differsAcross(slugs)
+                          ? scheme.primary.withValues(alpha: 0.05)
+                          : null,
+                      borderRadius: i == 0
+                          ? const BorderRadius.vertical(
+                              top: Radius.circular(14))
+                          : i == section.rows.length - 1
+                              ? const BorderRadius.vertical(
+                                  bottom: Radius.circular(14))
+                              : null,
+                      border: i == 0
+                          ? null
+                          : Border(
+                              top: BorderSide(
+                                  color: scheme.outline
+                                      .withValues(alpha: 0.25))),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          section.rows[i].label,
+                          style: TextStyle(
+                            fontSize: context.rf(11),
+                            height: 1.35,
+                            color:
+                                scheme.onSurface.withValues(alpha: 0.65),
+                          ),
+                        ),
+                        SizedBox(height: context.rs(5)),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerStart,
+                                child: _SpecValue(
+                                    value: section.rows[i]
+                                            .values[a.slug] ??
+                                        '—'),
+                              ),
+                            ),
+                            Container(
+                              width: 1,
+                              height: 16,
+                              color:
+                                  scheme.outline.withValues(alpha: 0.4),
+                            ),
+                            Expanded(
+                              child: Align(
+                                alignment: AlignmentDirectional.centerEnd,
+                                child: _SpecValue(
+                                    value: section.rows[i]
+                                            .values[b.slug] ??
+                                        '—'),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          SizedBox(height: context.rs(12)),
+        ],
       ],
-    );
+    ).animate().fadeIn(duration: 240.ms);
   }
 }
 

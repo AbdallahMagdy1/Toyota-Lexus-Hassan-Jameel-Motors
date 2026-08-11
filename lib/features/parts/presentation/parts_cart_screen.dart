@@ -9,6 +9,7 @@ import '../../../core/di/injector.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -43,61 +44,71 @@ final class PartsCartScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return const Column(children: [
+      AppHeader(),
+      Expanded(child: PartsCartBody()),
+    ]);
+  }
+}
+
+/// The spare-parts cart body (empty state / line items + coupon + summary) —
+/// reused by [PartsCartScreen] and the "Spare parts cart" tab in the main
+/// cart screen.
+final class PartsCartBody extends StatelessWidget {
+  const PartsCartBody({super.key});
+
+  @override
+  Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final items = context.watch<PartsCartCubit>().state;
     final cubit = context.read<PartsCartCubit>();
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
 
-    return Column(children: [
-      const AppHeader(),
-      Expanded(
-        child: items.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.shopping_bag_outlined,
-                        size: 44,
-                        color: scheme.onSurface.withValues(alpha: 0.25)),
-                    SizedBox(height: context.rs(10)),
-                    Text(t.pcEmpty,
-                        style: TextStyle(
-                            fontSize: context.rf(13.5),
-                            fontWeight: FontWeight.w700)),
-                    SizedBox(height: context.rs(14)),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                          shape: const StadiumBorder(),
-                          padding: EdgeInsets.symmetric(
-                              horizontal: context.rs(24),
-                              vertical: context.rs(11))),
-                      onPressed: () => context.go(Routes.parts),
-                      child: Text(t.pcContinue),
-                    ),
-                  ],
+    return items.isEmpty
+        ? Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.shopping_bag_outlined,
+                    size: 44,
+                    color: scheme.onSurface.withValues(alpha: 0.25)),
+                SizedBox(height: context.rs(10)),
+                Text(t.pcEmpty,
+                    style: TextStyle(
+                        fontSize: context.rf(13.5),
+                        fontWeight: FontWeight.w700)),
+                SizedBox(height: context.rs(14)),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: EdgeInsets.symmetric(
+                          horizontal: context.rs(24),
+                          vertical: context.rs(11))),
+                  onPressed: () => context.go(Routes.parts),
+                  child: Text(t.pcContinue),
                 ),
-              )
-            : ListView(
-                padding: EdgeInsets.fromLTRB(context.rs(16), context.rs(16),
-                    context.rs(16), context.rs(140)),
-                children: [
-                  Text(t.pcTitle,
-                      style: TextStyle(
-                          fontSize: context.rf(22),
-                          fontWeight: FontWeight.w800)),
-                  SizedBox(height: context.rs(14)),
-                  for (final it in items)
-                    Padding(
-                      padding: EdgeInsets.only(bottom: context.rs(10)),
-                      child: _CartLine(item: it, lang: lang, cubit: cubit),
-                    ),
-                  SizedBox(height: context.rs(8)),
-                  const _CartSummary(),
-                ],
-              ),
-      ),
-    ]);
+              ],
+            ),
+          )
+        : ListView(
+            padding: EdgeInsets.fromLTRB(context.rs(16), context.rs(16),
+                context.rs(16), context.rs(140)),
+            children: [
+              Text(t.pcTitle,
+                  style: TextStyle(
+                      fontSize: context.rf(22),
+                      fontWeight: FontWeight.w800)),
+              SizedBox(height: context.rs(14)),
+              for (final it in items)
+                Padding(
+                  padding: EdgeInsets.only(bottom: context.rs(10)),
+                  child: _CartLine(item: it, lang: lang, cubit: cubit),
+                ),
+              SizedBox(height: context.rs(8)),
+              const _CartSummary(),
+            ],
+          );
   }
 }
 
@@ -657,16 +668,15 @@ final class _PartsCheckoutScreenState extends State<PartsCheckoutScreen> {
                     ]),
                   ),
                   SizedBox(height: context.rs(12)),
-                  DropdownButtonFormField<String>(
-                    initialValue: _branchId,
-                    isExpanded: true,
+                  AppDropdown<String>(
+                    label: '${t.pcChooseBranch} *',
+                    value: _branchId,
                     items: [
                       for (final b in _branches)
-                        DropdownMenuItem(
-                            value: b.id, child: Text(b.name(lang))),
+                        AppDropdownItem(
+                            value: b.id ?? '', label: b.name(lang)),
                     ],
                     onChanged: (v) => setState(() => _branchId = v),
-                    decoration: deco('${t.pcChooseBranch} *'),
                   ),
                 ],
               ),
@@ -846,7 +856,7 @@ final class _PartsCheckoutScreenState extends State<PartsCheckoutScreen> {
                   SizedBox(height: context.rs(6)),
                   Center(
                     child: TextButton(
-                      onPressed: () => context.pop(),
+                      onPressed: () => appBack(context),
                       child: Text(t.pcTitle,
                           style: TextStyle(
                               fontSize: context.rf(11.5),

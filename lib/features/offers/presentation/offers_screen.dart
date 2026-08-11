@@ -292,10 +292,10 @@ final class OfferCard extends StatelessWidget {
               height: 1.3),
         ),
         if (offer.excerpt(lang).isNotEmpty) ...[
-          SizedBox(height: context.rs(6)),
+          SizedBox(height: context.rs(5)),
           Text(
             offer.excerpt(lang),
-            maxLines: 3,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: context.rf(11.5),
@@ -304,7 +304,7 @@ final class OfferCard extends StatelessWidget {
             ),
           ),
         ],
-        if (expand) const Spacer() else SizedBox(height: context.rs(14)),
+        if (expand) const Spacer() else SizedBox(height: context.rs(12)),
         // Full-width countdown strip (mock's DAYS/HRS/MIN/SEC panel).
         OfferCountdown(endDate: offer.endDate, now: now),
         SizedBox(height: context.rs(12)),

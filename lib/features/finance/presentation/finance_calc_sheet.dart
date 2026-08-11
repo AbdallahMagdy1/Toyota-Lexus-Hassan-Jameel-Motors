@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../online_store/data/online_store_repository.dart';
@@ -102,50 +103,32 @@ final class _CalcBody extends StatelessWidget {
         SizedBox(height: context.rs(18)),
 
         // ── Car / Model dropdowns (hero FinanceBar) ──
-        DropdownButtonFormField<String>(
-          initialValue: state.groupKey,
-          isExpanded: true,
+        AppDropdown<String>(
+          label: t.homeSelectCar,
+          value: state.groupKey,
           items: [
             for (final g in groups)
-              DropdownMenuItem(
+              AppDropdownItem(
                 value: FinanceCalcState.keyOf(g),
-                child: Text(groupLabel(g), overflow: TextOverflow.ellipsis),
+                label: groupLabel(g),
               ),
           ],
           onChanged: cubit.selectGroup,
-          decoration: InputDecoration(
-            labelText: t.homeSelectCar,
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          ),
         ),
         SizedBox(height: context.rs(12)),
-        DropdownButtonFormField<int>(
-          key: ValueKey('trims-${state.groupKey}'),
-          initialValue: trims.isEmpty ? null : (state.trimIndex ?? 0),
-          isExpanded: true,
+        AppDropdown<int>(
+          label: t.homeSelectModel,
+          value: trims.isEmpty ? null : (state.trimIndex ?? 0),
           items: [
             for (var i = 0; i < trims.length; i++)
-              DropdownMenuItem(
+              AppDropdownItem(
                 value: i,
-                child: Text(
-                  trimLabel(trims[i]).isEmpty
-                      ? trims[i].year ?? ''
-                      : trimLabel(trims[i]),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                label: trimLabel(trims[i]).isEmpty
+                    ? trims[i].year ?? ''
+                    : trimLabel(trims[i]),
               ),
           ],
           onChanged: cubit.selectTrim,
-          decoration: InputDecoration(
-            labelText: t.homeSelectModel,
-            border:
-                OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-          ),
         ),
         SizedBox(height: context.rs(14)),
 

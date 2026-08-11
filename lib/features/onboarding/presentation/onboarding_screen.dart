@@ -7,8 +7,11 @@ import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/slide_media.dart';
 import '../../../shared/widgets/brand_backdrop.dart';
+import '../../../shared/widgets/swipe_action.dart';
 import '../../../shared/widgets/page_dots.dart';
+import '../../auth/bloc/auth_bloc.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/onboarding_cubit.dart';
@@ -40,21 +43,39 @@ final class _OnboardingView extends StatelessWidget {
     final theme = context.watch<ThemeCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final t = AppLocalizations.of(context);
-    final brandColor = theme.brand.colorFor(Brightness.dark);
     final slide = state.slides[state.index.clamp(0, state.slides.length - 1)];
 
     return Stack(
       fit: StackFit.expand,
       children: [
-        // Backdrop crossfades between slides' dashboard media.
+        // Backdrop crossfades between slides' dashboard media — video slides
+        // auto-play muted behind the brand overlay.
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 450),
-          child: BrandBackdrop(
-            key: ValueKey(slide.id),
-            brand: theme.brand,
-            imageUrl: slide.mediaType == 'image' ? slide.mediaUrl : null,
-            overlay: slide.overlay,
-          ),
+          child: slide.mediaType == 'video' &&
+                  (slide.mediaUrl ?? '').isNotEmpty
+              ? Stack(
+                  key: ValueKey('v${slide.id}'),
+                  fit: StackFit.expand,
+                  children: [
+                    SlideMedia(
+                        mediaType: slide.mediaType,
+                        mediaUrl: slide.mediaUrl),
+                    if (slide.overlay)
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                        ),
+                      ),
+                  ],
+                )
+              : BrandBackdrop(
+                  key: ValueKey(slide.id),
+                  brand: theme.brand,
+                  imageUrl:
+                      slide.mediaType == 'image' ? slide.mediaUrl : null,
+                  overlay: slide.overlay,
+                ),
         ),
         SafeArea(
           child: Column(
@@ -65,7 +86,7 @@ final class _OnboardingView extends StatelessWidget {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _BrandSwitcher(active: theme.brandKey),
+                    const SizedBox.shrink(),
                     TextButton(
                       onPressed: () => context.read<LocaleCubit>().toggle(),
                       style: TextButton.styleFrom(foregroundColor: Colors.white),
@@ -96,41 +117,42 @@ final class _OnboardingView extends StatelessWidget {
                   children: [
                     PageDots(count: state.slides.length, index: state.index),
                     SizedBox(height: context.rs(20)),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: brandColor,
-                        foregroundColor: theme.brand.foregroundFor(Brightness.dark),
-                      ),
-                      onPressed: () {
-                        if (state.isLast) {
+                    // The reference swipe CTA — greets a signed-in user by
+                    // name and routes by auth state.
+                    Builder(builder: (context) {
+                      final user = context.watch<AuthBloc>().state.user;
+                      final first = (user?.displayName(lang) ?? '')
+                              .split(' ')
+                              .firstOrNull ??
+                          '';
+                      final label = user != null && first.isNotEmpty
+                          ? '${t.onboardingHello} $first — ${t.onboardingGetStarted}'
+                          : t.onboardingGetStarted;
+                      return SwipeAction(
+                        label: label,
+                        onConfirm: () async {
                           cubit.complete();
-                          context.go(Routes.welcome);
-                        } else {
-                          cubit.next();
-                        }
-                      },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(t.onboardingGetStarted),
-                          const SizedBox(width: 6),
-                          const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-                        ],
-                      ),
-                    ),
+                          context.go(
+                              user != null ? Routes.home : Routes.welcome);
+                          return true;
+                        },
+                      );
+                    }),
                     const SizedBox(height: 12),
-                    OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
-                        backgroundColor: Colors.white.withValues(alpha: 0.06),
+                    if (context.watch<AuthBloc>().state.user == null)
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                              color: Colors.white.withValues(alpha: 0.25)),
+                          backgroundColor: Colors.white.withValues(alpha: 0.06),
+                        ),
+                        onPressed: () {
+                          cubit.complete();
+                          context.go(Routes.signIn);
+                        },
+                        child: Text(t.onboardingSignIn),
                       ),
-                      onPressed: () {
-                        cubit.complete();
-                        context.go(Routes.signIn);
-                      },
-                      child: Text(t.onboardingSignIn),
-                    ),
                     SizedBox(height: context.rs(12)),
                     Text(
                       t.onboardingTerms,
@@ -235,60 +257,3 @@ final class _SlideCopy extends StatelessWidget {
 
 /// Toyota / Lexus pill switcher — swaps the whole app palette live
 /// (same effect as visiting toyotahj.com vs lexushj.com).
-final class _BrandSwitcher extends StatelessWidget {
-  const _BrandSwitcher({required this.active});
-
-  final String active;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _BrandChip(label: t.brandToyota, brandKey: 'toyota', selected: active == 'toyota'),
-          _BrandChip(label: t.brandLexus, brandKey: 'lexus', selected: active == 'lexus'),
-        ],
-      ),
-    );
-  }
-}
-
-final class _BrandChip extends StatelessWidget {
-  const _BrandChip({required this.label, required this.brandKey, required this.selected});
-
-  final String label;
-  final String brandKey;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.read<ThemeCubit>().setBrand(brandKey),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected ? Colors.white.withValues(alpha: 0.16) : Colors.transparent,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: selected ? 1 : 0.6),
-            fontSize: 12.5,
-            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-}

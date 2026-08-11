@@ -13,9 +13,11 @@ part 'theme_state.dart';
 /// first frame is already branded, then refreshes from the API — the same
 /// server-paint-then-live-refresh flow the website uses.
 final class ThemeCubit extends Cubit<ThemeState> {
-  ThemeCubit(this._repo, this._store)
+  ThemeCubit(this._repo, this._store, {String? fixedBrand})
       : super(ThemeState(
-          brandKey: _store.brand ?? 'toyota',
+          // The brand is FIXED at build time (main.dart brandTheme) — no
+          // in-app switching.
+          brandKey: fixedBrand ?? _store.brand ?? 'toyota',
           themes: _repo.cached(),
           mode: switch (_store.themeMode) {
             'light' => ThemeMode.light,
@@ -35,11 +37,9 @@ final class ThemeCubit extends Cubit<ThemeState> {
     if (live != null && !isClosed) emit(state.copyWith(themes: live));
   }
 
-  void setBrand(String key) {
-    if (key == state.brandKey) return;
-    _store.setBrand(key);
-    emit(state.copyWith(brandKey: key));
-  }
+  /// Brand switching is disabled — the brand is fixed via main.dart's
+  /// [brandTheme]. Kept as a no-op so old call sites stay harmless.
+  void setBrand(String key) {}
 
   void setMode(ThemeMode mode) {
     _store.setThemeMode(switch (mode) {

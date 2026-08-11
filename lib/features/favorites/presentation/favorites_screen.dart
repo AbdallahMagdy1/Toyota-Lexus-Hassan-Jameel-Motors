@@ -51,7 +51,7 @@ final class _FavoritesView extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () => context.go(Routes.home),
+                  onPressed: () => appBack(context),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 ),
                 Expanded(

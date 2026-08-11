@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../protection/data/protection_repository.dart';
@@ -308,61 +309,36 @@ final class _AddCarView extends StatelessWidget {
                 ),
             ]),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              key: ValueKey('year-${state.brandDbId}'),
-              initialValue: state.year,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.offersYear,
+              value: state.year,
               items: [
                 for (final y in state.years())
-                  DropdownMenuItem(value: y, child: Text(y)),
+                  AppDropdownItem(value: y, label: y),
               ],
               onChanged: cubit.selectYear,
-              decoration: InputDecoration(
-                labelText: t.offersYear,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              key: ValueKey('group-${state.brandDbId}-${state.year}'),
-              initialValue: state.groupId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.homeSelectCar,
+              value: state.groupId,
               items: [
                 for (final g in state.groupOptions())
-                  DropdownMenuItem(value: g.id, child: Text(g.name(lang))),
+                  AppDropdownItem(value: g.id ?? '', label: g.name(lang)),
               ],
               onChanged: cubit.selectGroup,
-              decoration: InputDecoration(
-                labelText: t.homeSelectCar,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              key: ValueKey('model-${state.groupId}'),
-              initialValue: state.modelId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.homeSelectModel,
+              value: state.modelId,
               items: [
                 for (final m in state.modelOptions())
-                  DropdownMenuItem(
-                      value: m.id,
-                      child: Text('${m.name(lang)} ${m.year ?? ''}'.trim(),
-                          overflow: TextOverflow.ellipsis)),
+                  AppDropdownItem(
+                      value: m.id ?? '',
+                      label: '${m.name(lang)} ${m.year ?? ''}'.trim()),
               ],
               onChanged: cubit.selectModel,
-              decoration: InputDecoration(
-                labelText: t.homeSelectModel,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             const SizedBox(height: 12),
             TextField(
@@ -604,24 +580,53 @@ final class _MeterView extends StatelessWidget {
 /* ═══════════════════════ Vehicle hub ═══════════════════════ */
 
 /// Compact Vehicle Hub — overview + next-PM (backend-computed) + actions.
-void showVehicleHubSheet(BuildContext context, {required GarageCar car}) {
+/// [onChanged] fires after edits that alter the garage (e.g. renaming).
+void showVehicleHubSheet(BuildContext context,
+    {required GarageCar car, VoidCallback? onChanged}) {
   showHeroBottomSheet<void>(
     context,
     heightFactor: 0.8,
-    builder: (_) => _VehicleHub(car: car),
+    builder: (_) => _VehicleHub(car: car, onChanged: onChanged),
   );
 }
 
-final class _VehicleHub extends StatelessWidget {
-  const _VehicleHub({required this.car});
+final class _VehicleHub extends StatefulWidget {
+  const _VehicleHub({required this.car, this.onChanged});
 
   final GarageCar car;
+  final VoidCallback? onChanged;
+
+  @override
+  State<_VehicleHub> createState() => _VehicleHubState();
+}
+
+final class _VehicleHubState extends State<_VehicleHub> {
+  /// Locally applied nickname so the open hub reflects a rename instantly
+  /// (the garage refresh happens behind it via [_VehicleHub.onChanged]).
+  String? _alias;
+
+  String _displayName(GarageCar car, String lang) {
+    final a = (_alias ?? '').trim();
+    return a.isNotEmpty ? a : car.displayName(lang);
+  }
+
+  void _rename(AppLocalizations t) {
+    showRenameCarSheet(context, car: widget.car, onRenamed: (alias) {
+      if (!mounted) return;
+      setState(() => _alias = alias);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(t.alSaved)));
+      widget.onChanged?.call();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
+    final car = widget.car;
 
     return Material(
       color: scheme.surface,
@@ -639,16 +644,39 @@ final class _VehicleHub extends StatelessWidget {
                   url: car.image, fit: BoxFit.contain, logicalWidth: 360),
             ),
             SizedBox(height: context.rs(8)),
-            Text(
-              '${car.displayName(lang)} ${car.year ?? ''}'.trim(),
-              style: TextStyle(
-                  fontSize: context.rf(19), fontWeight: FontWeight.w800),
-            ),
+            Row(children: [
+              Flexible(
+                child: Text(
+                  '${_displayName(car, lang)} ${car.year ?? ''}'.trim(),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                      fontSize: context.rf(19), fontWeight: FontWeight.w800),
+                ),
+              ),
+              SizedBox(width: context.rs(8)),
+              // Pencil roundel — rename the car (nickname).
+              InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _rename(t),
+                child: Container(
+                  width: context.rs(28),
+                  height: context.rs(28),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: scheme.primary.withValues(alpha: 0.08),
+                    border: Border.all(
+                        color: scheme.primary.withValues(alpha: 0.35)),
+                  ),
+                  child: Icon(Icons.edit_rounded,
+                      size: 14, color: scheme.primary),
+                ),
+              ),
+            ]),
             SizedBox(height: context.rs(14)),
 
             // Next PM — computed by the backend proc (single truth).
             if ((car.vin ?? '').isNotEmpty && (car.modelCode ?? '').isNotEmpty)
-              _NextPmBlock(car: car),
 
             SizedBox(height: context.rs(14)),
             for (final (label, value) in [
@@ -741,121 +769,138 @@ final class _VehicleHub extends StatelessWidget {
   }
 }
 
-final class _NextPmBlock extends StatelessWidget {
-  const _NextPmBlock({required this.car});
+/* ═══════════════════════ Rename car (nickname) ═══════════════════════ */
 
-  final GarageCar car;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<NextPm?>(
-      future: AccountRepository(sl<ApiClient>()).nextPm(
-        vin: car.vin!,
-        modelCode: car.modelCode!,
-        userId: sl<AuthBloc>().state.user?.userId,
-      ),
-      builder: (context, snap) {
-        final pm = snap.data;
-        if (pm == null) return const SizedBox.shrink();
-        return NextPmLine(pm: pm, car: car);
-      },
-    );
-  }
+/// Small rename sheet — a text field prefilled with the current alias +
+/// save (App_UserCar_SetAlias via the alias endpoint). Calls [onRenamed]
+/// with the saved nickname on success.
+void showRenameCarSheet(BuildContext context,
+    {required GarageCar car, void Function(String alias)? onRenamed}) {
+  showModalBottomSheet<void>(
+    context: context,
+    // Root navigator so the sheet covers the shell's bottom-nav overlay.
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (_) => _RenameCarView(car: car, onRenamed: onRenamed),
+  );
 }
 
-/// The next-maintenance line — shared by the dynamic card and the hub.
-/// Renders the backend status verbatim; never guesses (per spec).
-final class NextPmLine extends StatelessWidget {
-  const NextPmLine({super.key, required this.pm, required this.car});
+final class _RenameCarView extends StatefulWidget {
+  const _RenameCarView({required this.car, this.onRenamed});
 
-  final NextPm pm;
   final GarageCar car;
+  final void Function(String alias)? onRenamed;
+
+  @override
+  State<_RenameCarView> createState() => _RenameCarViewState();
+}
+
+final class _RenameCarViewState extends State<_RenameCarView> {
+  late final TextEditingController _controller =
+      TextEditingController(text: (widget.car.alias ?? '').trim());
+  bool _busy = false;
+  bool _failed = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final alias = _controller.text.trim();
+    if (alias.isEmpty || _busy) return;
+    setState(() {
+      _busy = true;
+      _failed = false;
+    });
+    final userId = sl<AuthBloc>().state.user?.userId ?? 0;
+    final (ok, _) = await AccountRepository(sl<ApiClient>()).setCarAlias(
+      vin: widget.car.vin ?? '',
+      userId: userId,
+      alias: alias,
+    );
+    if (!mounted) return;
+    if (ok) {
+      Navigator.of(context).pop();
+      widget.onRenamed?.call(alias);
+    } else {
+      setState(() {
+        _busy = false;
+        _failed = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
 
-    final (icon, text, tone) = switch (pm.status) {
-      'ok' => (
-          Icons.build_circle_outlined,
-          t.acNextPm(formatPrice((pm.nextPmkm ?? 0).toDouble()),
-              formatPrice((pm.remainingKM ?? 0).toDouble())),
-          scheme.primary
-        ),
-      'overdue' => (
-          Icons.warning_amber_rounded,
-          t.acPmOverdue(formatPrice((pm.nextPmkm ?? 0).toDouble())),
-          scheme.error
-        ),
-      'no_mapping' => (
-          Icons.info_outline_rounded,
-          t.acPmNoPlan,
-          scheme.onSurface.withValues(alpha: 0.6)
-        ),
-      _ => (
-          Icons.speed_rounded,
-          t.acPmNeedsReading,
-          scheme.onSurface.withValues(alpha: 0.7)
-        ),
-    };
-
-    return Container(
-      padding: EdgeInsets.all(context.rs(12)),
-      decoration: BoxDecoration(
-        color: tone.withValues(alpha: 0.07),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: tone.withValues(alpha: 0.25)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(children: [
-            Icon(icon, size: 17, color: tone),
-            SizedBox(width: context.rs(7)),
-            Expanded(
-              child: Text(text,
-                  style: TextStyle(
-                      fontSize: context.rf(12),
-                      fontWeight: FontWeight.w700,
-                      height: 1.4,
-                      color: tone)),
-            ),
-          ]),
-          if (pm.currentOdometer != null) ...[
-            SizedBox(height: context.rs(6)),
+    return Padding(
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Center(child: SheetHandle()),
+            const SizedBox(height: 14),
+            Text(t.alRename,
+                style:
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
             Text(
-              t.acOdometerLine(
-                formatPrice(pm.currentOdometer!.toDouble()),
-                pm.odometerSource == 'branch'
-                    ? t.acSourceBranch
-                    : t.acSourceCustomer,
-              ),
+              widget.car.displayName(
+                  context.watch<LocaleCubit>().state.languageCode),
               style: TextStyle(
-                fontSize: context.rf(10.5),
-                color: Theme.of(context)
-                    .colorScheme
-                    .onSurface
-                    .withValues(alpha: 0.55),
+                  fontSize: 12,
+                  color: scheme.onSurface.withValues(alpha: 0.6)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 40,
+              onChanged: (_) => setState(() {}),
+              onSubmitted: (_) => _save(),
+              decoration: InputDecoration(
+                labelText: t.alNickname,
+                counterText: '',
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
               ),
+            ),
+            if (_failed)
+              Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Text(t.offersSubmitFailed,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: scheme.error, fontSize: 12)),
+              ),
+            const SizedBox(height: 16),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  shape: const StadiumBorder()),
+              onPressed:
+                  _busy || _controller.text.trim().isEmpty ? null : _save,
+              child: _busy
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.4))
+                  : Text(t.commonSubmit),
             ),
           ],
-          SizedBox(height: context.rs(8)),
-          Align(
-            alignment: AlignmentDirectional.centerEnd,
-            child: TextButton.icon(
-              style: TextButton.styleFrom(
-                  padding: EdgeInsets.symmetric(horizontal: context.rs(10)),
-                  minimumSize: Size.zero),
-              onPressed: () => showMeterSheet(context, car: car),
-              icon: const Icon(Icons.speed_rounded, size: 15),
-              label: Text(t.acUpdateMeter,
-                  style: TextStyle(
-                      fontSize: context.rf(11), fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
+

@@ -16,8 +16,12 @@ import '../../../shared/widgets/app_header.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../../app/router/routes.dart';
 import '../data/account_repository.dart';
 import '../domain/account_models.dart';
+import 'finance_requests_screen.dart' show FinanceRequest;
 import 'registered_home_view.dart' show WorkOrderCard;
 
 /// Live service tracking — the old app's cycle rebuilt: initial snapshot
@@ -270,7 +274,8 @@ final class _OrdersTrackingSection extends StatefulWidget {
 
 final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
   Future<List<TrackedOrder>>? _future;
-  int _tab = 0; // 0 all, 1 maintenance, 2 protection, 3 order
+  Future<List<FinanceRequest>>? _finFuture;
+  int _tab = 0; // 0 all, 1 maintenance, 2 protection, 3 order, 4 finance
 
   @override
   void initState() {
@@ -286,12 +291,33 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
     super.dispose();
   }
 
+  static Future<List<FinanceRequest>> _fetchFinance() async {
+    final user = sl<AuthBloc>().state.user;
+    if (user == null) return const [];
+    try {
+      final res = await sl<ApiClient>().get<List<dynamic>>(
+        ApiPaths.financeRequests,
+        query: {
+          'userId': user.userId,
+          if ((user.phone ?? '').isNotEmpty) 'phone': user.phone,
+        },
+      );
+      return (res.data ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(FinanceRequest.fromJson)
+          .toList();
+    } on DioException {
+      return const [];
+    }
+  }
+
   void _refetch() {
     final user = sl<AuthBloc>().state.user;
     if (user == null) return;
     setState(() {
       _future = AccountRepository(sl<ApiClient>())
           .ordersTracking(userId: user.userId, custId: user.custId);
+      _finFuture = _fetchFinance();
     });
   }
 
@@ -328,6 +354,7 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
                 t.trkKindMaintenance,
                 t.trkKindProtection,
                 t.trkKindOrders,
+                t.trkKindFinance,
               ].indexed)
                 ChoiceChip(
                   label: Text(label,
@@ -337,7 +364,9 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
                 ),
             ]),
             SizedBox(height: context.rs(12)),
-            if (snap.connectionState != ConnectionState.done)
+            if (_tab == 4)
+              _FinanceMiniList(future: _finFuture)
+            else if (snap.connectionState != ConnectionState.done)
               const Padding(
                 padding: EdgeInsets.all(24),
                 child: Center(child: CircularProgressIndicator()),
@@ -358,6 +387,160 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
                   padding: EdgeInsets.only(bottom: context.rs(10)),
                   child: _TrackedOrderCard(order: o, lang: lang),
                 ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Compact finance-request cards inside the tracking hub (التمويل chip).
+/// Tapping opens the full finance tracker screen.
+final class _FinanceMiniList extends StatelessWidget {
+  const _FinanceMiniList({required this.future});
+
+  final Future<List<FinanceRequest>>? future;
+
+  static String _label(BuildContext context, String? status) {
+    final t = AppLocalizations.of(context);
+    return switch (status) {
+      'Received' => t.finStageReceived,
+      'Contacting' => t.finStageContacting,
+      'SentToBank' => t.finStageSentToBank,
+      'Approved' => t.finStageApproved,
+      'Rejected' => t.finStageRejected,
+      _ => status ?? '',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final scheme = Theme.of(context).colorScheme;
+
+    return FutureBuilder<List<FinanceRequest>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.connectionState != ConnectionState.done) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        final items = snap.data ?? const <FinanceRequest>[];
+        if (items.isEmpty) {
+          return Padding(
+            padding: EdgeInsets.all(context.rs(24)),
+            child: Center(
+              child: Text(t.trkHubEmpty,
+                  style: TextStyle(
+                      fontSize: context.rf(12),
+                      color: scheme.onSurface.withValues(alpha: 0.55))),
+            ),
+          );
+        }
+        return Column(
+          children: [
+            for (final r in items.take(10))
+              Padding(
+                padding: EdgeInsets.only(bottom: context.rs(10)),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () => context.go(Routes.financeRequests),
+                  child: Container(
+                    padding: EdgeInsets.all(context.rs(14)),
+                    decoration: softCardDecoration(context, radius: 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: context.rs(36),
+                              height: context.rs(36),
+                              decoration: BoxDecoration(
+                                color:
+                                    scheme.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.account_balance_rounded,
+                                  size: 18, color: scheme.primary),
+                            ),
+                            SizedBox(width: context.rs(10)),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    r.vehicleName(lang),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                        fontSize: context.rf(12.5),
+                                        fontWeight: FontWeight.w800),
+                                  ),
+                                  Text(
+                                    r.bankName(lang),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: context.rf(10.5),
+                                      color: scheme.onSurface
+                                          .withValues(alpha: 0.55),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: context.rs(9),
+                                  vertical: context.rs(4)),
+                              decoration: BoxDecoration(
+                                color: (r.rejected
+                                        ? scheme.error
+                                        : r.status == 'Approved'
+                                            ? const Color(0xFF1E9E5A)
+                                            : scheme.primary)
+                                    .withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(999),
+                              ),
+                              child: Text(
+                                _label(context, r.status),
+                                style: TextStyle(
+                                  fontSize: context.rf(9.5),
+                                  fontWeight: FontWeight.w800,
+                                  color: r.rejected
+                                      ? scheme.error
+                                      : r.status == 'Approved'
+                                          ? const Color(0xFF1E9E5A)
+                                          : scheme.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: context.rs(10)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(99),
+                          child: LinearProgressIndicator(
+                            value: (r.stageIndex + 1) /
+                                FinanceRequest.stages.length,
+                            minHeight: 5,
+                            backgroundColor:
+                                scheme.onSurface.withValues(alpha: 0.08),
+                            color: r.rejected
+                                ? scheme.error
+                                : scheme.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
           ],
         );
       },

@@ -10,9 +10,13 @@ final class UsedCarsRepository {
 
   final ApiClient _api;
 
-  Future<List<UsedCarItem>> list() async {
+  /// Brand-scoped like the website: Toyota theme shows Toyota only.
+  Future<List<UsedCarItem>> list({String? brand}) async {
     try {
-      final res = await _api.get<List<dynamic>>('/api/app/used-cars/list');
+      final res = await _api.get<List<dynamic>>(
+        '/api/app/used-cars/list',
+        query: {if ((brand ?? '').isNotEmpty) 'brand': brand},
+      );
       return (res.data ?? [])
           .whereType<Map<String, dynamic>>()
           .map(UsedCarItem.fromJson)

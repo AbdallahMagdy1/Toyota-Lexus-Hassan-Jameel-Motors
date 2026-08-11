@@ -734,6 +734,24 @@ abstract class AppLocalizations {
   /// **'Search a model…'**
   String get storeSearch;
 
+  /// No description provided for @osHeroGreeting.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello {name} 👋'**
+  String osHeroGreeting(String name);
+
+  /// No description provided for @osHeroGreetingGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome 👋'**
+  String get osHeroGreetingGuest;
+
+  /// No description provided for @osHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Find your perfect car'**
+  String get osHeroTitle;
+
   /// No description provided for @storePriceUpTo.
   ///
   /// In en, this message translates to:
@@ -829,6 +847,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Browse cars'**
   String get cartBrowse;
+
+  /// No description provided for @cartTabVehicles.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicles cart'**
+  String get cartTabVehicles;
+
+  /// No description provided for @cartTabParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Spare parts cart'**
+  String get cartTabParts;
 
   /// No description provided for @favTitle.
   ///
@@ -3745,6 +3775,1212 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing to track yet.'**
   String get trkHubEmpty;
+
+  /// No description provided for @mbuyType.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase type'**
+  String get mbuyType;
+
+  /// No description provided for @mbuyOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get mbuyOnline;
+
+  /// No description provided for @mbuyOrder.
+  ///
+  /// In en, this message translates to:
+  /// **'Purchase order'**
+  String get mbuyOrder;
+
+  /// No description provided for @mbuyFastReserve.
+  ///
+  /// In en, this message translates to:
+  /// **'Fast reserve'**
+  String get mbuyFastReserve;
+
+  /// No description provided for @mbuyCash.
+  ///
+  /// In en, this message translates to:
+  /// **'Cash'**
+  String get mbuyCash;
+
+  /// No description provided for @mbuyDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery method'**
+  String get mbuyDelivery;
+
+  /// No description provided for @mbuyBranch.
+  ///
+  /// In en, this message translates to:
+  /// **'Branch pickup'**
+  String get mbuyBranch;
+
+  /// No description provided for @mbuyAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver to address'**
+  String get mbuyAddress;
+
+  /// No description provided for @mbuyAddressHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the delivery address'**
+  String get mbuyAddressHint;
+
+  /// No description provided for @mbuySwipe.
+  ///
+  /// In en, this message translates to:
+  /// **'Swipe to complete'**
+  String get mbuySwipe;
+
+  /// No description provided for @mbuySelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select...'**
+  String get mbuySelect;
+
+  /// No description provided for @onboardingHello.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello'**
+  String get onboardingHello;
+
+  /// No description provided for @modelsAvailableTrims.
+  ///
+  /// In en, this message translates to:
+  /// **'Available trims'**
+  String get modelsAvailableTrims;
+
+  /// No description provided for @modelsChooseTrim.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose trim'**
+  String get modelsChooseTrim;
+
+  /// No description provided for @modelsChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected'**
+  String get modelsChosen;
+
+  /// No description provided for @modelsDiffsOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Show differences only'**
+  String get modelsDiffsOnly;
+
+  /// No description provided for @modelsCompareHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick two trims to compare side by side'**
+  String get modelsCompareHint;
+
+  /// No description provided for @modelsColorsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Available colors'**
+  String get modelsColorsTitle;
+
+  /// No description provided for @modelsSpecsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Trim specifications'**
+  String get modelsSpecsFor;
+
+  /// No description provided for @pfTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My account'**
+  String get pfTitle;
+
+  /// No description provided for @pfMyData.
+  ///
+  /// In en, this message translates to:
+  /// **'My data'**
+  String get pfMyData;
+
+  /// No description provided for @pfMyCars.
+  ///
+  /// In en, this message translates to:
+  /// **'My cars'**
+  String get pfMyCars;
+
+  /// No description provided for @pfMyOrders.
+  ///
+  /// In en, this message translates to:
+  /// **'My orders'**
+  String get pfMyOrders;
+
+  /// No description provided for @pfMyBookings.
+  ///
+  /// In en, this message translates to:
+  /// **'My bookings'**
+  String get pfMyBookings;
+
+  /// No description provided for @pfFinanceRequests.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance requests'**
+  String get pfFinanceRequests;
+
+  /// No description provided for @pfFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get pfFavorites;
+
+  /// No description provided for @pfNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get pfNotifications;
+
+  /// No description provided for @pfContactData.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact details'**
+  String get pfContactData;
+
+  /// No description provided for @pfPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get pfPassword;
+
+  /// No description provided for @pfDeleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get pfDeleteAccount;
+
+  /// No description provided for @pfSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save changes'**
+  String get pfSave;
+
+  /// No description provided for @pfSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved successfully'**
+  String get pfSaved;
+
+  /// No description provided for @pfSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Some data could not be saved'**
+  String get pfSaveFailed;
+
+  /// No description provided for @pfNameAr.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (Arabic)'**
+  String get pfNameAr;
+
+  /// No description provided for @pfNameEn.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (English)'**
+  String get pfNameEn;
+
+  /// No description provided for @pfFirstName.
+  ///
+  /// In en, this message translates to:
+  /// **'First name'**
+  String get pfFirstName;
+
+  /// No description provided for @pfMiddleName.
+  ///
+  /// In en, this message translates to:
+  /// **'Middle name'**
+  String get pfMiddleName;
+
+  /// No description provided for @pfLastName.
+  ///
+  /// In en, this message translates to:
+  /// **'Last name'**
+  String get pfLastName;
+
+  /// No description provided for @pfGender.
+  ///
+  /// In en, this message translates to:
+  /// **'Gender'**
+  String get pfGender;
+
+  /// No description provided for @pfCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get pfCountry;
+
+  /// No description provided for @pfCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get pfCity;
+
+  /// No description provided for @pfAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Address'**
+  String get pfAddress;
+
+  /// No description provided for @pfIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity number'**
+  String get pfIdentity;
+
+  /// No description provided for @pfCr.
+  ///
+  /// In en, this message translates to:
+  /// **'Commercial registration'**
+  String get pfCr;
+
+  /// No description provided for @pfAccountType.
+  ///
+  /// In en, this message translates to:
+  /// **'Account type'**
+  String get pfAccountType;
+
+  /// No description provided for @pfPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number'**
+  String get pfPhone;
+
+  /// No description provided for @pfEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email'**
+  String get pfEmail;
+
+  /// No description provided for @pfPhoneExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone number already in use'**
+  String get pfPhoneExists;
+
+  /// No description provided for @pfEmailExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Email already in use'**
+  String get pfEmailExists;
+
+  /// No description provided for @pfIdentityExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity number already in use'**
+  String get pfIdentityExists;
+
+  /// No description provided for @pfOldPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password'**
+  String get pfOldPassword;
+
+  /// No description provided for @pfNewPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'New password'**
+  String get pfNewPassword;
+
+  /// No description provided for @pfConfirmPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm password'**
+  String get pfConfirmPassword;
+
+  /// No description provided for @pfPasswordMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Passwords do not match'**
+  String get pfPasswordMismatch;
+
+  /// No description provided for @pfPasswordShort.
+  ///
+  /// In en, this message translates to:
+  /// **'At least 6 characters'**
+  String get pfPasswordShort;
+
+  /// No description provided for @pfWrongOldPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Current password is incorrect'**
+  String get pfWrongOldPassword;
+
+  /// No description provided for @pfChangePassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Change password'**
+  String get pfChangePassword;
+
+  /// No description provided for @pfDeleteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will be deactivated and your data hidden from the app. This cannot be undone from the app.'**
+  String get pfDeleteWarning;
+
+  /// No description provided for @pfDeleteConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type \"DELETE\" to confirm'**
+  String get pfDeleteConfirmHint;
+
+  /// No description provided for @pfDeleteWord.
+  ///
+  /// In en, this message translates to:
+  /// **'DELETE'**
+  String get pfDeleteWord;
+
+  /// No description provided for @pfSignedInAs.
+  ///
+  /// In en, this message translates to:
+  /// **'Signed in as'**
+  String get pfSignedInAs;
+
+  /// No description provided for @pfGuest.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest'**
+  String get pfGuest;
+
+  /// No description provided for @pfSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get pfSignIn;
+
+  /// No description provided for @pfNoNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get pfNoNotifications;
+
+  /// No description provided for @pfNoFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorites yet'**
+  String get pfNoFavorites;
+
+  /// No description provided for @cmpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaints'**
+  String get cmpTitle;
+
+  /// No description provided for @cmpSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit a complaint'**
+  String get cmpSubmit;
+
+  /// No description provided for @cmpSubmitSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us what happened and our team will follow up step by step'**
+  String get cmpSubmitSub;
+
+  /// No description provided for @cmpTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Track complaints'**
+  String get cmpTrack;
+
+  /// No description provided for @cmpTrackSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow your complaints and our team\'s replies step by step'**
+  String get cmpTrackSub;
+
+  /// No description provided for @cmpType.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint type'**
+  String get cmpType;
+
+  /// No description provided for @cmpTypeSales.
+  ///
+  /// In en, this message translates to:
+  /// **'Sales'**
+  String get cmpTypeSales;
+
+  /// No description provided for @cmpTypeParts.
+  ///
+  /// In en, this message translates to:
+  /// **'Spare parts'**
+  String get cmpTypeParts;
+
+  /// No description provided for @cmpTypeMaintenance.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance'**
+  String get cmpTypeMaintenance;
+
+  /// No description provided for @cmpTypeOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get cmpTypeOther;
+
+  /// No description provided for @cmpName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get cmpName;
+
+  /// No description provided for @cmpPhone.
+  ///
+  /// In en, this message translates to:
+  /// **'Phone'**
+  String get cmpPhone;
+
+  /// No description provided for @cmpEmail.
+  ///
+  /// In en, this message translates to:
+  /// **'Email (optional)'**
+  String get cmpEmail;
+
+  /// No description provided for @cmpSubject.
+  ///
+  /// In en, this message translates to:
+  /// **'Subject (optional)'**
+  String get cmpSubject;
+
+  /// No description provided for @cmpBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint details'**
+  String get cmpBody;
+
+  /// No description provided for @cmpBodyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us exactly what happened…'**
+  String get cmpBodyHint;
+
+  /// No description provided for @cmpAttach.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached photos (optional)'**
+  String get cmpAttach;
+
+  /// No description provided for @cmpAttachHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to 6 photos (max 4 MB each)'**
+  String get cmpAttachHint;
+
+  /// No description provided for @cmpConsent.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the privacy policy and processing of my personal data'**
+  String get cmpConsent;
+
+  /// No description provided for @cmpSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit complaint'**
+  String get cmpSend;
+
+  /// No description provided for @cmpSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your complaint was received'**
+  String get cmpSent;
+
+  /// No description provided for @cmpRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint number'**
+  String get cmpRef;
+
+  /// No description provided for @cmpStageReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint received'**
+  String get cmpStageReceived;
+
+  /// No description provided for @cmpStageUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Update / reply'**
+  String get cmpStageUpdated;
+
+  /// No description provided for @cmpStageSolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Solved'**
+  String get cmpStageSolved;
+
+  /// No description provided for @cmpStatusNew.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get cmpStatusNew;
+
+  /// No description provided for @cmpStatusUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'New reply'**
+  String get cmpStatusUpdated;
+
+  /// No description provided for @cmpStatusSolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Solved'**
+  String get cmpStatusSolved;
+
+  /// No description provided for @cmpConversation.
+  ///
+  /// In en, this message translates to:
+  /// **'Conversation'**
+  String get cmpConversation;
+
+  /// No description provided for @cmpYou.
+  ///
+  /// In en, this message translates to:
+  /// **'You'**
+  String get cmpYou;
+
+  /// No description provided for @cmpStaff.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer care team'**
+  String get cmpStaff;
+
+  /// No description provided for @cmpReplyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write your reply…'**
+  String get cmpReplyHint;
+
+  /// No description provided for @cmpReplySend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send reply'**
+  String get cmpReplySend;
+
+  /// No description provided for @cmpEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No complaints yet'**
+  String get cmpEmpty;
+
+  /// No description provided for @cmpBodyText.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint text'**
+  String get cmpBodyText;
+
+  /// No description provided for @finReqSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Own your car with financing offers you can\'t miss'**
+  String get finReqSub;
+
+  /// No description provided for @finAbsher.
+  ///
+  /// In en, this message translates to:
+  /// **'Autofill from Absher'**
+  String get finAbsher;
+
+  /// No description provided for @finAbsherOtp.
+  ///
+  /// In en, this message translates to:
+  /// **'Verification code'**
+  String get finAbsherOtp;
+
+  /// No description provided for @finAbsherId.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity number'**
+  String get finAbsherId;
+
+  /// No description provided for @finAbsherMobile.
+  ///
+  /// In en, this message translates to:
+  /// **'Mobile (5xxxxxxxx)'**
+  String get finAbsherMobile;
+
+  /// No description provided for @finAbsherBirth.
+  ///
+  /// In en, this message translates to:
+  /// **'Date of birth'**
+  String get finAbsherBirth;
+
+  /// No description provided for @finAbsherSend.
+  ///
+  /// In en, this message translates to:
+  /// **'Send verification code'**
+  String get finAbsherSend;
+
+  /// No description provided for @finAbsherConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm'**
+  String get finAbsherConfirm;
+
+  /// No description provided for @finAbsherFilled.
+  ///
+  /// In en, this message translates to:
+  /// **'Details filled from Absher'**
+  String get finAbsherFilled;
+
+  /// No description provided for @finDocs.
+  ///
+  /// In en, this message translates to:
+  /// **'Required documents'**
+  String get finDocs;
+
+  /// No description provided for @finDocsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional for now — attach them to speed up your request, or our team will collect them'**
+  String get finDocsHint;
+
+  /// No description provided for @finWorkSector.
+  ///
+  /// In en, this message translates to:
+  /// **'Employer type'**
+  String get finWorkSector;
+
+  /// No description provided for @finGov.
+  ///
+  /// In en, this message translates to:
+  /// **'Governmental'**
+  String get finGov;
+
+  /// No description provided for @finPrivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Private sector'**
+  String get finPrivate;
+
+  /// No description provided for @finIdDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'National ID'**
+  String get finIdDoc;
+
+  /// No description provided for @finLicenseDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Driving license'**
+  String get finLicenseDoc;
+
+  /// No description provided for @finSalaryDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Salary letter'**
+  String get finSalaryDoc;
+
+  /// No description provided for @finInsuranceDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'GOSI printout'**
+  String get finInsuranceDoc;
+
+  /// No description provided for @finStatementDoc.
+  ///
+  /// In en, this message translates to:
+  /// **'Bank statement'**
+  String get finStatementDoc;
+
+  /// No description provided for @finUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get finUpload;
+
+  /// No description provided for @finUploaded.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached'**
+  String get finUploaded;
+
+  /// No description provided for @finPickFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file (image or PDF)'**
+  String get finPickFile;
+
+  /// No description provided for @finFileTooBig.
+  ///
+  /// In en, this message translates to:
+  /// **'Max 4 MB'**
+  String get finFileTooBig;
+
+  /// No description provided for @finIncome.
+  ///
+  /// In en, this message translates to:
+  /// **'Net monthly income'**
+  String get finIncome;
+
+  /// No description provided for @finFirstPayOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Down payment (optional)'**
+  String get finFirstPayOptional;
+
+  /// No description provided for @finLastPay.
+  ///
+  /// In en, this message translates to:
+  /// **'Final payment'**
+  String get finLastPay;
+
+  /// No description provided for @finMonthly.
+  ///
+  /// In en, this message translates to:
+  /// **'Monthly installment'**
+  String get finMonthly;
+
+  /// No description provided for @finFinalPrice.
+  ///
+  /// In en, this message translates to:
+  /// **'Final price'**
+  String get finFinalPrice;
+
+  /// No description provided for @finPeriodTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance period'**
+  String get finPeriodTitle;
+
+  /// No description provided for @finMonths.
+  ///
+  /// In en, this message translates to:
+  /// **'months'**
+  String get finMonths;
+
+  /// No description provided for @finNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get finNotes;
+
+  /// No description provided for @finFullName.
+  ///
+  /// In en, this message translates to:
+  /// **'Full name'**
+  String get finFullName;
+
+  /// No description provided for @finSendReq.
+  ///
+  /// In en, this message translates to:
+  /// **'Send request'**
+  String get finSendReq;
+
+  /// No description provided for @finReqSent.
+  ///
+  /// In en, this message translates to:
+  /// **'Your request was received'**
+  String get finReqSent;
+
+  /// No description provided for @finReqRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Request number'**
+  String get finReqRef;
+
+  /// No description provided for @finTrackCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Track request'**
+  String get finTrackCta;
+
+  /// No description provided for @finBankRate.
+  ///
+  /// In en, this message translates to:
+  /// **'Financing entity'**
+  String get finBankRate;
+
+  /// No description provided for @finIncomeRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your net income'**
+  String get finIncomeRequired;
+
+  /// No description provided for @trkKindFinance.
+  ///
+  /// In en, this message translates to:
+  /// **'Finance'**
+  String get trkKindFinance;
+
+  /// No description provided for @acJobCard.
+  ///
+  /// In en, this message translates to:
+  /// **'Job card'**
+  String get acJobCard;
+
+  /// No description provided for @acTabMyCars.
+  ///
+  /// In en, this message translates to:
+  /// **'My cars'**
+  String get acTabMyCars;
+
+  /// No description provided for @acStoreToyota.
+  ///
+  /// In en, this message translates to:
+  /// **'Toyota Store'**
+  String get acStoreToyota;
+
+  /// No description provided for @acStoreLexus.
+  ///
+  /// In en, this message translates to:
+  /// **'Lexus Store'**
+  String get acStoreLexus;
+
+  /// No description provided for @acKm.
+  ///
+  /// In en, this message translates to:
+  /// **'km'**
+  String get acKm;
+
+  /// No description provided for @acQuickTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Quick services'**
+  String get acQuickTitle;
+
+  /// No description provided for @cpnExclusive.
+  ///
+  /// In en, this message translates to:
+  /// **'Exclusive offer'**
+  String get cpnExclusive;
+
+  /// No description provided for @cpnCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Code copied'**
+  String get cpnCopied;
+
+  /// No description provided for @cpnRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get cpnRemove;
+
+  /// No description provided for @cpnCouponDiscount.
+  ///
+  /// In en, this message translates to:
+  /// **'Coupon discount'**
+  String get cpnCouponDiscount;
+
+  /// No description provided for @svcPartsSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Genuine parts for your car — branch pickup'**
+  String get svcPartsSub;
+
+  /// No description provided for @mhTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance services'**
+  String get mhTitle;
+
+  /// No description provided for @mhHeroBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance Center'**
+  String get mhHeroBadge;
+
+  /// No description provided for @mhHeroTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Book your maintenance'**
+  String get mhHeroTitle;
+
+  /// No description provided for @mhHeroAccent.
+  ///
+  /// In en, this message translates to:
+  /// **'in 10 seconds'**
+  String get mhHeroAccent;
+
+  /// No description provided for @mhHeroSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Certified maintenance center with 60+ years of experience. Original parts and factory-certified technicians.'**
+  String get mhHeroSub;
+
+  /// No description provided for @mhBadgeCertified.
+  ///
+  /// In en, this message translates to:
+  /// **'Officially certified'**
+  String get mhBadgeCertified;
+
+  /// No description provided for @mhBadgeSaso.
+  ///
+  /// In en, this message translates to:
+  /// **'SASO certified'**
+  String get mhBadgeSaso;
+
+  /// No description provided for @mhReserveNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Reserve now'**
+  String get mhReserveNow;
+
+  /// No description provided for @mhPeriodic.
+  ///
+  /// In en, this message translates to:
+  /// **'Periodic schedule'**
+  String get mhPeriodic;
+
+  /// No description provided for @mhYears.
+  ///
+  /// In en, this message translates to:
+  /// **'Years of experience'**
+  String get mhYears;
+
+  /// No description provided for @mhCars.
+  ///
+  /// In en, this message translates to:
+  /// **'Cars served'**
+  String get mhCars;
+
+  /// No description provided for @mhSatisfaction.
+  ///
+  /// In en, this message translates to:
+  /// **'Satisfaction'**
+  String get mhSatisfaction;
+
+  /// No description provided for @mhBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'Branches'**
+  String get mhBranches;
+
+  /// No description provided for @mhJourney.
+  ///
+  /// In en, this message translates to:
+  /// **'Your maintenance journey'**
+  String get mhJourney;
+
+  /// No description provided for @mhJourneySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Four simple steps from booking to handover.'**
+  String get mhJourneySub;
+
+  /// No description provided for @mhStep1.
+  ///
+  /// In en, this message translates to:
+  /// **'Book appointment'**
+  String get mhStep1;
+
+  /// No description provided for @mhStep1Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the service and time that suits you'**
+  String get mhStep1Sub;
+
+  /// No description provided for @mhStep2.
+  ///
+  /// In en, this message translates to:
+  /// **'Car inspection'**
+  String get mhStep2;
+
+  /// No description provided for @mhStep2Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Our experts perform a precise comprehensive check'**
+  String get mhStep2Sub;
+
+  /// No description provided for @mhStep3.
+  ///
+  /// In en, this message translates to:
+  /// **'Execution'**
+  String get mhStep3;
+
+  /// No description provided for @mhStep3Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance completed with the highest quality standards'**
+  String get mhStep3Sub;
+
+  /// No description provided for @mhStep4.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery'**
+  String get mhStep4;
+
+  /// No description provided for @mhStep4Sub.
+  ///
+  /// In en, this message translates to:
+  /// **'Receive your car ready and in best condition'**
+  String get mhStep4Sub;
+
+  /// No description provided for @mhOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'Maintenance offers'**
+  String get mhOffers;
+
+  /// No description provided for @mhWhyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Why choose Hassan Jameel?'**
+  String get mhWhyTitle;
+
+  /// No description provided for @mhWhySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Numbers and facts that speak for themselves.'**
+  String get mhWhySub;
+
+  /// No description provided for @mhFeatures.
+  ///
+  /// In en, this message translates to:
+  /// **'Features'**
+  String get mhFeatures;
+
+  /// No description provided for @mhUs.
+  ///
+  /// In en, this message translates to:
+  /// **'Us'**
+  String get mhUs;
+
+  /// No description provided for @mhOthers.
+  ///
+  /// In en, this message translates to:
+  /// **'Others'**
+  String get mhOthers;
+
+  /// No description provided for @mhRowParts.
+  ///
+  /// In en, this message translates to:
+  /// **'100% original parts'**
+  String get mhRowParts;
+
+  /// No description provided for @mhRowDiag.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory-certified diagnostics'**
+  String get mhRowDiag;
+
+  /// No description provided for @mhRowTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Specialized team'**
+  String get mhRowTeam;
+
+  /// No description provided for @mhRowReport.
+  ///
+  /// In en, this message translates to:
+  /// **'Digital technical report with photos'**
+  String get mhRowReport;
+
+  /// No description provided for @mhRowTech.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory-certified technicians'**
+  String get mhRowTech;
+
+  /// No description provided for @mhFeedback.
+  ///
+  /// In en, this message translates to:
+  /// **'Guest feedback'**
+  String get mhFeedback;
+
+  /// No description provided for @mhVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified'**
+  String get mhVerified;
+
+  /// No description provided for @mhPeriodicTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Periodic maintenance schedule'**
+  String get mhPeriodicTitle;
+
+  /// No description provided for @mhPeriodicSub.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a mileage to see its scheduled tasks.'**
+  String get mhPeriodicSub;
+
+  /// No description provided for @mhPeriodicEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No periodic data available.'**
+  String get mhPeriodicEmpty;
+
+  /// No description provided for @mhImportant.
+  ///
+  /// In en, this message translates to:
+  /// **'Important'**
+  String get mhImportant;
+
+  /// No description provided for @mhReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to book?'**
+  String get mhReady;
+
+  /// No description provided for @mhReadySub.
+  ///
+  /// In en, this message translates to:
+  /// **'Reserve your slot in seconds and drive away with confidence.'**
+  String get mhReadySub;
+
+  /// No description provided for @mhBookService.
+  ///
+  /// In en, this message translates to:
+  /// **'Book a service'**
+  String get mhBookService;
+
+  /// No description provided for @mhWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Talk on WhatsApp'**
+  String get mhWhatsApp;
+
+  /// No description provided for @alNickname.
+  ///
+  /// In en, this message translates to:
+  /// **'Nickname'**
+  String get alNickname;
+
+  /// No description provided for @alRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get alRename;
+
+  /// No description provided for @alSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Name saved'**
+  String get alSaved;
+
+  /// No description provided for @contactPopTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Customer service'**
+  String get contactPopTitle;
+
+  /// No description provided for @contactPopOnline.
+  ///
+  /// In en, this message translates to:
+  /// **'Online now'**
+  String get contactPopOnline;
+
+  /// No description provided for @contactPopWhatsApp.
+  ///
+  /// In en, this message translates to:
+  /// **'WhatsApp chat'**
+  String get contactPopWhatsApp;
+
+  /// No description provided for @contactPopCall.
+  ///
+  /// In en, this message translates to:
+  /// **'Call us'**
+  String get contactPopCall;
 }
 
 class _AppLocalizationsDelegate

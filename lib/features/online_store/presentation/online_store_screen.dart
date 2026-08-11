@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
+import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../auth/bloc/auth_bloc.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -55,7 +56,7 @@ final class _StoreView extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () => context.pop(),
+                  onPressed: () => appBack(context),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 ),
                 Expanded(
@@ -106,6 +107,9 @@ final class _StoreView extends StatelessWidget {
               ],
             ),
           ),
+          // ── Hero header (Rentcars-style): brand gradient panel with the
+          //    greeting → big title → search pill flow. ──
+          const _HeroHeader(),
           Expanded(
             child: switch (state.status) {
               StoreStatus.loading =>
@@ -131,25 +135,24 @@ final class _StoreView extends StatelessWidget {
                     )
                   : RefreshIndicator(
                       onRefresh: cubit.load,
-                      child: GridView.builder(
+                      child: ListView.builder(
                         padding: EdgeInsets.fromLTRB(context.rs(16),
-                            context.rs(10), context.rs(16), context.rs(30)),
+                            context.rs(12), context.rs(16), context.rs(140)),
                         physics: const AlwaysScrollableScrollPhysics(),
-                        cacheExtent: 800,
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: context.isTablet ? 3 : 2,
-                          mainAxisSpacing: context.rs(12),
-                          crossAxisSpacing: context.rs(12),
-                          childAspectRatio: 0.58,
-                        ),
+                        cacheExtent: 900,
                         itemCount: state.filtered.length,
                         itemBuilder: (context, i) {
                           final v = state.filtered[i];
-                          return RepaintBoundary(
-                            child: StoreCarCard(vehicle: v, lang: lang)
-                                .animate(delay: (30 * (i % 8)).ms)
-                                .fadeIn(duration: 280.ms, curve: Curves.easeOut)
-                                .slideY(begin: 0.05, end: 0, duration: 280.ms),
+                          return Padding(
+                            padding: EdgeInsets.only(bottom: context.rs(14)),
+                            child: RepaintBoundary(
+                              child: StoreCarCard(vehicle: v, lang: lang)
+                                  .animate(delay: (30 * (i % 6)).ms)
+                                  .fadeIn(
+                                      duration: 280.ms, curve: Curves.easeOut)
+                                  .slideY(
+                                      begin: 0.05, end: 0, duration: 280.ms),
+                            ),
                           );
                         },
                       ),
@@ -157,6 +160,119 @@ final class _StoreView extends StatelessWidget {
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Brand-colored hero header — the "Rentcars" mock: rounded gradient panel,
+/// personal greeting when signed in, the big "find your car" line, then the
+/// search pill (surface-colored, dark-mode aware) with the filter shortcut.
+final class _HeroHeader extends StatelessWidget {
+  const _HeroHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final cubit = context.read<OnlineStoreCubit>();
+    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final user = context.select((AuthBloc b) => b.state.user);
+    final name = (lang == 'ar'
+            ? (user?.firstNameAr ?? user?.firstNameEn)
+            : (user?.firstNameEn ?? user?.firstNameAr))
+        ?.trim();
+    final greeting = (name == null || name.isEmpty)
+        ? t.osHeroGreetingGuest
+        : t.osHeroGreeting(name);
+
+    return Padding(
+      padding:
+          EdgeInsets.fromLTRB(context.rs(12), context.rs(8), context.rs(12), 0),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.fromLTRB(
+            context.rs(18), context.rs(18), context.rs(18), context.rs(18)),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [scheme.primary, scheme.primary.withValues(alpha: 0.84)],
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              greeting,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: context.rf(12.5),
+                fontWeight: FontWeight.w600,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+            SizedBox(height: context.rs(4)),
+            Text(
+              t.osHeroTitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: context.rf(21),
+                height: 1.2,
+                fontWeight: FontWeight.w800,
+                color: Colors.white,
+              ),
+            ),
+            SizedBox(height: context.rs(14)),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  onChanged: cubit.setQuery,
+                  decoration: InputDecoration(
+                    hintText: t.storeSearch,
+                    hintStyle: TextStyle(
+                        fontSize: context.rf(12),
+                        color: scheme.onSurface.withValues(alpha: 0.4)),
+                    prefixIcon: const Icon(Icons.search_rounded, size: 20),
+                    isDense: true,
+                    filled: true,
+                    fillColor: scheme.surface,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 11),
+                  ),
+                ),
+              ),
+              SizedBox(width: context.rs(8)),
+              InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => showEndDrawerSheet(
+                  context,
+                  builder: (_) => BlocProvider.value(
+                    value: cubit,
+                    child: const StoreFilterDrawer(),
+                  ),
+                ),
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child:
+                      Icon(Icons.tune_rounded, size: 19, color: scheme.primary),
+                ),
+              ),
+            ]),
+          ],
+        ),
       ),
     );
   }
@@ -181,188 +297,252 @@ final class StoreCarCard extends StatelessWidget {
     final inCart =
         context.select((CartCubit c) => c.state.any((i) => i.slug == slug));
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return HomeCard(
       onTap: () => openCarSheet(context, vehicle),
-      child: Padding(
-        padding: EdgeInsets.all(context.rs(10)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                // Heart — favorites, like the website card's top-start button.
-                GestureDetector(
-                  onTap: () => context.read<FavoritesCubit>().toggle(slug),
-                  child: AnimatedScale(
-                    scale: favorited ? 1.08 : 1,
-                    duration: const Duration(milliseconds: 180),
-                    curve: Curves.easeOutBack,
-                    child: Container(
-                      width: context.rs(30),
-                      height: context.rs(30),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: scheme.outline.withValues(alpha: 0.7)),
-                      ),
-                      child: Icon(
-                        favorited
-                            ? Icons.favorite_rounded
-                            : Icons.favorite_border_rounded,
-                        size: 16,
-                        color: favorited
-                            ? scheme.primary
-                            : scheme.onSurface.withValues(alpha: 0.55),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Big image panel with the badge + heart overlaid (mock) ──
+          ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(20)),
+            child: SizedBox(
+              height: context.rs(186),
+              child: Stack(fit: StackFit.expand, children: [
+                ColoredBox(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : const Color(0xFFF6F8FB),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.rs(18), vertical: context.rs(14)),
+                    child: Hero(
+                      tag: 'car-${vehicle.slug}',
+                      child: HomeImage(
+                        url: vehicle.image,
+                        fit: BoxFit.contain,
+                        logicalWidth: 380,
                       ),
                     ),
                   ),
                 ),
-                const Spacer(),
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: context.rs(7), vertical: context.rs(3)),
-                  decoration: BoxDecoration(
-                    color: scheme.primary,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.verified_outlined,
-                          size: context.rs(9), color: scheme.onPrimary),
-                      SizedBox(width: context.rs(3)),
+                // AVAILABLE ONLINE — solid red pill with a car icon.
+                PositionedDirectional(
+                  top: context.rs(10),
+                  start: context.rs(10),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: context.rs(9), vertical: context.rs(4.5)),
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      Icon(Icons.directions_car_filled_rounded,
+                          size: 11, color: scheme.onPrimary),
+                      SizedBox(width: context.rs(4)),
                       Text(
                         t.storeAvailableOnline,
                         style: TextStyle(
-                          fontSize: context.rf(7.5),
+                          fontSize: context.rf(8.5),
                           fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
+                          letterSpacing: 0.6,
                           color: scheme.onPrimary,
                         ),
                       ),
-                    ],
+                    ]),
                   ),
                 ),
-              ],
-            ),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: Text(
-                vehicle.year ?? '',
-                style: TextStyle(
-                  fontSize: context.rf(10.5),
-                  fontWeight: FontWeight.w700,
-                  color: scheme.onSurface.withValues(alpha: 0.5),
-                ),
-              ),
-            ),
-            Expanded(
-              child: Hero(
-                tag: 'car-${vehicle.slug}',
-                child: HomeImage(
-                  url: vehicle.image,
-                  fit: BoxFit.contain,
-                  logicalWidth: 220,
-                ),
-              ),
-            ),
-            Text(
-              (lang == 'ar' ? vehicle.brandAr : vehicle.brandEn) ??
-                  vehicle.brandEn ??
-                  '',
-              style: TextStyle(
-                fontSize: context.rf(8.5),
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1,
-                color: scheme.onSurface.withValues(alpha: 0.45),
-              ),
-            ),
-            Text(
-              vehicle.name(lang),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  TextStyle(fontSize: context.rf(14.5), fontWeight: FontWeight.w800),
-            ),
-            Text(
-              vehicle.subtitle(lang),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: context.rf(10),
-                color: scheme.onSurface.withValues(alpha: 0.55),
-              ),
-            ),
-            SizedBox(height: context.rs(5)),
-            Text(
-              t.storeFrom,
-              style: TextStyle(
-                fontSize: context.rf(8),
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.6,
-                color: scheme.onSurface.withValues(alpha: 0.45),
-              ),
-            ),
-            PriceText(
-              price: vehicle.minPrice,
-              currency: t.currency,
-              contactForPrice: t.homeContactForPrice,
-              fontSize: context.rf(14.5),
-            ),
-            Text(
-              t.storeVatNote,
-              maxLines: 2,
-              style: TextStyle(
-                fontSize: context.rf(7.5),
-                height: 1.3,
-                color: scheme.onSurface.withValues(alpha: 0.45),
-              ),
-            ),
-            SizedBox(height: context.rs(6)),
-            Row(
-              children: [
-                // Color dots preview.
-                for (final c in vehicle.uniqueColors.take(2))
-                  Padding(
-                    padding: EdgeInsetsDirectional.only(end: context.rs(3)),
-                    child: ClipOval(
-                      child: SizedBox(
-                        width: context.rs(14),
-                        height: context.rs(14),
-                        child: HomeImage(url: c.image, logicalWidth: 14),
+                // Heart — white roundel top-end.
+                PositionedDirectional(
+                  top: context.rs(10),
+                  end: context.rs(10),
+                  child: GestureDetector(
+                    onTap: () => context.read<FavoritesCubit>().toggle(slug),
+                    child: AnimatedScale(
+                      scale: favorited ? 1.08 : 1,
+                      duration: const Duration(milliseconds: 180),
+                      curve: Curves.easeOutBack,
+                      child: Container(
+                        width: context.rs(32),
+                        height: context.rs(32),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.1)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: kSoftShadows(context),
+                        ),
+                        child: Icon(
+                          favorited
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          size: 16,
+                          color: favorited
+                              ? scheme.primary
+                              : scheme.onSurface.withValues(alpha: 0.5),
+                        ),
                       ),
                     ),
                   ),
-                const Spacer(),
-                SizedBox(
-                  height: context.rs(30),
-                  child: FilledButton.icon(
-                    onPressed: () {
-                      context.read<CartCubit>().add(CartItem.fromVehicle(vehicle));
-                      ScaffoldMessenger.of(context)
-                        ..hideCurrentSnackBar()
-                        ..showSnackBar(SnackBar(content: Text(t.cartAdded)));
-                    },
-                    icon: Icon(
-                        inCart
-                            ? Icons.check_rounded
-                            : Icons.shopping_cart_outlined,
-                        size: context.rs(12)),
-                    label: Text(t.storeAddToCart),
-                    style: FilledButton.styleFrom(
-                      minimumSize: Size.zero,
-                      padding:
-                          EdgeInsets.symmetric(horizontal: context.rs(10)),
-                      textStyle: TextStyle(
-                          fontSize: context.rf(10),
-                          fontWeight: FontWeight.w800),
+                ),
+              ]),
+            ),
+          ),
+
+          // ── Content ──
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                context.rs(16), context.rs(13), context.rs(16), context.rs(14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            ((lang == 'ar'
+                                        ? vehicle.brandAr
+                                        : vehicle.brandEn) ??
+                                    vehicle.brandEn ??
+                                    '')
+                                .toUpperCase(),
+                            style: TextStyle(
+                              fontSize: context.rf(9),
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.2,
+                              color: scheme.onSurface.withValues(alpha: 0.45),
+                            ),
+                          ),
+                          Text(
+                            vehicle.name(lang),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: context.rf(19),
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.3),
+                          ),
+                          Text(
+                            [
+                              vehicle.subtitle(lang),
+                              vehicle.year ?? '',
+                            ].where((s) => s.trim().isNotEmpty).join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: context.rf(10.5),
+                              color: scheme.onSurface.withValues(alpha: 0.55),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    SizedBox(width: context.rs(10)),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          t.storeFrom.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: context.rf(8),
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                            color: scheme.onSurface.withValues(alpha: 0.45),
+                          ),
+                        ),
+                        PriceText(
+                          price: vehicle.minPrice,
+                          currency: t.currency,
+                          contactForPrice: t.homeContactForPrice,
+                          fontSize: context.rf(17),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: context.rs(4)),
+                Text(
+                  t.storeVatNote,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: context.rf(8.5),
+                    color: scheme.primary.withValues(alpha: 0.75),
                   ),
+                ),
+                SizedBox(height: context.rs(12)),
+                Row(
+                  children: [
+                    // Color swatches — first ringed, like the mock.
+                    for (final (ci, c)
+                        in vehicle.uniqueColors.take(4).indexed)
+                      Padding(
+                        padding:
+                            EdgeInsetsDirectional.only(end: context.rs(6)),
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: ci == 0
+                                  ? scheme.onSurface.withValues(alpha: 0.6)
+                                  : scheme.outline.withValues(alpha: 0.4),
+                              width: ci == 0 ? 1.4 : 1,
+                            ),
+                          ),
+                          child: ClipOval(
+                            child: SizedBox(
+                              width: context.rs(16),
+                              height: context.rs(16),
+                              child: HomeImage(url: c.image, logicalWidth: 16),
+                            ),
+                          ),
+                        ),
+                      ),
+                    const Spacer(),
+                    SizedBox(
+                      height: context.rs(40),
+                      child: FilledButton.icon(
+                        onPressed: () {
+                          context
+                              .read<CartCubit>()
+                              .add(CartItem.fromVehicle(vehicle));
+                          ScaffoldMessenger.of(context)
+                            ..hideCurrentSnackBar()
+                            ..showSnackBar(
+                                SnackBar(content: Text(t.cartAdded)));
+                        },
+                        icon: Icon(
+                            inCart
+                                ? Icons.check_rounded
+                                : Icons.shopping_cart_rounded,
+                            size: context.rs(15)),
+                        label: Text(t.storeAddToCart),
+                        style: FilledButton.styleFrom(
+                          minimumSize: Size.zero,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.rs(16)),
+                          textStyle: TextStyle(
+                              fontSize: context.rf(12),
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

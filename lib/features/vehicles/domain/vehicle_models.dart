@@ -148,6 +148,8 @@ final class EquipmentRow extends Equatable {
     this.sectionAr,
     this.descriptionEn,
     this.descriptionAr,
+    this.noteEn,
+    this.noteAr,
   });
 
   final String? trimSlug;
@@ -156,11 +158,15 @@ final class EquipmentRow extends Equatable {
   final String? sectionAr;
   final String? descriptionEn;
   final String? descriptionAr;
+  final String? noteEn;
+  final String? noteAr;
 
   String section(String lang) =>
       (lang == 'ar' ? sectionAr : sectionEn) ?? sectionEn ?? sectionAr ?? '';
   String description(String lang) =>
       (lang == 'ar' ? descriptionAr : descriptionEn) ?? descriptionEn ?? descriptionAr ?? '';
+  String note(String lang) =>
+      (lang == 'ar' ? noteAr : noteEn) ?? noteEn ?? noteAr ?? '';
 
   factory EquipmentRow.fromJson(Map<String, dynamic> j) => EquipmentRow(
         trimSlug: _s(j['trimSlug']),
@@ -169,6 +175,8 @@ final class EquipmentRow extends Equatable {
         sectionAr: _s(j['sectionAr']),
         descriptionEn: _s(j['descriptionEn']),
         descriptionAr: _s(j['descriptionAr']),
+        noteEn: _s(j['noteEn']),
+        noteAr: _s(j['noteAr']),
       );
 
   @override

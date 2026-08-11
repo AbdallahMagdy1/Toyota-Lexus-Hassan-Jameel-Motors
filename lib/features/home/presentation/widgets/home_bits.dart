@@ -16,11 +16,13 @@ final class HomeImage extends StatelessWidget {
     this.fit = BoxFit.cover,
     this.aspectRatio,
     this.logicalWidth,
+    this.alignment = Alignment.center,
   });
 
   final String? url;
   final BoxFit fit;
   final double? aspectRatio;
+  final Alignment alignment;
 
   /// Approximate on-screen width used to pick the decode resolution.
   final double? logicalWidth;
@@ -46,6 +48,7 @@ final class HomeImage extends StatelessWidget {
         : Image.network(
             optimized,
             fit: fit,
+            alignment: alignment,
             gaplessPlayback: true,
             filterQuality: FilterQuality.medium,
             errorBuilder: (_, _, _) => placeholder,
@@ -85,23 +88,6 @@ final class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Reference-kit accent tick before section titles.
-          Container(
-            width: 4,
-            height: context.rs(20),
-            margin: EdgeInsetsDirectional.only(end: context.rs(9)),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  scheme.primary,
-                  scheme.primary.withValues(alpha: 0.4),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(99),
-            ),
-          ),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -128,16 +114,31 @@ final class SectionHeader extends StatelessWidget {
             ),
           ),
           if (actionLabel != null)
+            // Reference style: "See All ›" in brand color with a chevron.
             GestureDetector(
               onTap: onAction,
-              child: Text(
-                actionLabel!,
-                style: TextStyle(
-                  fontSize: context.rf(12),
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.6,
-                  color: scheme.primary,
-                ),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: context.rs(4)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Text(
+                    actionLabel!,
+                    style: TextStyle(
+                      fontSize: context.rf(12),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                      color: scheme.primary,
+                    ),
+                  ),
+                  SizedBox(width: context.rs(2)),
+                  Icon(
+                    Directionality.of(context) == TextDirection.rtl
+                        ? Icons.chevron_left_rounded
+                        : Icons.chevron_right_rounded,
+                    size: 16,
+                    color: scheme.primary,
+                  ),
+                ]),
               ),
             ),
         ],
@@ -194,27 +195,11 @@ final class FilterChipsRow extends StatelessWidget {
                     ? null
                     : (isDark ? const Color(0xFF1C1F26) : scheme.surface),
                 borderRadius: BorderRadius.circular(999),
-                border: !selected && isDark
+                border: !selected
                     ? Border.all(
-                        color: scheme.outline.withValues(alpha: 0.6))
+                        color: scheme.outline
+                            .withValues(alpha: isDark ? 0.6 : 0.5))
                     : null,
-                boxShadow: isDark
-                    ? const []
-                    : [
-                        if (selected)
-                          BoxShadow(
-                            color: scheme.primary.withValues(alpha: 0.35),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          )
-                        else
-                          BoxShadow(
-                            color: const Color(0xFF1B2A4A)
-                                .withValues(alpha: 0.06),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
-                          ),
-                      ],
               ),
               child: Text(
                 labels[i],
@@ -269,22 +254,11 @@ final class CardRail extends StatelessWidget {
   }
 }
 
-/// Reference-kit elevation: the soft blue-gray layered shadows every card
-/// uses in light mode (empty in dark — borders carry the separation there).
+/// Flat design (user request): no drop shadows anywhere — separation comes
+/// from surface color + hairline borders instead. Kept as the single switch
+/// so every card updates together.
 List<BoxShadow> kSoftShadows(BuildContext context, {double opacity = 1}) {
-  if (Theme.of(context).brightness == Brightness.dark) return const [];
-  return [
-    BoxShadow(
-      color: const Color(0xFF1B2A4A).withValues(alpha: 0.07 * opacity),
-      blurRadius: 18,
-      offset: const Offset(0, 8),
-    ),
-    BoxShadow(
-      color: const Color(0xFF1B2A4A).withValues(alpha: 0.04 * opacity),
-      blurRadius: 4,
-      offset: const Offset(0, 1),
-    ),
-  ];
+  return const [];
 }
 
 /// The reference kit's soft surface decoration: white floating card in
@@ -309,16 +283,16 @@ BoxDecoration softCardDecoration(
                 : [tint.withValues(alpha: 0.10), Colors.white],
           ),
     borderRadius: BorderRadius.circular(radius),
-    border: isDark
-        ? Border.all(color: scheme.outline.withValues(alpha: 0.5))
-        : null,
-    boxShadow: kSoftShadows(context),
+    // Hairline border in BOTH modes now that shadows are gone — it is the
+    // only separation light surfaces have left.
+    border: Border.all(
+      color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
+    ),
   );
 }
 
-/// The shared card chrome — reference-kit style: soft layered shadows on a
-/// white surface (no hairline borders) in light mode; elevated surface with
-/// a faint border in dark mode where shadows can't read.
+/// The shared card chrome — flat style: surface + hairline border in both
+/// modes (no drop shadows anywhere, per design direction).
 final class HomeCard extends StatelessWidget {
   const HomeCard({super.key, required this.child, this.onTap, this.padding});
 
@@ -330,40 +304,21 @@ final class HomeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: const Color(0xFF1B2A4A).withValues(alpha: 0.07),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: const Color(0xFF1B2A4A).withValues(alpha: 0.04),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
-      ),
-      child: Material(
-        color: isDark ? const Color(0xFF181B21) : scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: isDark
-                  ? Border.all(color: scheme.outline.withValues(alpha: 0.5))
-                  : null,
+    return Material(
+      color: isDark ? const Color(0xFF181B21) : scheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
             ),
-            child: child,
           ),
+          child: child,
         ),
       ),
     );

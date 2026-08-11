@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/routes.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_dropdown.dart';
 import '../../../offers/presentation/offer_detail_sheet.dart';
 import '../../../online_store/presentation/car_sheet.dart';
 import '../../../vehicles/presentation/model_sheet.dart';
@@ -307,74 +308,47 @@ final class ProtectionCard extends StatelessWidget {
             ),
             SizedBox(height: context.rs(16)),
             // Step 1 — car group (Camry 2026, LS 2025…), same as the website.
-            _Label(t.homeSelectCar),
-            DropdownButtonFormField<ProtectionGroup>(
-              initialValue: state.protectionGroup,
-              isExpanded: true,
-              hint: Text(t.homeSelectCar, style: TextStyle(fontSize: context.rf(13.5))),
-              style: TextStyle(fontSize: context.rf(13.5), color: scheme.onSurface),
+            AppDropdown<ProtectionGroup>(
+              label: t.homeSelectCar,
+              value: state.protectionGroup,
+              hint: t.homeSelectCar,
               items: [
                 for (final g in groups)
-                  DropdownMenuItem(
-                    value: g,
-                    child: Text(g.label(lang), overflow: TextOverflow.ellipsis),
-                  ),
+                  AppDropdownItem(value: g, label: g.label(lang)),
               ],
-              onChanged: (g) {
-                if (g != null) cubit.selectProtectionGroup(g);
-              },
+              onChanged: cubit.selectProtectionGroup,
             ),
             SizedBox(height: context.rs(14)),
             // Step 2 — trim/model inside the group (productTypeID).
-            _Label(t.homeSelectModel),
-            DropdownButtonFormField<ProtectionModel>(
-              // Rebuild when the group changes so the stale value clears.
-              key: ValueKey('pm-${state.protectionGroup?.id}-${state.protectionGroup?.year}'),
-              initialValue: state.protectionModel,
-              isExpanded: true,
-              hint: Text(t.homeSelectModel, style: TextStyle(fontSize: context.rf(13.5))),
-              style: TextStyle(fontSize: context.rf(13.5), color: scheme.onSurface),
+            AppDropdown<ProtectionModel>(
+              label: t.homeSelectModel,
+              value: state.protectionModel,
+              hint: t.homeSelectModel,
+              enabled: state.protectionGroup != null,
               items: [
                 for (final m in models)
-                  DropdownMenuItem(
-                    value: m,
-                    child: Text(m.name(lang), overflow: TextOverflow.ellipsis),
-                  ),
+                  AppDropdownItem(value: m, label: m.name(lang)),
               ],
-              onChanged: state.protectionGroup == null
-                  ? null
-                  : (m) {
-                      if (m != null) cubit.selectProtectionModel(m);
-                    },
+              onChanged: cubit.selectProtectionModel,
             ),
             SizedBox(height: context.rs(14)),
-            _Label(t.homeServiceType),
             if (state.protectionLoading)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 14),
                 child: Center(child: CircularProgressIndicator(strokeWidth: 2.4)),
               )
             else
-              DropdownButtonFormField<String>(
-                key: ValueKey('ps-${state.protectionModel?.id}-${state.protectionServices.length}'),
-                initialValue: state.protectionService?.id,
-                isExpanded: true,
-                hint: Text(t.homeServiceType, style: TextStyle(fontSize: context.rf(13.5))),
-                style: TextStyle(fontSize: context.rf(13.5), color: scheme.onSurface),
+              AppDropdown<String>(
+                label: t.homeServiceType,
+                value: state.protectionService?.id,
+                hint: t.homeServiceType,
                 items: [
                   for (final s in state.protectionServices)
-                    DropdownMenuItem(
-                      value: s.id,
-                      child: s.price == null
-                          ? Text(s.name(lang), overflow: TextOverflow.ellipsis)
-                          : Text.rich(
-                              TextSpan(children: [
-                                TextSpan(text: '${s.name(lang)} — '),
-                                riyalSpan(fontSize: context.rf(12)),
-                                TextSpan(text: formatPrice(s.price!)),
-                              ]),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    AppDropdownItem(
+                      value: s.id ?? '',
+                      label: s.name(lang),
+                      subtitle:
+                          s.price == null ? null : formatPrice(s.price!),
                     ),
                 ],
                 onChanged: (id) {
@@ -397,28 +371,6 @@ final class ProtectionCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-final class _Label extends StatelessWidget {
-  const _Label(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: context.rs(6)),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: context.rf(11),
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.6,
-          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55),
         ),
       ),
     );

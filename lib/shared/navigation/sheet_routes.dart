@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
-/// NZ-Mobile-style modal bottom sheet (92% height, top radius 20, 300ms
-/// slide-up, drag-down to dismiss) implemented as a PageRoute so **Hero
-/// animations fly into it** — showModalBottomSheet can't do that.
+/// The app's unified modal bottom sheet: 80% height, top radius 24, 300ms
+/// slide-up, finger-tracking drag-to-dismiss (snaps back under the
+/// threshold). Implemented as a PageRoute so **Hero animations fly into
+/// it** — showModalBottomSheet can't do that.
 Future<T?> showHeroBottomSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
-  double heightFactor = 0.92,
+  double heightFactor = 0.8,
 }) {
   return Navigator.of(context, rootNavigator: true).push<T>(
     _SheetPageRoute<T>(builder: builder, heightFactor: heightFactor),
@@ -51,7 +52,7 @@ final class _SheetPageRoute<T> extends PageRoute<T> {
         child: _DraggableDismiss(
           onDismiss: () => Navigator.of(context).maybePop(),
           child: ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
             child: Material(
               color: Theme.of(context).scaffoldBackgroundColor,
               child: SafeArea(top: false, child: builder(context)),
@@ -78,20 +79,60 @@ final class _SheetPageRoute<T> extends PageRoute<T> {
   }
 }
 
-/// Swipe-down-to-dismiss wrapper for the sheet (fast downward fling closes).
-final class _DraggableDismiss extends StatelessWidget {
+/// Finger-tracking drag-to-dismiss: the sheet follows the drag, dismisses
+/// past 22% of its height or on a fast downward fling, and springs back
+/// otherwise. The drag starts from the sheet chrome (handle/edges); inner
+/// scrollables keep their own gesture priority.
+final class _DraggableDismiss extends StatefulWidget {
   const _DraggableDismiss({required this.child, required this.onDismiss});
 
   final Widget child;
   final VoidCallback onDismiss;
 
   @override
+  State<_DraggableDismiss> createState() => _DraggableDismissState();
+}
+
+final class _DraggableDismissState extends State<_DraggableDismiss>
+    with SingleTickerProviderStateMixin {
+  double _offset = 0;
+  late final AnimationController _spring = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 220),
+  )..addListener(() {
+      setState(() => _offset = _offsetTween.evaluate(_spring));
+    });
+  late Tween<double> _offsetTween = Tween(begin: 0, end: 0);
+
+  @override
+  void dispose() {
+    _spring.dispose();
+    super.dispose();
+  }
+
+  void _end(DragEndDetails d, double height) {
+    final fling = (d.primaryVelocity ?? 0) > 700;
+    if (fling || _offset > height * 0.22) {
+      widget.onDismiss();
+      return;
+    }
+    _offsetTween = Tween(begin: _offset, end: 0);
+    _spring.forward(from: 0);
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final height = MediaQuery.sizeOf(context).height * 0.8;
     return GestureDetector(
-      onVerticalDragEnd: (d) {
-        if ((d.primaryVelocity ?? 0) > 700) onDismiss();
+      onVerticalDragUpdate: (d) {
+        _spring.stop();
+        setState(() => _offset = (_offset + d.delta.dy).clamp(0.0, height));
       },
-      child: child,
+      onVerticalDragEnd: (d) => _end(d, height),
+      child: Transform.translate(
+        offset: Offset(0, _offset),
+        child: widget.child,
+      ),
     );
   }
 }

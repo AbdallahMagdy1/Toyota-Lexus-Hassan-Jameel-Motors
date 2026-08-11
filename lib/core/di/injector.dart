@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../app/router/app_router.dart';
+import '../../features/account/bloc/active_car_cubit.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/cart/bloc/cart_cubit.dart';
@@ -18,16 +19,23 @@ import '../../shared/navigation/side_menu.dart';
 import '../../features/settings/bloc/theme_cubit.dart';
 import '../../features/settings/data/branding_repository.dart';
 import '../network/api_client.dart';
+import '../network/swr_cache.dart';
 import '../storage/local_store.dart';
 
 final sl = GetIt.instance;
 
-Future<void> setupInjector() async {
+Future<void> setupInjector({String brand = 'toyota'}) async {
   final prefs = await SharedPreferences.getInstance();
 
   sl
     ..registerSingleton<LocalStore>(LocalStore(prefs))
-    ..registerLazySingleton<ApiClient>(ApiClient.new)
+    ..registerLazySingleton<ApiClient>(() {
+      final client = ApiClient();
+      // Stale-while-revalidate: catalog GETs paint instantly from disk and
+      // refresh silently in the background (see SwrCacheInterceptor).
+      client.dio.interceptors.add(SwrCacheInterceptor(client.dio, prefs));
+      return client;
+    })
     ..registerLazySingleton<BrandingRepository>(
       () => BrandingRepository(sl(), sl()),
     )
@@ -42,9 +50,11 @@ Future<void> setupInjector() async {
     // DI (not in a widget's build) means a locale/theme/brand change rebuilds
     // the UI in place — navigation stack and screen state survive, like the
     // website's instant language toggle.
-    ..registerLazySingleton<ThemeCubit>(() => ThemeCubit(sl(), sl()))
+    ..registerLazySingleton<ThemeCubit>(
+        () => ThemeCubit(sl(), sl(), fixedBrand: brand))
     ..registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl()))
     ..registerLazySingleton<AuthBloc>(() => AuthBloc(sl()))
+    ..registerLazySingleton<ActiveCarCubit>(() => ActiveCarCubit(prefs))
     ..registerLazySingleton<FavoritesCubit>(() => FavoritesCubit(sl()))
     ..registerLazySingleton<CartCubit>(() => CartCubit(sl(), sl(), sl()))
     ..registerLazySingleton<PartsCartCubit>(() => PartsCartCubit(sl()))

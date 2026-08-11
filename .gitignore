@@ -1,3 +1,20 @@
+# ──────────────────────────────────────────────────────────────────────
+# Hassan Jameel app — root .gitignore
+#
+# Everything ignored here is REGENERATED on any machine, so cloning on
+# macOS and running `flutter pub get` (+ `pod install` inside ios/) is
+# enough to build & publish.
+#
+# Files that MUST stay committed (never add them here):
+#   pubspec.yaml / pubspec.lock          — exact dependency versions
+#   android/app/google-services.json     — Firebase/FCM (Android)
+#   ios/Runner/GoogleService-Info.plist  — Firebase/FCM (iOS, when added)
+#   ios/Runner.xcodeproj, Info.plist     — Xcode project + bundle ids
+#   assets/**  (logos, launcher icons, fonts)
+#   icons-toyota.yaml / icons-lexus.yaml — per-brand icon generator configs
+#   lib/main_toyota.dart / main_lexus.dart — brand entry points
+# ──────────────────────────────────────────────────────────────────────
+
 # Miscellaneous
 *.class
 *.log
@@ -27,11 +44,18 @@ migrate_working_dir/
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 /build/
 /coverage/
+
+# Build outputs — never commit binaries; they are produced fresh per release.
+*.apk
+*.aab
+*.ipa
+*.app.dSYM.zip
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +67,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase local emulator/debug leftovers
+firebase-debug.log
+.firebase/
+
+# Claude Code local settings (machine-specific)
+.claude/settings.local.json

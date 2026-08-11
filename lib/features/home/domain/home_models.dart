@@ -79,6 +79,8 @@ final class SliderVehicle extends Equatable {
     this.minPrice,
     this.imageEn,
     this.imageAr,
+    this.backgroundEn,
+    this.backgroundAr,
     this.hp,
     this.cylinders,
     this.seatsNumber,
@@ -106,6 +108,9 @@ final class SliderVehicle extends Equatable {
   final double? minPrice;
   final String? imageEn;
   final String? imageAr;
+  // Model-level shared "Background" artwork (dashboard Cars page upload).
+  final String? backgroundEn;
+  final String? backgroundAr;
   final double? hp;
   final int? cylinders;
   final int? seatsNumber;
@@ -127,6 +132,12 @@ final class SliderVehicle extends Equatable {
   String name(String lang) => lang == 'ar' && groupAr.isNotEmpty ? groupAr : groupEn;
   String? image(String lang) => (lang == 'ar' ? imageAr : imageEn) ?? imageEn ?? imageAr;
 
+  /// Model-level shared "Background" hero image, if the dashboard uploaded one.
+  String? background(String lang) {
+    final b = (lang == 'ar' ? backgroundAr : backgroundEn) ?? backgroundEn ?? backgroundAr;
+    return (b == null || b.trim().isEmpty) ? null : b;
+  }
+
   /// Marketing description (the website vehicle page's intro paragraph).
   String description(String lang) =>
       ((lang == 'ar' ? groupDescAr : groupDescEn) ??
@@ -145,6 +156,8 @@ final class SliderVehicle extends Equatable {
         minPrice: _d(j['minPrice']),
         imageEn: _s(j['imageEn']),
         imageAr: _s(j['imageAr']),
+        backgroundEn: _s(j['backgroundEn']),
+        backgroundAr: _s(j['backgroundAr']),
         hp: _d(j['hp']),
         cylinders: _i(j['cylinders']),
         seatsNumber: _i(j['seatsNumber']),
@@ -205,6 +218,8 @@ final class OnlineVehicle extends Equatable {
     this.minPrice,
     this.miniDownPayment,
     this.image,
+    this.backgroundEn,
+    this.backgroundAr,
     this.showPrice = true,
     this.productId,
     this.brandId,
@@ -226,6 +241,9 @@ final class OnlineVehicle extends Equatable {
   final double? minPrice;
   final double? miniDownPayment;
   final String? image;
+  // Model-level shared "Background" artwork (same URL both languages).
+  final String? backgroundEn;
+  final String? backgroundAr;
   final bool showPrice;
   final String? productId;
   final String? brandId;
@@ -242,6 +260,12 @@ final class OnlineVehicle extends Equatable {
       shortDescriptionEn ??
       shortDescriptionAr ??
       '';
+
+  /// Model-level shared "Background" hero image, if the dashboard uploaded one.
+  String? background(String lang) {
+    final b = (lang == 'ar' ? backgroundAr : backgroundEn) ?? backgroundEn ?? backgroundAr;
+    return (b == null || b.trim().isEmpty) ? null : b;
+  }
 
   /// Swatches deduped by exterior code, like the website's ColorPicker.
   List<CarColor> get uniqueColors {
@@ -265,6 +289,8 @@ final class OnlineVehicle extends Equatable {
         minPrice: _d(j['minPrice']),
         miniDownPayment: _d(j['miniDownPayment']),
         image: _s(j['image']),
+        backgroundEn: _s(j['backgroundEn'] ?? j['background']),
+        backgroundAr: _s(j['backgroundAr'] ?? j['background']),
         showPrice: j['showPric'] == true,
         productId: _s(j['productId']),
         brandId: _s(j['brandId']),

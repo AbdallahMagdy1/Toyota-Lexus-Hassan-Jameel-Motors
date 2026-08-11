@@ -342,6 +342,17 @@ class AppLocalizationsAr extends AppLocalizations {
   String get storeSearch => 'ابحث عن موديل…';
 
   @override
+  String osHeroGreeting(String name) {
+    return 'مرحبًا $name 👋';
+  }
+
+  @override
+  String get osHeroGreetingGuest => 'مرحبًا بك 👋';
+
+  @override
+  String get osHeroTitle => 'اعثر على سيارتك المثالية';
+
+  @override
   String get storePriceUpTo => 'السعر حتى';
 
   @override
@@ -389,6 +400,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cartBrowse => 'تصفح السيارات';
+
+  @override
+  String get cartTabVehicles => 'سلة المركبات';
+
+  @override
+  String get cartTabParts => 'سلة قطع الغيار';
 
   @override
   String get favTitle => 'المفضلة';
@@ -1885,4 +1902,611 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get trkHubEmpty => 'لا توجد طلبات للمتابعة.';
+
+  @override
+  String get mbuyType => 'نوع الشراء';
+
+  @override
+  String get mbuyOnline => 'أونلاين';
+
+  @override
+  String get mbuyOrder => 'أمر شراء';
+
+  @override
+  String get mbuyFastReserve => 'حجز سريع';
+
+  @override
+  String get mbuyCash => 'كاش';
+
+  @override
+  String get mbuyDelivery => 'طريقة الاستلام';
+
+  @override
+  String get mbuyBranch => 'استلام من الفرع';
+
+  @override
+  String get mbuyAddress => 'توصيل لعنوان';
+
+  @override
+  String get mbuyAddressHint => 'اكتب عنوان التوصيل';
+
+  @override
+  String get mbuySwipe => 'اسحب لإتمام الطلب';
+
+  @override
+  String get mbuySelect => 'اختر...';
+
+  @override
+  String get onboardingHello => 'أهلاً';
+
+  @override
+  String get modelsAvailableTrims => 'الفئات المتوفرة';
+
+  @override
+  String get modelsChooseTrim => 'اختر الفئة';
+
+  @override
+  String get modelsChosen => 'تم الاختيار';
+
+  @override
+  String get modelsDiffsOnly => 'إظهار الاختلافات فقط';
+
+  @override
+  String get modelsCompareHint => 'اختر فئتين للمقارنة جنبًا إلى جنب';
+
+  @override
+  String get modelsColorsTitle => 'الألوان المتاحة';
+
+  @override
+  String get modelsSpecsFor => 'مواصفات الفئة';
+
+  @override
+  String get pfTitle => 'حسابي';
+
+  @override
+  String get pfMyData => 'بياناتي';
+
+  @override
+  String get pfMyCars => 'سياراتي';
+
+  @override
+  String get pfMyOrders => 'طلباتي';
+
+  @override
+  String get pfMyBookings => 'حجوزاتي';
+
+  @override
+  String get pfFinanceRequests => 'طلبات التمويل';
+
+  @override
+  String get pfFavorites => 'المفضلة';
+
+  @override
+  String get pfNotifications => 'الإشعارات';
+
+  @override
+  String get pfContactData => 'بيانات الاتصال';
+
+  @override
+  String get pfPassword => 'كلمة المرور';
+
+  @override
+  String get pfDeleteAccount => 'حذف الحساب';
+
+  @override
+  String get pfSave => 'حفظ التغييرات';
+
+  @override
+  String get pfSaved => 'تم الحفظ بنجاح';
+
+  @override
+  String get pfSaveFailed => 'تعذّر حفظ بعض البيانات';
+
+  @override
+  String get pfNameAr => 'الاسم بالعربية';
+
+  @override
+  String get pfNameEn => 'الاسم بالإنجليزية';
+
+  @override
+  String get pfFirstName => 'الاسم الأول';
+
+  @override
+  String get pfMiddleName => 'اسم الأب';
+
+  @override
+  String get pfLastName => 'اسم العائلة';
+
+  @override
+  String get pfGender => 'الجنس';
+
+  @override
+  String get pfCountry => 'الدولة';
+
+  @override
+  String get pfCity => 'المدينة';
+
+  @override
+  String get pfAddress => 'العنوان';
+
+  @override
+  String get pfIdentity => 'رقم الهوية';
+
+  @override
+  String get pfCr => 'السجل التجاري';
+
+  @override
+  String get pfAccountType => 'صفة الحساب';
+
+  @override
+  String get pfPhone => 'رقم الجوال';
+
+  @override
+  String get pfEmail => 'البريد الإلكتروني';
+
+  @override
+  String get pfPhoneExists => 'رقم الجوال مستخدم بالفعل';
+
+  @override
+  String get pfEmailExists => 'البريد الإلكتروني مستخدم بالفعل';
+
+  @override
+  String get pfIdentityExists => 'رقم الهوية مستخدم بالفعل';
+
+  @override
+  String get pfOldPassword => 'كلمة المرور الحالية';
+
+  @override
+  String get pfNewPassword => 'كلمة المرور الجديدة';
+
+  @override
+  String get pfConfirmPassword => 'تأكيد كلمة المرور';
+
+  @override
+  String get pfPasswordMismatch => 'كلمتا المرور غير متطابقتين';
+
+  @override
+  String get pfPasswordShort => '٦ أحرف على الأقل';
+
+  @override
+  String get pfWrongOldPassword => 'كلمة المرور الحالية غير صحيحة';
+
+  @override
+  String get pfChangePassword => 'تغيير كلمة المرور';
+
+  @override
+  String get pfDeleteWarning =>
+      'سيتم تعطيل حسابك وإخفاء بياناتك من التطبيق. لا يمكن التراجع عن هذا الإجراء من التطبيق.';
+
+  @override
+  String get pfDeleteConfirmHint => 'اكتب \"حذف\" للتأكيد';
+
+  @override
+  String get pfDeleteWord => 'حذف';
+
+  @override
+  String get pfSignedInAs => 'مسجّل الدخول باسم';
+
+  @override
+  String get pfGuest => 'زائر';
+
+  @override
+  String get pfSignIn => 'تسجيل الدخول';
+
+  @override
+  String get pfNoNotifications => 'لا توجد إشعارات بعد';
+
+  @override
+  String get pfNoFavorites => 'لا توجد عناصر في المفضلة';
+
+  @override
+  String get cmpTitle => 'الشكاوى';
+
+  @override
+  String get cmpSubmit => 'تقديم شكوى';
+
+  @override
+  String get cmpSubmitSub => 'أخبرنا بما حدث وسيتابع فريقنا شكواك خطوة بخطوة';
+
+  @override
+  String get cmpTrack => 'متابعة الشكاوى';
+
+  @override
+  String get cmpTrackSub => 'تابع حالة شكاواك وردود فريقنا خطوة بخطوة';
+
+  @override
+  String get cmpType => 'نوع الشكوى';
+
+  @override
+  String get cmpTypeSales => 'المبيعات';
+
+  @override
+  String get cmpTypeParts => 'قطع الغيار';
+
+  @override
+  String get cmpTypeMaintenance => 'الصيانة';
+
+  @override
+  String get cmpTypeOther => 'أخرى';
+
+  @override
+  String get cmpName => 'الاسم';
+
+  @override
+  String get cmpPhone => 'الهاتف';
+
+  @override
+  String get cmpEmail => 'البريد الإلكتروني (اختياري)';
+
+  @override
+  String get cmpSubject => 'الموضوع (اختياري)';
+
+  @override
+  String get cmpBody => 'تفاصيل الشكوى';
+
+  @override
+  String get cmpBodyHint => 'اشرح لنا ما حدث بالتفصيل…';
+
+  @override
+  String get cmpAttach => 'صور مرفقة (اختياري)';
+
+  @override
+  String get cmpAttachHint =>
+      'يمكنك إرفاق حتى 6 صور (بحد أقصى 4 ميجابايت للصورة)';
+
+  @override
+  String get cmpConsent => 'أوافق على سياسة الخصوصية ومعالجة بياناتي الشخصية';
+
+  @override
+  String get cmpSend => 'إرسال الشكوى';
+
+  @override
+  String get cmpSent => 'تم استلام شكواك';
+
+  @override
+  String get cmpRef => 'رقم الشكوى';
+
+  @override
+  String get cmpStageReceived => 'تم استلام الشكوى';
+
+  @override
+  String get cmpStageUpdated => 'تحديث / رد';
+
+  @override
+  String get cmpStageSolved => 'تم الحل';
+
+  @override
+  String get cmpStatusNew => 'تم الاستلام';
+
+  @override
+  String get cmpStatusUpdated => 'يوجد رد جديد';
+
+  @override
+  String get cmpStatusSolved => 'تم الحل';
+
+  @override
+  String get cmpConversation => 'المحادثة';
+
+  @override
+  String get cmpYou => 'أنت';
+
+  @override
+  String get cmpStaff => 'فريق خدمة العملاء';
+
+  @override
+  String get cmpReplyHint => 'اكتب ردك…';
+
+  @override
+  String get cmpReplySend => 'إرسال الرد';
+
+  @override
+  String get cmpEmpty => 'لا توجد شكاوى بعد';
+
+  @override
+  String get cmpBodyText => 'نص الشكوى';
+
+  @override
+  String get finReqSub => 'امتلك سيارتك مع عروض تمويل لا تفوتك';
+
+  @override
+  String get finAbsher => 'تعبئة البيانات من أبشر';
+
+  @override
+  String get finAbsherOtp => 'رمز التحقق';
+
+  @override
+  String get finAbsherId => 'رقم الهوية';
+
+  @override
+  String get finAbsherMobile => 'رقم الجوال (5xxxxxxxx)';
+
+  @override
+  String get finAbsherBirth => 'تاريخ الميلاد';
+
+  @override
+  String get finAbsherSend => 'إرسال رمز التحقق';
+
+  @override
+  String get finAbsherConfirm => 'تأكيد';
+
+  @override
+  String get finAbsherFilled => 'تمت تعبئة البيانات من أبشر';
+
+  @override
+  String get finDocs => 'المستندات المطلوبة';
+
+  @override
+  String get finDocsHint =>
+      'اختياري الآن — يمكنك إرفاقها لتسريع طلبك، أو سيتواصل معك فريقنا لاستلامها';
+
+  @override
+  String get finWorkSector => 'جهة العمل';
+
+  @override
+  String get finGov => 'حكومي';
+
+  @override
+  String get finPrivate => 'قطاع خاص';
+
+  @override
+  String get finIdDoc => 'الهوية الوطنية';
+
+  @override
+  String get finLicenseDoc => 'رخصة القيادة';
+
+  @override
+  String get finSalaryDoc => 'تعريف بالراتب';
+
+  @override
+  String get finInsuranceDoc => 'برنت التأمينات';
+
+  @override
+  String get finStatementDoc => 'كشف حساب بنكي';
+
+  @override
+  String get finUpload => 'رفع';
+
+  @override
+  String get finUploaded => 'تم الإرفاق';
+
+  @override
+  String get finPickFile => 'اختر ملفًا (صورة أو PDF)';
+
+  @override
+  String get finFileTooBig => 'الحد الأقصى 4 ميجابايت';
+
+  @override
+  String get finIncome => 'صافي الدخل الشهري';
+
+  @override
+  String get finFirstPayOptional => 'الدفعة الأولى (اختياري)';
+
+  @override
+  String get finLastPay => 'الدفعة الأخيرة';
+
+  @override
+  String get finMonthly => 'القسط الشهري';
+
+  @override
+  String get finFinalPrice => 'السعر النهائي';
+
+  @override
+  String get finPeriodTitle => 'مدة التمويل';
+
+  @override
+  String get finMonths => 'شهر';
+
+  @override
+  String get finNotes => 'ملاحظات';
+
+  @override
+  String get finFullName => 'الاسم الكامل';
+
+  @override
+  String get finSendReq => 'إرسال الطلب';
+
+  @override
+  String get finReqSent => 'تم استلام طلبك';
+
+  @override
+  String get finReqRef => 'رقم الطلب';
+
+  @override
+  String get finTrackCta => 'تابع الطلب';
+
+  @override
+  String get finBankRate => 'جهة التمويل';
+
+  @override
+  String get finIncomeRequired => 'أدخل صافي الدخل';
+
+  @override
+  String get trkKindFinance => 'التمويل';
+
+  @override
+  String get acJobCard => 'بطاقة العمل';
+
+  @override
+  String get acTabMyCars => 'سياراتي';
+
+  @override
+  String get acStoreToyota => 'متجر تويوتا';
+
+  @override
+  String get acStoreLexus => 'متجر لكزس';
+
+  @override
+  String get acKm => 'كم';
+
+  @override
+  String get acQuickTitle => 'خدمات سريعة';
+
+  @override
+  String get cpnExclusive => 'عرض حصري';
+
+  @override
+  String get cpnCopied => 'تم نسخ الكود';
+
+  @override
+  String get cpnRemove => 'إزالة';
+
+  @override
+  String get cpnCouponDiscount => 'خصم الكوبون';
+
+  @override
+  String get svcPartsSub => 'قطع غيار أصلية لسيارتك — استلام من الفرع';
+
+  @override
+  String get mhTitle => 'خدمات الصيانة';
+
+  @override
+  String get mhHeroBadge => 'مركز الصيانة';
+
+  @override
+  String get mhHeroTitle => 'احجز صيانتك';
+
+  @override
+  String get mhHeroAccent => 'في 10 ثوانٍ';
+
+  @override
+  String get mhHeroSub =>
+      'مركز صيانة معتمد بخبرة تتجاوز 60 عامًا. قطع غيار أصلية وفنيون معتمدون من المصنع.';
+
+  @override
+  String get mhBadgeCertified => 'صيانة معتمدة رسميًا';
+
+  @override
+  String get mhBadgeSaso => 'معتمد من SASO';
+
+  @override
+  String get mhReserveNow => 'احجز الآن';
+
+  @override
+  String get mhPeriodic => 'الجدول الدوري';
+
+  @override
+  String get mhYears => 'عام خبرة';
+
+  @override
+  String get mhCars => 'سيارة خُدمت';
+
+  @override
+  String get mhSatisfaction => 'رضا الضيوف';
+
+  @override
+  String get mhBranches => 'فرع';
+
+  @override
+  String get mhJourney => 'رحلة صيانتك';
+
+  @override
+  String get mhJourneySub => 'أربع خطوات بسيطة فقط من الحجز إلى الاستلام.';
+
+  @override
+  String get mhStep1 => 'حجز موعد';
+
+  @override
+  String get mhStep1Sub => 'اختر الخدمة والوقت المناسب لك';
+
+  @override
+  String get mhStep2 => 'فحص السيارة';
+
+  @override
+  String get mhStep2Sub => 'يقوم خبراؤنا بفحص دقيق وشامل';
+
+  @override
+  String get mhStep3 => 'تنفيذ الصيانة';
+
+  @override
+  String get mhStep3Sub => 'تتم الصيانة بأعلى معايير الجودة';
+
+  @override
+  String get mhStep4 => 'استلام السيارة';
+
+  @override
+  String get mhStep4Sub => 'استلم سيارتك جاهزة وبأفضل حال';
+
+  @override
+  String get mhOffers => 'عروض الصيانة';
+
+  @override
+  String get mhWhyTitle => 'لماذا تختار حسن جميل؟';
+
+  @override
+  String get mhWhySub => 'أرقام وحقائق تتحدث عن نفسها.';
+
+  @override
+  String get mhFeatures => 'المزايا';
+
+  @override
+  String get mhUs => 'نحن';
+
+  @override
+  String get mhOthers => 'غيرنا';
+
+  @override
+  String get mhRowParts => 'قطع غيار أصلية 100%';
+
+  @override
+  String get mhRowDiag => 'أجهزة فحص معتمدة من المصنع';
+
+  @override
+  String get mhRowTeam => 'فريق عمل متخصص';
+
+  @override
+  String get mhRowReport => 'تقرير فني رقمي بالصور';
+
+  @override
+  String get mhRowTech => 'فنيون معتمدون من المصنع';
+
+  @override
+  String get mhFeedback => 'آراء الضيوف';
+
+  @override
+  String get mhVerified => 'ضيف موثّق';
+
+  @override
+  String get mhPeriodicTitle => 'جدول الصيانة الدورية';
+
+  @override
+  String get mhPeriodicSub => 'اختر المسافة لعرض بنود الصيانة المجدولة.';
+
+  @override
+  String get mhPeriodicEmpty => 'لا توجد بيانات صيانة دورية حالياً.';
+
+  @override
+  String get mhImportant => 'ملاحظة هامة';
+
+  @override
+  String get mhReady => 'جاهز للحجز؟';
+
+  @override
+  String get mhReadySub => 'احجز موعدك خلال ثوانٍ واستلم سيارتك بأفضل حال.';
+
+  @override
+  String get mhBookService => 'احجز خدمة';
+
+  @override
+  String get mhWhatsApp => 'تحدث عبر واتساب';
+
+  @override
+  String get alNickname => 'الاسم المستعار';
+
+  @override
+  String get alRename => 'تغيير الاسم';
+
+  @override
+  String get alSaved => 'تم حفظ الاسم';
+
+  @override
+  String get contactPopTitle => 'خدمة العملاء';
+
+  @override
+  String get contactPopOnline => 'متصل الآن';
+
+  @override
+  String get contactPopWhatsApp => 'محادثة واتساب';
+
+  @override
+  String get contactPopCall => 'اتصل بنا';
 }

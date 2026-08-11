@@ -9,23 +9,40 @@ import '../../../l10n/app_localizations.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../online_store/data/online_store_repository.dart';
 import '../../online_store/presentation/car_sheet.dart';
+import '../../parts/bloc/parts_cart_cubit.dart';
+import '../../parts/presentation/parts_cart_screen.dart'
+    show PartsCartBody, PartsCoupon;
 import '../../settings/bloc/locale_cubit.dart';
 import '../../../core/di/injector.dart';
 import '../bloc/cart_cubit.dart';
 import '../domain/cart_item.dart';
 
-/// "My Cart" — the reference's stacked rows: image, name, price, trailing
-/// action; first (selected) row rendered as a high-contrast pill with a
-/// trash button, others with an arrow; Make Payment pinned at the bottom.
-/// Cart handling mirrors the website: local truth + account sync.
-final class CartScreen extends StatelessWidget {
+/// "My Cart" — two tabs under the header: the vehicles cart (the reference's
+/// stacked rows with Make Payment pinned at the bottom) and the spare-parts
+/// cart (the /parts/cart body, embedded). Cart handling mirrors the website:
+/// local truth + account sync.
+final class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
+
+  @override
+  State<CartScreen> createState() => _CartScreenState();
+}
+
+final class _CartScreenState extends State<CartScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tab = TabController(length: 2, vsync: this);
+
+  @override
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final items = context.watch<CartCubit>().state;
-    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final vehicleItems = context.watch<CartCubit>().state;
+    final partsItems = context.watch<PartsCartCubit>().state;
     final scheme = Theme.of(context).colorScheme;
     return SafeArea(
       bottom: false,
@@ -36,7 +53,7 @@ final class CartScreen extends StatelessWidget {
             child: Row(
               children: [
                 IconButton(
-                  onPressed: () => context.go(Routes.home),
+                  onPressed: () => appBack(context),
                   icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                 ),
                 Expanded(
@@ -47,17 +64,80 @@ final class CartScreen extends StatelessWidget {
                         fontSize: context.rf(17), fontWeight: FontWeight.w800),
                   ),
                 ),
-                if (items.isNotEmpty)
-                  IconButton(
-                    tooltip: t.storeClearFilters,
-                    onPressed: () => context.read<CartCubit>().clear(),
-                    icon: const Icon(Icons.delete_sweep_outlined, size: 22),
-                  )
-                else
-                  const SizedBox(width: 48),
+                // Clears whichever cart the active tab shows.
+                ListenableBuilder(
+                  listenable: _tab,
+                  builder: (context, _) {
+                    final vehiclesTab = _tab.index == 0;
+                    final hasItems = vehiclesTab
+                        ? vehicleItems.isNotEmpty
+                        : partsItems.isNotEmpty;
+                    if (!hasItems) return const SizedBox(width: 48);
+                    return IconButton(
+                      tooltip: t.storeClearFilters,
+                      onPressed: () {
+                        if (vehiclesTab) {
+                          context.read<CartCubit>().clear();
+                        } else {
+                          context.read<PartsCartCubit>().clear();
+                          PartsCoupon.current.value = null;
+                        }
+                      },
+                      icon: const Icon(Icons.delete_sweep_outlined, size: 22),
+                    );
+                  },
+                ),
               ],
             ),
           ),
+          // ── Brand-styled tabs: vehicles cart / spare-parts cart ──
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                context.rs(16), context.rs(6), context.rs(16), 0),
+            child: TabBar(
+              controller: _tab,
+              labelColor: scheme.primary,
+              unselectedLabelColor: scheme.onSurface.withValues(alpha: 0.55),
+              indicatorColor: scheme.primary,
+              indicatorSize: TabBarIndicatorSize.tab,
+              dividerColor: scheme.outline.withValues(alpha: 0.35),
+              labelStyle: TextStyle(
+                  fontSize: context.rf(12.5), fontWeight: FontWeight.w800),
+              unselectedLabelStyle: TextStyle(
+                  fontSize: context.rf(12.5), fontWeight: FontWeight.w700),
+              tabs: [
+                Tab(height: context.rs(40), text: t.cartTabVehicles),
+                Tab(height: context.rs(40), text: t.cartTabParts),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: const [
+                _VehiclesCartTab(),
+                PartsCartBody(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The original vehicles cart — stacked rows + Make Payment at the bottom.
+final class _VehiclesCartTab extends StatelessWidget {
+  const _VehiclesCartTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final items = context.watch<CartCubit>().state;
+    final lang = context.watch<LocaleCubit>().state.languageCode;
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
           Expanded(
             child: items.isEmpty
                 ? Center(
@@ -113,8 +193,7 @@ final class CartScreen extends StatelessWidget {
                 child: Text(t.cartMakePayment),
               ),
             ),
-        ],
-      ),
+      ],
     );
   }
 }

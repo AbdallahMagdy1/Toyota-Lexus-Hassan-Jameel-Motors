@@ -2,6 +2,8 @@ import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_paths.dart';
 import '../../../core/network/api_client.dart';
+import '../../coupons/data/coupons_repository.dart';
+import '../../coupons/domain/coupon_models.dart';
 import '../domain/protection_models.dart';
 
 /// Protection & shading / maintenance-booking cycle — same endpoints as the
@@ -107,6 +109,29 @@ final class ProtectionRepository {
       return const [];
     }
   }
+
+  /// POST /api/app/coupons/validate-protection — server-computed coupon
+  /// verdict for the selected package(s). Failures come back as the quiet
+  /// invalid result; a coupon problem never blocks payment.
+  Future<CouponResult> validateCoupon({
+    required String code,
+    required String lang,
+    required List<({String productId, double price, String? carCategory})>
+        items,
+  }) =>
+      CouponsRepository(_api).validateProtection(
+        code: code,
+        lang: lang,
+        items: [
+          for (final i in items)
+            {
+              'productId': i.productId,
+              'price': i.price,
+              'qty': 1,
+              'carCategory': i.carCategory,
+            }
+        ],
+      );
 
   /// POST /maintenance/bookings — audit insert + App_ServiceRequestAdd, so
   /// the order reaches operations + email like every website booking.

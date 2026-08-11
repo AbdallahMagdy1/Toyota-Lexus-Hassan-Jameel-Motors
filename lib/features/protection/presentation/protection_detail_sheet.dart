@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -9,7 +10,9 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../coupons/domain/coupon_models.dart';
 import '../../guest_home/presentation/guest_home_view.dart' show showLoginPrompt;
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -280,6 +283,9 @@ final class _PayState extends Equatable {
     this.fullGrade = '0.2',
     this.sadadNumber,
     this.error = false,
+    this.couponCode,
+    this.couponResult,
+    this.couponBusy = false,
   });
 
   final _PayPhase phase;
@@ -295,6 +301,12 @@ final class _PayState extends Equatable {
   final String? sadadNumber;
   final bool error;
 
+  /// Applied coupon (server-validated). The discount is server-computed;
+  /// this state only carries the verdict for display + pay-time forwarding.
+  final String? couponCode;
+  final CouponResult? couponResult;
+  final bool couponBusy;
+
   _PayState copyWith({
     _PayPhase? phase,
     List<MaintBranch>? branches,
@@ -308,6 +320,9 @@ final class _PayState extends Equatable {
     String? fullGrade,
     String? Function()? sadadNumber,
     bool? error,
+    String? Function()? couponCode,
+    CouponResult? Function()? couponResult,
+    bool? couponBusy,
   }) =>
       _PayState(
         phase: phase ?? this.phase,
@@ -322,12 +337,17 @@ final class _PayState extends Equatable {
         fullGrade: fullGrade ?? this.fullGrade,
         sadadNumber: sadadNumber == null ? this.sadadNumber : sadadNumber(),
         error: error ?? this.error,
+        couponCode: couponCode == null ? this.couponCode : couponCode(),
+        couponResult:
+            couponResult == null ? this.couponResult : couponResult(),
+        couponBusy: couponBusy ?? this.couponBusy,
       );
 
   @override
   List<Object?> get props => [
         phase, branches, branchId, date, hours, hoursLoading, hour,
         provider, fullCar, fullGrade, sadadNumber, error,
+        couponCode, couponResult, couponBusy,
       ];
 }
 
@@ -372,6 +392,43 @@ final class _PayCubit extends Cubit<_PayState> {
     emit(state.copyWith(hours: hours, hoursLoading: false));
   }
 
+  /// Server-validated coupon for THIS package. Network failures /
+  /// unavailable codes resolve to the quiet invalid result — never blocking.
+  Future<void> applyCoupon(String raw) async {
+    final code = raw.trim().toUpperCase();
+    if (code.isEmpty || state.couponBusy) return;
+    emit(state.copyWith(couponBusy: true, couponResult: () => null));
+    final lang = sl<LocaleCubit>().state.languageCode;
+    final res = await _repo.validateCoupon(
+      code: code,
+      lang: lang,
+      // The sheet knows the package + VIN/label only — no carCategory here.
+      items: [
+        (
+          productId: package.id ?? '',
+          price: package.price ?? 0,
+          carCategory: null,
+        ),
+      ],
+    );
+    if (isClosed) return;
+    emit(state.copyWith(
+      couponBusy: false,
+      couponResult: () => res,
+      couponCode: () => code,
+    ));
+  }
+
+  void clearCoupon() =>
+      emit(state.copyWith(couponResult: () => null, couponCode: () => null));
+
+  /// Display-only discount: min(server discountAmount, package price).
+  double get couponDiscount {
+    final res = state.couponResult;
+    if (res == null || !res.valid) return 0;
+    return res.discountAmount.clamp(0.0, package.price ?? 0).toDouble();
+  }
+
   /// The website's buildNote(): tinting + VIN + slot + branch + vehicle,
   /// packed into the note the SP stores on the order.
   String _note(String lang) {
@@ -413,6 +470,11 @@ final class _PayCubit extends Cubit<_PayState> {
           'vin': vin,
           'note': _note(lang),
           'callbackUrl': callback,
+          // Forward the code ONLY when the validate verdict was valid==true;
+          // the backend recomputes the discount server-side.
+          if ((state.couponResult?.valid ?? false) &&
+              (state.couponCode ?? '').isNotEmpty)
+            'couponCode': state.couponCode,
         },
       );
       if (isClosed) return;
@@ -500,21 +562,14 @@ final class _PayView extends StatelessWidget {
                   color: scheme.onSurface.withValues(alpha: 0.6)),
             ),
             const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
-              initialValue: state.branchId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.protBranch,
+              value: state.branchId,
               items: [
                 for (final b in state.branches)
-                  DropdownMenuItem(value: b.id, child: Text(b.name(lang))),
+                  AppDropdownItem(value: b.id ?? '', label: b.name(lang)),
               ],
               onChanged: cubit.selectBranch,
-              decoration: InputDecoration(
-                labelText: t.protBranch,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
@@ -645,6 +700,10 @@ final class _PayView extends StatelessWidget {
               ),
 
             const SizedBox(height: 12),
+            // Coupon — server-validated; discount displayed only, forwarded
+            // at pay time when valid.
+            const _CouponBox(),
+            const SizedBox(height: 12),
             if (state.error)
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
@@ -653,20 +712,80 @@ final class _PayView extends StatelessWidget {
                     style: TextStyle(
                         color: scheme.error, fontSize: context.rf(12))),
               ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(t.protTotal,
-                    style: TextStyle(
-                        fontSize: context.rf(13),
-                        fontWeight: FontWeight.w800)),
-                PriceText(
-                    price: cubit.package.price,
-                    currency: '',
-                    contactForPrice: '',
-                    fontSize: context.rf(17)),
-              ],
-            ),
+            Builder(builder: (context) {
+              const green = Color(0xFF1E9E5A);
+              final price = cubit.package.price ?? 0;
+              final discount = cubit.couponDiscount;
+              final total =
+                  (price - discount).clamp(0.0, double.infinity).toDouble();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (discount > 0) ...[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(t.pcSubtotal,
+                            style: TextStyle(
+                                fontSize: context.rf(12),
+                                fontWeight: FontWeight.w600)),
+                        PriceText(
+                            price: price,
+                            currency: '',
+                            contactForPrice: '',
+                            fontSize: context.rf(12),
+                            color: scheme.onSurface),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(t.cpnCouponDiscount,
+                            style: TextStyle(
+                                fontSize: context.rf(12),
+                                fontWeight: FontWeight.w600,
+                                color: green)),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          textDirection: TextDirection.ltr,
+                          children: [
+                            Text('−',
+                                style: TextStyle(
+                                    fontSize: context.rf(12),
+                                    fontWeight: FontWeight.w800,
+                                    color: green)),
+                            PriceText(
+                                price: discount,
+                                currency: '',
+                                contactForPrice: '',
+                                fontSize: context.rf(12),
+                                color: green),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Divider(
+                        height: context.rs(16),
+                        color: scheme.outline.withValues(alpha: 0.35)),
+                  ],
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(t.protTotal,
+                          style: TextStyle(
+                              fontSize: context.rf(13),
+                              fontWeight: FontWeight.w800)),
+                      PriceText(
+                          price: total,
+                          currency: '',
+                          contactForPrice: '',
+                          fontSize: context.rf(17)),
+                    ],
+                  ),
+                ],
+              );
+            }),
             const SizedBox(height: 10),
             FilledButton(
               style: FilledButton.styleFrom(
@@ -688,6 +807,119 @@ final class _PayView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// Coupon input — the parts-cart pattern: pill TextField + Apply button with
+/// an inline spinner; once valid, a green pill with the code + Remove.
+final class _CouponBox extends StatefulWidget {
+  const _CouponBox();
+
+  @override
+  State<_CouponBox> createState() => _CouponBoxState();
+}
+
+final class _CouponBoxState extends State<_CouponBox> {
+  final _code = TextEditingController();
+
+  @override
+  void dispose() {
+    _code.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final cubit = context.watch<_PayCubit>();
+    final state = cubit.state;
+    final res = state.couponResult;
+    const green = Color(0xFF1E9E5A);
+
+    if (res != null && res.valid) {
+      return Container(
+        padding: EdgeInsetsDirectional.fromSTEB(
+            context.rs(14), context.rs(6), context.rs(6), context.rs(6)),
+        decoration: BoxDecoration(
+          color: green.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: green.withValues(alpha: 0.4)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.check_circle_rounded, size: 18, color: green),
+          SizedBox(width: context.rs(8)),
+          Expanded(
+            child: Text(
+              state.couponCode ?? '',
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.start,
+              style: TextStyle(
+                  fontSize: context.rf(12.5),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                  color: green),
+            ),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+                foregroundColor: green,
+                minimumSize: const Size(44, 36),
+                textStyle: TextStyle(
+                    fontSize: context.rf(11.5), fontWeight: FontWeight.w800)),
+            onPressed: cubit.clearCoupon,
+            child: Text(t.cpnRemove),
+          ),
+        ]),
+      );
+    }
+
+    // reason == 'unavailable' / network failure → quietly invalid: no red.
+    final invalid = res != null && !res.valid && !res.unavailable;
+    return Row(children: [
+      Expanded(
+        child: TextField(
+          controller: _code,
+          textDirection: TextDirection.ltr,
+          inputFormatters: [
+            TextInputFormatter.withFunction(
+                (o, n) => n.copyWith(text: n.text.toUpperCase())),
+          ],
+          decoration: InputDecoration(
+            hintText: t.pcCoupon,
+            hintStyle: TextStyle(
+                fontSize: context.rf(11.5),
+                color: scheme.onSurface.withValues(alpha: 0.4)),
+            prefixIcon: const Icon(Icons.sell_outlined, size: 17),
+            isDense: true,
+            errorText: invalid
+                ? ((res.message ?? '').isNotEmpty
+                    ? res.message
+                    : t.pcCouponInvalid)
+                : null,
+            border:
+                OutlineInputBorder(borderRadius: BorderRadius.circular(999)),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          ),
+        ),
+      ),
+      SizedBox(width: context.rs(8)),
+      FilledButton(
+        style: FilledButton.styleFrom(
+            shape: const StadiumBorder(),
+            padding: EdgeInsets.symmetric(
+                horizontal: context.rs(18), vertical: context.rs(11))),
+        onPressed:
+            state.couponBusy ? null : () => cubit.applyCoupon(_code.text),
+        child: state.couponBusy
+            ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2))
+            : Text(t.pcApply),
+      ),
+    ]);
   }
 }
 

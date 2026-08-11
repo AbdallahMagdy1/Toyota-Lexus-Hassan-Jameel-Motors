@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:go_router/go_router.dart';
 
 import '../../core/storage/local_store.dart';
@@ -22,9 +23,11 @@ import '../../features/content/news_screen.dart';
 import '../../features/finance/presentation/finance_screen.dart';
 import '../../features/offers/presentation/offers_screen.dart';
 import '../../features/online_store/presentation/online_store_screen.dart';
+import '../../features/store/presentation/store_screen.dart';
 import '../../features/parts/presentation/parts_cart_screen.dart';
 import '../../features/parts/presentation/parts_screen.dart';
 import '../../features/used_cars/used_cars_screen.dart';
+import '../../features/maintenance_hub/presentation/maintenance_hub_screen.dart';
 import '../../features/protection/presentation/protection_screen.dart';
 import '../../features/vehicles/presentation/models_screen.dart';
 import '../../features/welcome/presentation/welcome_screen.dart';
@@ -83,7 +86,8 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
       );
 
   return GoRouter(
-    initialLocation: store.onboardingDone ? Routes.welcome : Routes.onboarding,
+    // Onboarding slides always open first (swipe CTA routes by auth state).
+    initialLocation: Routes.onboarding,
     refreshListenable: _BlocRefresh(authBloc.stream),
     redirect: (context, state) {
       final status = authBloc.state.status;
@@ -92,8 +96,9 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
       final onAuthPage = state.matchedLocation == Routes.signIn ||
           state.matchedLocation == Routes.signUp ||
           state.matchedLocation == Routes.forgot;
-      final onEntry = state.matchedLocation == Routes.onboarding ||
-          state.matchedLocation == Routes.welcome;
+      // Onboarding is ALWAYS reachable (it shows first on every launch);
+      // only the welcome screen bounces signed-in users home.
+      final onEntry = state.matchedLocation == Routes.welcome;
 
       // Guests may open the auth pages (benefit prompts route them there);
       // only fully-authenticated users are bounced back home.
@@ -106,8 +111,11 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
     },
     routes: [
       ShellRoute(
-        builder: (context, state, child) =>
-            _AppShell(location: state.matchedLocation, child: child),
+        builder: (context, state, child) {
+          // Feed the manual back-history (go() replaces, so pop can't).
+          NavHistory.record(state.matchedLocation);
+          return _AppShell(location: state.matchedLocation, child: child);
+        },
         routes: [
           GoRoute(
             path: Routes.onboarding,
@@ -179,6 +187,11 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
                 page(const ProtectionScreen(), state),
           ),
           GoRoute(
+            path: Routes.maintenance,
+            pageBuilder: (context, state) =>
+                page(const MaintenanceHubScreen(), state),
+          ),
+          GoRoute(
             path: Routes.news,
             pageBuilder: (context, state) => page(const NewsScreen(), state),
           ),
@@ -220,6 +233,10 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
             pageBuilder: (context, state) => page(const FavoritesScreen(), state),
           ),
           GoRoute(
+            path: Routes.store,
+            pageBuilder: (context, state) => page(const StoreScreen(), state),
+          ),
+          GoRoute(
             path: Routes.profile,
             pageBuilder: (context, state) => page(const ProfileScreen(), state),
           ),
@@ -238,13 +255,35 @@ final class _AppShell extends StatelessWidget {
   final Widget child;
   final String location;
 
+  /// Roots where the system back should EXIT the app instead of navigating.
+  static const _exitRoots = {Routes.home, Routes.welcome, Routes.onboarding};
+
   @override
   Widget build(BuildContext context) {
     final menuOpen = context.watch<MenuCubit>().state;
     final width = MediaQuery.sizeOf(context).width;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
 
-    return Scaffold(
+    return PopScope(
+      // System back (Android button/gesture, iOS swipe): pushed routes and
+      // sheets pop naturally BEFORE this fires; this only catches the case
+      // where the whole app would close — i.e. go()-based navigation with
+      // no stack. Walk the manual history instead; exit only from a root.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (menuOpen) {
+          context.read<MenuCubit>().dismiss();
+          return;
+        }
+        if (_exitRoots.contains(location)) {
+          SystemNavigator.pop();
+          return;
+        }
+        final prev = NavHistory.back(location);
+        context.go(prev ?? Routes.home);
+      },
+      child: Scaffold(
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
@@ -291,6 +330,7 @@ final class _AppShell extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

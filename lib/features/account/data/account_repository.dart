@@ -140,6 +140,24 @@ final class AccountRepository {
     }
   }
 
+  /// Rename a garage car (App_UserCar_SetAlias). Returns (ok, reason).
+  Future<(bool, String?)> setCarAlias({
+    required String vin,
+    required int userId,
+    required String alias,
+  }) async {
+    try {
+      final res = await _api.post<Map<String, dynamic>>(
+        '/api/app/account/garage/alias',
+        body: {'vin': vin, 'userId': userId, 'alias': alias},
+      );
+      final j = res.data ?? const {};
+      return (j['ok'] == true, j['reason']?.toString());
+    } on DioException {
+      return (false, 'network');
+    }
+  }
+
   Future<NextPm?> nextPm({
     required String vin,
     required String modelCode,

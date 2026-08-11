@@ -6,6 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_dropdown.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -120,21 +121,14 @@ final class _BookingView extends StatelessWidget {
             const SizedBox(height: 16),
 
             // ── Branch ──
-            DropdownButtonFormField<String>(
-              initialValue: state.branchId,
-              isExpanded: true,
+            AppDropdown<String>(
+              label: t.protBranch,
+              value: state.branchId,
               items: [
                 for (final b in state.branches)
-                  DropdownMenuItem(value: b.id, child: Text(b.name(lang))),
+                  AppDropdownItem(value: b.id ?? '', label: b.name(lang)),
               ],
               onChanged: cubit.selectBranch,
-              decoration: InputDecoration(
-                labelText: t.protBranch,
-                border:
-                    OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              ),
             ),
             const SizedBox(height: 12),
 

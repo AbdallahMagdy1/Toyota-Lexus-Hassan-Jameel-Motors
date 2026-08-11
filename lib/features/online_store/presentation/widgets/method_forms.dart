@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../app/router/routes.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_dropdown.dart';
 import '../../../auth/bloc/auth_bloc.dart';
 import '../../../home/domain/home_models.dart';
 import '../../../home/presentation/widgets/home_bits.dart';
@@ -413,6 +415,7 @@ final class PhoneInput extends StatelessWidget {
 final class PickerField<T> extends StatelessWidget {
   const PickerField({
     super.key,
+    required this.label,
     required this.value,
     required this.items,
     required this.labelOf,
@@ -421,29 +424,28 @@ final class PickerField<T> extends StatelessWidget {
     this.hint,
   });
 
+  final String label;
   final T? value;
   final List<T> items;
   final String Function(T) labelOf;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<T> onChanged;
   final String? error;
   final String? hint;
 
   @override
   Widget build(BuildContext context) {
-    return DropdownButtonFormField<T>(
-      initialValue: value,
-      isExpanded: true,
-      hint: hint == null ? null : Text(hint!, style: TextStyle(fontSize: context.rf(13))),
-      style: TextStyle(
-          fontSize: context.rf(13.5),
-          color: Theme.of(context).colorScheme.onSurface),
-      decoration: InputDecoration(errorText: error),
-      items: [
-        for (final i in items)
-          DropdownMenuItem<T>(
-              value: i, child: Text(labelOf(i), overflow: TextOverflow.ellipsis)),
-      ],
-      onChanged: onChanged,
+    return Padding(
+      padding: EdgeInsets.only(top: context.rs(14)),
+      child: AppDropdown<T>(
+        label: label,
+        value: value,
+        hint: hint,
+        errorText: error,
+        items: [
+          for (final i in items) AppDropdownItem(value: i, label: labelOf(i)),
+        ],
+        onChanged: onChanged,
+      ),
     );
   }
 }
@@ -568,12 +570,12 @@ final class ContactForm extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
-        FieldLabel(t.formApplicant),
         PickerField<CustGroup>(
+          label: t.formApplicant,
           value: cubit.custGroup,
           items: cubit.settings.custGroups,
           labelOf: (g) => g.name(lang),
-          onChanged: (g) => cubit.setCustGroup(g?.id ?? 'G4'),
+          onChanged: (g) => cubit.setCustGroup(g.id ?? 'G4'),
         ),
         FieldLabel(t.formName),
         FormInput(controller: cubit.name, error: _errText(context, state.errors['name'])),
@@ -585,14 +587,14 @@ final class ContactForm extends StatelessWidget {
             error: _errText(context, state.errors['email']),
             keyboardType: TextInputType.emailAddress,
             ltr: true),
-        FieldLabel(t.formCity),
         PickerField<City>(
+          label: t.formCity,
           value: cubit.settings.cities
               .where((c) => c.id == state.cityId)
               .firstOrNull,
           items: cubit.settings.cities,
           labelOf: (c) => c.name(lang),
-          onChanged: (c) => cubit.setCity(c?.id),
+          onChanged: (c) => cubit.setCity(c.id),
           error: _errText(context, state.errors['city']),
         ),
         FieldLabel(cubit.needIdentity ? t.formIdentity : t.formCN),
@@ -646,8 +648,65 @@ final class ReserveForm extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     Future<void> submit() async {
-      final res = await cubit.submit();
-      if (res != null && context.mounted) sheet.showSuccess(res.reference);
+      // Stock car with SN → the old store's BUY: pay the down payment
+      // through the gateway (Site_Reservation_Car_Payment), exactly like
+      // the website. No SN → plain reservation request (CRM follow-up).
+      if ((cubit.sn ?? '').isEmpty) {
+        final res = await cubit.submit();
+        if (res != null && context.mounted) sheet.showSuccess(res.reference);
+        return;
+      }
+      final res = await cubit.payAndReserve();
+      if (res == null || !context.mounted) return;
+      final url = '${res['urlPayment'] ?? ''}';
+      final sadad = '${res['sadadNumber'] ?? ''}';
+      final orderId = '${res['orderId'] ?? ''}';
+      if (url.isNotEmpty && url != 'null') {
+        final gate = await Navigator.of(context, rootNavigator: true)
+            .push<(bool, String?)>(MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _OnlineGatewayPage(url: url),
+        ));
+        if (!context.mounted) return;
+        if (gate != null && gate.$1) {
+          sheet.showSuccess(gate.$2 ?? (orderId == 'null' ? '' : orderId));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+              content: Text(t.pcPayFailed),
+              behavior: SnackBarBehavior.floating));
+        }
+        return;
+      }
+      if (sadad.isNotEmpty && sadad != 'null') {
+        await showDialog<void>(
+          context: context,
+          builder: (dCtx) => AlertDialog(
+            title: Text(t.pcSadadTitle),
+            content: Column(mainAxisSize: MainAxisSize.min, children: [
+              SelectableText(sadad,
+                  textDirection: TextDirection.ltr,
+                  style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1)),
+              const SizedBox(height: 8),
+              Text(t.pcSadadHint,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 12, height: 1.5)),
+            ]),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(dCtx).pop(),
+                  child: Text(t.commonDone)),
+            ],
+          ),
+        );
+        if (context.mounted) {
+          sheet.showSuccess(orderId == 'null' || orderId.isEmpty ? sadad : orderId);
+        }
+        return;
+      }
+      sheet.showSuccess(orderId == 'null' ? '' : orderId);
     }
 
     return ListView(
@@ -695,14 +754,14 @@ final class ReserveForm extends StatelessWidget {
             ],
           ),
         ),
-        FieldLabel(t.formApplicant),
         PickerField<CustGroup>(
+          label: t.formApplicant,
           value: cubit.settings.custGroups
               .where((g) => g.id == state.custGroupId)
               .firstOrNull,
           items: cubit.settings.custGroups,
           labelOf: (g) => g.name(lang),
-          onChanged: (g) => cubit.setCustGroup(g?.id ?? 'G4'),
+          onChanged: (g) => cubit.setCustGroup(g.id ?? 'G4'),
         ),
         FieldLabel(t.formName),
         FormInput(controller: cubit.name, error: _errText(context, state.errors['name'])),
@@ -713,14 +772,14 @@ final class ReserveForm extends StatelessWidget {
             controller: cubit.email,
             keyboardType: TextInputType.emailAddress,
             ltr: true),
-        FieldLabel(t.formCity),
         PickerField<City>(
+          label: t.formCity,
           value: cubit.settings.cities
               .where((c) => c.id == state.cityId)
               .firstOrNull,
           items: cubit.settings.cities,
           labelOf: (c) => c.name(lang),
-          onChanged: (c) => cubit.setCity(c?.id),
+          onChanged: (c) => cubit.setCity(c.id),
           error: _errText(context, state.errors['city']),
         ),
         FieldLabel(cubit.needIdentity ? t.formIdentity : t.formCN),
@@ -827,14 +886,14 @@ final class _FinancePersonal extends StatelessWidget {
     return ListView(
       padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
       children: [
-        FieldLabel(t.formApplicant),
         PickerField<CustGroup>(
+          label: t.formApplicant,
           value: cubit.settings.custGroups
               .where((g) => g.id == state.custGroupId)
               .firstOrNull,
           items: cubit.settings.custGroups,
           labelOf: (g) => g.name(lang),
-          onChanged: (g) => cubit.setCustGroup(g?.id ?? 'G4'),
+          onChanged: (g) => cubit.setCustGroup(g.id ?? 'G4'),
         ),
         FieldLabel(t.formNameAr),
         FormInput(
@@ -852,14 +911,14 @@ final class _FinancePersonal extends StatelessWidget {
             controller: cubit.email,
             keyboardType: TextInputType.emailAddress,
             ltr: true),
-        FieldLabel(t.formCity),
         PickerField<City>(
+          label: t.formCity,
           value: cubit.settings.cities
               .where((c) => c.id == state.cityId)
               .firstOrNull,
           items: cubit.settings.cities,
           labelOf: (c) => c.name(lang),
-          onChanged: (c) => cubit.setCity(c?.id),
+          onChanged: (c) => cubit.setCity(c.id),
           error: _errText(context, state.errors['city']),
         ),
         FieldLabel(cubit.needIdentity ? t.formIdentity : t.formCN),
@@ -968,14 +1027,14 @@ final class _FinanceWork extends StatelessWidget {
             child: Text(t.authRequiredField,
                 style: const TextStyle(color: Color(0xFFE5484D), fontSize: 11.5)),
           ),
-        FieldLabel(t.formSalaryBank),
         PickerField<BankOffer>(
+          label: t.formSalaryBank,
           value: sheet.state.banks
               .where((b) => b.bankId == state.salaryBankId)
               .firstOrNull,
           items: sheet.state.banks,
           labelOf: (b) => b.name(lang),
-          onChanged: (b) => cubit.setSalaryBank(b?.bankId),
+          onChanged: (b) => cubit.setSalaryBank(b.bankId),
           error: _errText(context, state.errors['salaryBank']),
         ),
         yesNo(t.financeQ1, state.q1, (v) => cubit.setQuestion(1, v)),
@@ -1209,6 +1268,72 @@ final class SheetSuccess extends StatelessWidget {
             child: Text(t.successClose),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+/// MyFatoorah gateway for the car down-payment — intercepts the app
+/// callback; the reservation SP already captured the payment, so a return
+/// with OrderGUID / PaymentType=full IS success (same recognition as the
+/// website's /payment/callback).
+final class _OnlineGatewayPage extends StatefulWidget {
+  const _OnlineGatewayPage({required this.url});
+
+  final String url;
+
+  @override
+  State<_OnlineGatewayPage> createState() => _OnlineGatewayPageState();
+}
+
+final class _OnlineGatewayPageState extends State<_OnlineGatewayPage> {
+  static const _callback = 'https://hjapp.payment';
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setNavigationDelegate(NavigationDelegate(
+        onNavigationRequest: (request) {
+          if (request.url.startsWith(_callback)) {
+            final params =
+                Uri.tryParse(request.url)?.queryParameters ?? const {};
+            final guid = params['OrderGUID'] ?? params['orderGUID'];
+            final full =
+                (params['PaymentType'] ?? '').toLowerCase() == 'full';
+            Navigator.of(context).pop(((guid ?? '').isNotEmpty || full, guid));
+            return NavigationDecision.prevent;
+          }
+          return NavigationDecision.navigate;
+        },
+      ))
+      ..loadRequest(Uri.parse(widget.url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    return Material(
+      child: SafeArea(
+        child: Column(children: [
+          Row(children: [
+            IconButton(
+              onPressed: () => Navigator.of(context).pop((false, null)),
+              icon: const Icon(Icons.close_rounded),
+            ),
+            Expanded(
+              child: Text(t.payGatewayTitle,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      fontSize: 15, fontWeight: FontWeight.w800)),
+            ),
+            const SizedBox(width: 48),
+          ]),
+          Expanded(child: WebViewWidget(controller: _controller)),
+        ]),
       ),
     );
   }

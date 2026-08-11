@@ -9,6 +9,15 @@ import '../domain/finance_models.dart';
 
 enum FinanceLeadPhase { editing, busy, done, failed }
 
+/// Website FinanceDocUploads keys — sent verbatim in the submit payload.
+const kFinanceDocKinds = [
+  'identityImage',
+  'license',
+  'salaryDefinitionLetter',
+  'insurance',
+  'accountStatement',
+];
+
 final class FinanceLeadState extends Equatable {
   const FinanceLeadState({
     this.phase = FinanceLeadPhase.editing,
@@ -17,6 +26,10 @@ final class FinanceLeadState extends Equatable {
     this.needIdentity = true,
     this.advance,
     this.error = false,
+    this.workType = 'private',
+    this.docs = const {},
+    this.docNames = const {},
+    this.reference,
   });
 
   final FinanceLeadPhase phase;
@@ -28,6 +41,16 @@ final class FinanceLeadState extends Equatable {
   final double? advance;
   final bool error;
 
+  /// جهة العمل — 'private' | 'governmental' (website workType).
+  final String workType;
+
+  /// Attached documents: kind -> base64 (no data-url prefix).
+  final Map<String, String> docs;
+  final Map<String, String> docNames;
+
+  /// Ticket number returned by the backend on success.
+  final String? reference;
+
   FinanceLeadState copyWith({
     FinanceLeadPhase? phase,
     int? period,
@@ -35,6 +58,10 @@ final class FinanceLeadState extends Equatable {
     bool? needIdentity,
     double? Function()? advance,
     bool? error,
+    String? workType,
+    Map<String, String>? docs,
+    Map<String, String>? docNames,
+    String? Function()? reference,
   }) =>
       FinanceLeadState(
         phase: phase ?? this.phase,
@@ -43,11 +70,17 @@ final class FinanceLeadState extends Equatable {
         needIdentity: needIdentity ?? this.needIdentity,
         advance: advance == null ? this.advance : advance(),
         error: error ?? this.error,
+        workType: workType ?? this.workType,
+        docs: docs ?? this.docs,
+        docNames: docNames ?? this.docNames,
+        reference: reference == null ? this.reference : reference(),
       );
 
   @override
-  List<Object?> get props =>
-      [phase, period, custGroupId, needIdentity, advance, error];
+  List<Object?> get props => [
+        phase, period, custGroupId, needIdentity, advance, error,
+        workType, docs, docNames, reference,
+      ];
 }
 
 /// The website's FinanceRequestModal: a live computeFinance estimate next to
@@ -113,6 +146,28 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
     ));
   }
 
+  void setWorkType(String v) => emit(state.copyWith(workType: v));
+
+  void setDoc(String kind, String? base64, String? fileName) {
+    final docs = Map<String, String>.from(state.docs);
+    final names = Map<String, String>.from(state.docNames);
+    if (base64 == null || base64.isEmpty) {
+      docs.remove(kind);
+      names.remove(kind);
+    } else {
+      docs[kind] = base64;
+      names[kind] = fileName ?? kind;
+    }
+    emit(state.copyWith(docs: docs, docNames: names));
+  }
+
+  /// Absher/Yakeen autofill applied to the form (website applyAbsher).
+  void applyAbsher({String? fullName, String? mobile9, String? identityNo}) {
+    if ((fullName ?? '').trim().isNotEmpty) name.text = fullName!.trim();
+    if ((mobile9 ?? '').trim().isNotEmpty) phone.text = '+966${mobile9!.trim()}';
+    if ((identityNo ?? '').trim().isNotEmpty) identity.text = identityNo!.trim();
+  }
+
   String _fullPhone(String raw) {
     var p = raw.trim().replaceAll(RegExp(r'\s'), '');
     if (p.startsWith('+')) return p;
@@ -152,10 +207,15 @@ final class FinanceLeadCubit extends Cubit<FinanceLeadState> {
       'firstPayment': est.firstPay.roundToDouble(),
       'period': est.period,
       'message': note.text.trim().isEmpty ? null : note.text.trim(),
+      // Website FinanceDocUploads payload: جهة العمل + base64 documents.
+      'workType': state.workType,
+      for (final kind in kFinanceDocKinds)
+        if ((state.docs[kind] ?? '').isNotEmpty) kind: state.docs[kind],
     });
     if (isClosed) return res.ok;
     emit(state.copyWith(
-        phase: res.ok ? FinanceLeadPhase.done : FinanceLeadPhase.failed));
+        phase: res.ok ? FinanceLeadPhase.done : FinanceLeadPhase.failed,
+        reference: () => res.reference));
     return res.ok;
   }
 
