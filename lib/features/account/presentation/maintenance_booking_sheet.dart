@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -1028,7 +1028,7 @@ final class _Step3 extends StatelessWidget {
         // Date — opens the availability calendar (website cycle).
         OutlinedButton.icon(
           style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(52),
+            minimumSize: const Size.fromHeight(44),
             alignment: AlignmentDirectional.centerStart,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1185,7 +1185,7 @@ final class _NavBar extends StatelessWidget {
           Expanded(
             child: FilledButton(
               style: FilledButton.styleFrom(
-                minimumSize: const Size(64, 52),
+                minimumSize: const Size(64, 44),
                 shape: const StadiumBorder(),
                 textStyle: TextStyle(
                     fontSize: context.rf(14), fontWeight: FontWeight.w800),
@@ -1243,7 +1243,7 @@ final class _Success extends StatelessWidget {
           const SizedBox(height: 18),
           FilledButton(
             style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder()),
             onPressed: () => Navigator.of(context).pop(),
             child: Text(t.commonDone),

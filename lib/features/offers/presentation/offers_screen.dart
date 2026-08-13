@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -7,6 +7,8 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/pressable.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
@@ -54,11 +56,16 @@ final class _OffersView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: switch (state.status) {
-            OffersStatus.loading =>
-              const Center(child: CircularProgressIndicator()),
-            OffersStatus.error => Center(
-                child: TextButton(
-                    onPressed: cubit.load, child: Text(t.homeErrorRetry))),
+            OffersStatus.loading => SkeletonList(
+                itemCount: 4,
+                itemHeight: context.rs(140),
+              ),
+            OffersStatus.error => AppErrorState(
+                title: t.stateErrorTitle,
+                message: t.stateErrorBody,
+                retryLabel: t.stateRetry,
+                onRetry: cubit.load,
+              ),
             OffersStatus.ready => _Body(
                 state: state,
                 lang: lang,
@@ -109,7 +116,7 @@ final class _Body extends StatelessWidget {
               child: Text(
                 t.offersTitle,
                 style: TextStyle(
-                    fontSize: context.rf(24), fontWeight: FontWeight.w800),
+                    fontSize: context.rf(19), fontWeight: FontWeight.w800),
               ),
             ),
           ),
@@ -124,7 +131,10 @@ final class _Body extends StatelessWidget {
           if (sections.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: Center(child: Text(t.offersEmpty)),
+              child: AppEmptyState(
+                icon: Icons.local_offer_outlined,
+                title: t.offersEmpty,
+              ),
             ),
           for (final (type, offers) in sections) ...[
             SliverToBoxAdapter(
@@ -211,15 +221,28 @@ final class OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    return HomeCard(
-      onTap: () => showOfferDetailSheet(context, offer.slug),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              HomeImage(
-                  url: offer.image(lang), aspectRatio: 16 / 8, logicalWidth: 400),
+    // Services-mock look: card-less — a big rounded photo with the text
+    // block and soft pill CTA below it. Press feedback via Pressable.
+    return Pressable(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => showOfferDetailSheet(context, offer.slug),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(18),
+                  child: Stack(children: [
+                    HomeImage(
+                        url: offer.image(lang),
+                        aspectRatio: 16 / 8,
+                        logicalWidth: 400),
+                    // Services-mock frosted fade into the page background.
+                    GlassBottomFade(height: context.rs(52)),
+                  ]),
+                ),
               // "FOR YOUR VEHICLE" — the mock's solid red pill, top-start.
               if (forMyCar)
                 PositionedDirectional(
@@ -267,10 +290,11 @@ final class OfferCard extends StatelessWidget {
                     ),
                   ),
                 ),
-            ],
-          ),
-          _content(context, t, scheme),
-        ],
+              ],
+            ),
+            _content(context, t, scheme),
+          ],
+        ),
       ),
     );
   }
@@ -279,20 +303,40 @@ final class OfferCard extends StatelessWidget {
   /// mode (fixed-height rail) a Spacer pushes the strip + CTA to the bottom
   /// so cards stay aligned no matter how long the excerpt is.
   Widget _content(BuildContext context, AppLocalizations t, ColorScheme scheme) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          offer.title(lang),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-              fontSize: context.rf(16),
-              fontWeight: FontWeight.w800,
-              height: 1.3),
+        // Services-mock title row: small tinted roundel + bold title.
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: context.rs(28),
+              height: context.rs(28),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: scheme.primary.withValues(alpha: isDark ? 0.2 : 0.1),
+              ),
+              child: Icon(Icons.local_offer_rounded,
+                  size: context.rs(14), color: scheme.primary),
+            ),
+            SizedBox(width: context.rs(8)),
+            Expanded(
+              child: Text(
+                offer.title(lang),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: context.rf(14.5),
+                    fontWeight: FontWeight.w800,
+                    height: 1.3),
+              ),
+            ),
+          ],
         ),
         if (offer.excerpt(lang).isNotEmpty) ...[
-          SizedBox(height: context.rs(5)),
+          SizedBox(height: context.rs(6)),
           Text(
             offer.excerpt(lang),
             maxLines: 2,
@@ -307,37 +351,45 @@ final class OfferCard extends StatelessWidget {
         if (expand) const Spacer() else SizedBox(height: context.rs(12)),
         // Full-width countdown strip (mock's DAYS/HRS/MIN/SEC panel).
         OfferCountdown(endDate: offer.endDate, now: now),
-        SizedBox(height: context.rs(12)),
-        SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(64, 46),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
-              textStyle: TextStyle(
-                  fontSize: context.rf(12.5), fontWeight: FontWeight.w800),
-            ),
-            onPressed: () => showOfferDetailSheet(context, offer.slug),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(t.offersClaim),
-                SizedBox(width: context.rs(7)),
-                Icon(
-                  Directionality.of(context) == TextDirection.rtl
-                      ? Icons.arrow_back_rounded
-                      : Icons.arrow_forward_rounded,
-                  size: 15,
-                ),
-              ],
+        SizedBox(height: context.rs(10)),
+        // Soft-tinted pill CTA — the mock's "Online Pharmacy" button look.
+        Material(
+          color: scheme.primary.withValues(alpha: isDark ? 0.2 : 0.09),
+          shape: const StadiumBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => showOfferDetailSheet(context, offer.slug),
+            child: SizedBox(
+              height: context.rs(44),
+              width: double.infinity,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    t.offersClaim,
+                    style: TextStyle(
+                        fontSize: context.rf(12.5),
+                        fontWeight: FontWeight.w800,
+                        color: scheme.primary),
+                  ),
+                  SizedBox(width: context.rs(7)),
+                  Icon(
+                    Directionality.of(context) == TextDirection.rtl
+                        ? Icons.arrow_back_rounded
+                        : Icons.arrow_forward_rounded,
+                    size: 15,
+                    color: scheme.primary,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       ],
     );
     final padded = Padding(
-      padding: EdgeInsets.all(context.rs(16)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(4), context.rs(12), context.rs(4), context.rs(4)),
       child: column,
     );
     return expand ? Expanded(child: padded) : padded;
@@ -369,53 +421,70 @@ final class OfferCountdown extends StatelessWidget {
       );
     }
     final tiles = <(String, String)>[
-      ('${ms.inDays}', t.offersDay),
-      ('${ms.inHours % 24}', t.offersHour),
-      ('${ms.inMinutes % 60}', t.offersMin),
-      ('${ms.inSeconds % 60}', t.offersSec),
+      ('${ms.inDays}'.padLeft(2, '0'), t.offersDay),
+      ('${ms.inHours % 24}'.padLeft(2, '0'), t.offersHour),
+      ('${ms.inMinutes % 60}'.padLeft(2, '0'), t.offersMin),
+      ('${ms.inSeconds % 60}'.padLeft(2, '0'), t.offersSec),
     ];
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // The mock's full-width light panel: red numbers over tiny gray labels.
-    return Container(
-      padding: EdgeInsets.symmetric(vertical: context.rs(10)),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : const Color(0xFFF2F4F8),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        textDirection: TextDirection.ltr,
-        children: [
-          for (final (value, label) in tiles)
-            Expanded(
-              child: Column(
-                children: [
-                  Text(
-                    value,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: context.rf(15),
-                      fontWeight: FontWeight.w800,
-                      color: scheme.primary,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-                  ),
-                  SizedBox(height: context.rs(1)),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontSize: context.rf(8),
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.6,
-                      color: scheme.onSurface.withValues(alpha: 0.5),
-                    ),
-                  ),
-                ],
+    // Instagram countdown-sticker style: dark rounded digit tiles with bold
+    // white numerals, tiny labels inside, ":" separators — centered row.
+    final tileColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFF1A1C21);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      textDirection: TextDirection.ltr,
+      children: [
+        for (final (i, (value, label)) in tiles.indexed) ...[
+          if (i > 0)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.rs(4)),
+              child: Text(
+                ':',
+                style: TextStyle(
+                  fontSize: context.rf(16),
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onSurface.withValues(alpha: 0.35),
+                ),
               ),
             ),
+          Container(
+            width: context.rs(52),
+            padding: EdgeInsets.symmetric(vertical: context.rs(7)),
+            decoration: BoxDecoration(
+              color: tileColor,
+              borderRadius: BorderRadius.circular(13),
+            ),
+            child: Column(
+              children: [
+                Text(
+                  value,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: context.rf(16),
+                    height: 1.1,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                SizedBox(height: context.rs(2)),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: context.rf(7.5),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
-      ),
+      ],
     );
   }
 }

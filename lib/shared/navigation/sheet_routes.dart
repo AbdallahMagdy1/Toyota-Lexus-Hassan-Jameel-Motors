@@ -96,13 +96,22 @@ final class _DraggableDismiss extends StatefulWidget {
 final class _DraggableDismissState extends State<_DraggableDismiss>
     with SingleTickerProviderStateMixin {
   double _offset = 0;
-  late final AnimationController _spring = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 220),
-  )..addListener(() {
-      setState(() => _offset = _offsetTween.evaluate(_spring));
-    });
+  // Created eagerly: a `late final` initialized on first use could be
+  // touched for the first time inside dispose(), which crashes (ticker
+  // lookup on a deactivated element).
+  late final AnimationController _spring;
   late Tween<double> _offsetTween = Tween(begin: 0, end: 0);
+
+  @override
+  void initState() {
+    super.initState();
+    _spring = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 220),
+    )..addListener(() {
+        setState(() => _offset = _offsetTween.evaluate(_spring));
+      });
+  }
 
   @override
   void dispose() {

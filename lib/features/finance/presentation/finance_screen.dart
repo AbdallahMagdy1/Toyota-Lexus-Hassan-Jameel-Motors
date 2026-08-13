@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,6 +8,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
@@ -46,11 +47,16 @@ final class _FinanceView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: switch (state.status) {
-            FinanceStatus.loading =>
-              const Center(child: CircularProgressIndicator()),
-            FinanceStatus.error => Center(
-                child: TextButton(
-                    onPressed: cubit.load, child: Text(t.homeErrorRetry))),
+            FinanceStatus.loading => SkeletonList(
+                itemCount: 4,
+                itemHeight: context.rs(120),
+              ),
+            FinanceStatus.error => AppErrorState(
+                title: t.stateErrorTitle,
+                message: t.stateErrorBody,
+                retryLabel: t.stateRetry,
+                onRetry: cubit.load,
+              ),
             FinanceStatus.ready => const _Body(),
           },
         ),
@@ -99,7 +105,7 @@ final class _Body extends StatelessWidget {
               children: [
                 Text(t.finTitle,
                     style: TextStyle(
-                        fontSize: context.rf(24),
+                        fontSize: context.rf(19),
                         fontWeight: FontWeight.w800)),
                 SizedBox(height: context.rs(2)),
                 Text(t.finSubtitle,
@@ -358,17 +364,15 @@ final class _Body extends StatelessWidget {
 
         // ── Cars ──
         if (state.vehiclesLoading)
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: CircularProgressIndicator()),
-            ),
+          SliverToBoxAdapter(
+            child: SkeletonList(itemCount: 3, itemHeight: context.rs(110)),
           )
         else if (cars.isEmpty)
           SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.all(context.rs(40)),
-              child: Center(child: Text(t.finNoCars)),
+            child: AppEmptyState(
+              icon: Icons.directions_car_outlined,
+              title: t.finNoCars,
+              compact: true,
             ),
           )
         else

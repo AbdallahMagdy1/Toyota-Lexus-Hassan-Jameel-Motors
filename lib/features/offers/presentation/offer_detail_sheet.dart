@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/injector.dart';
@@ -7,6 +7,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/availability_calendar.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../finance/presentation/finance_docs_section.dart';
@@ -64,9 +65,28 @@ final class _DetailView extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: switch (state.status) {
-          OfferDetailStatus.loading =>
-            const Center(child: CircularProgressIndicator()),
-          OfferDetailStatus.error => Center(child: Text(t.homeErrorRetry)),
+          OfferDetailStatus.loading => Shimmer(
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.fromLTRB(context.rs(20),
+                          context.rs(20), context.rs(20), context.rs(16)),
+                      child: SkeletonBox(
+                          width: double.infinity,
+                          height: context.rs(170),
+                          radius: 20),
+                    ),
+                    const SkeletonList(itemCount: 3, itemHeight: 76),
+                  ],
+                ),
+              ),
+            ),
+          OfferDetailStatus.error => AppErrorState(
+              title: t.stateErrorTitle,
+              message: t.homeErrorRetry,
+            ),
           OfferDetailStatus.ready => _DetailBody(
               detail: state.detail!,
               vehicles: state.vehicles(wantedDbId),
@@ -284,7 +304,7 @@ final class _DetailBody extends StatelessWidget {
           ),
           child: FilledButton(
             style: FilledButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
+              minimumSize: const Size.fromHeight(44),
               shape: const StadiumBorder(),
               textStyle: TextStyle(
                   fontSize: context.rf(14), fontWeight: FontWeight.w800),
@@ -597,7 +617,7 @@ final class _OfferFormView extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () => Navigator.of(context).pop(),
               child: Text(t.commonDone),
@@ -841,7 +861,7 @@ final class _OfferFormView extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(44),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                       side: BorderSide(
@@ -875,7 +895,7 @@ final class _OfferFormView extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton.icon(
                     style: OutlinedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48),
+                      minimumSize: const Size.fromHeight(44),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                       side: BorderSide(
@@ -1019,7 +1039,7 @@ final class _OfferFormView extends StatelessWidget {
               ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),

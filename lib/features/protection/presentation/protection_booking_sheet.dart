@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/injector.dart';
@@ -76,7 +76,7 @@ final class _BookingView extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () => Navigator.of(context).pop(),
               child: Text(t.commonDone),
@@ -135,7 +135,7 @@ final class _BookingView extends StatelessWidget {
             // ── Date ──
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 side:
@@ -249,7 +249,7 @@ final class _BookingView extends StatelessWidget {
               ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -56,7 +56,13 @@ final class _SignInView extends StatelessWidget {
           prev.signedIn != next.signedIn || prev.goSignUpMobile != next.goSignUpMobile,
       listener: (context, state) {
         if (state.signedIn) {
-          context.read<AuthBloc>().add(const AuthSessionRefreshed());
+          // Visual grace period: let the OTP boxes finish morphing into the
+          // ✓ pill before the auth refresh triggers the router redirect —
+          // same event, same navigation, just deferred ~1s.
+          final auth = context.read<AuthBloc>();
+          Future.delayed(const Duration(milliseconds: 1000), () {
+            auth.add(const AuthSessionRefreshed());
+          });
         } else if (state.goSignUpMobile != null) {
           context.go('${Routes.signUp}?mobile=${state.goSignUpMobile}&notFound=1');
         }
@@ -124,7 +130,7 @@ final class _SignInView extends StatelessWidget {
     Widget primaryButton({required VoidCallback onPressed, required String label}) =>
         FilledButton(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(44),
             shape: const StadiumBorder(),
           ),
           onPressed: state.busy ? null : onPressed,
@@ -159,7 +165,7 @@ final class _SignInView extends StatelessWidget {
           SizedBox(height: context.rs(12)),
           OutlinedButton(
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
+              minimumSize: const Size.fromHeight(44),
               shape: const StadiumBorder(),
               side: BorderSide(color: scheme.primary),
               foregroundColor: scheme.primary,
@@ -234,6 +240,17 @@ final class _SignInView extends StatelessWidget {
             controller: cubit.otp,
             focusColor: scheme.primary,
             onSubmitted: (_) => cubit.submitOtp(),
+            // Result morph from the EXISTING flow state: signed-in fuses the
+            // boxes into the ✓ pill (router redirect follows), invalid OTP
+            // into the ✕ pill with shake + tap-to-retry.
+            status: state.signedIn
+                ? OtpStatus.success
+                : state.error == SignInError.invalidOtp
+                    ? OtpStatus.error
+                    : OtpStatus.idle,
+            successLabel: t.otpVerifiedTitle,
+            errorLabel: t.otpIncorrectTitle,
+            errorHint: t.otpIncorrectHint,
           ),
           if (state.devOtp != null) ...[
             SizedBox(height: context.rs(6)),
@@ -246,11 +263,21 @@ final class _SignInView extends StatelessWidget {
             ),
           ],
           SizedBox(height: context.rs(10)),
-          if (error != null) ...[ErrorBanner(text: error), SizedBox(height: context.rs(10))],
+          // Non-OTP errors keep the banner; invalid OTP renders in the pill.
+          if (error != null && state.error != SignInError.invalidOtp) ...[
+            ErrorBanner(text: error),
+            SizedBox(height: context.rs(10))
+          ],
           primaryButton(onPressed: cubit.submitOtp, label: t.authSignIn),
-          TextButton(
-            onPressed: state.busy ? null : cubit.resendOtp,
-            child: Text(t.authOtpResend),
+          SizedBox(height: context.rs(6)),
+          // Code-validity countdown + the existing resend action (restarts
+          // the countdown visually; resend logic unchanged).
+          OtpTimerResend(
+            validForLabel: (time) => t.otpValidFor(time),
+            expiredLabel: t.otpExpired,
+            onResend: cubit.resendOtp,
+            resendLabel: t.authOtpResend,
+            busy: state.busy,
           ),
           TextButton(onPressed: cubit.back, child: Text(t.authBack)),
         ];

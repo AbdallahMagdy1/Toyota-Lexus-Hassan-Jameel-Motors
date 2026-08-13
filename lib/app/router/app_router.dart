@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show ScrollDirection;
 import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:go_router/go_router.dart';
 
@@ -249,7 +250,7 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
 /// THE app Scaffold — the only one in the entire app. Hosts the overlay
 /// side menu (panel slides over the dimmed content from the start edge)
 /// and the floating bottom nav on the four tab routes.
-final class _AppShell extends StatelessWidget {
+final class _AppShell extends StatefulWidget {
   const _AppShell({required this.child, required this.location});
 
   final Widget child;
@@ -259,7 +260,49 @@ final class _AppShell extends StatelessWidget {
   static const _exitRoots = {Routes.home, Routes.welcome, Routes.onboarding};
 
   @override
+  State<_AppShell> createState() => _AppShellState();
+}
+
+final class _AppShellState extends State<_AppShell> {
+  /// Drives the Instagram-style nav breathing: true while scrolling down.
+  /// A ValueNotifier (not setState) so only the nav bar rebuilds per flip.
+  final ValueNotifier<bool> _navCollapsed = ValueNotifier(false);
+
+  @override
+  void didUpdateWidget(_AppShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // New tab/route — always come back expanded.
+    if (oldWidget.location != widget.location) _navCollapsed.value = false;
+  }
+
+  @override
+  void dispose() {
+    _navCollapsed.dispose();
+    super.dispose();
+  }
+
+  /// Scroll notifications bubble up from whatever screen is mounted —
+  /// vertical drags collapse the bar (scroll down) or expand it (scroll up);
+  /// horizontal rails are ignored. Purely observational: returns false so
+  /// the scrollables behave exactly as before.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical) return false;
+    if (n is UserScrollNotification) {
+      if (n.direction == ScrollDirection.reverse) {
+        _navCollapsed.value = true;
+      } else if (n.direction == ScrollDirection.forward) {
+        _navCollapsed.value = false;
+      }
+    } else if (n is ScrollUpdateNotification && n.metrics.pixels <= 0) {
+      // Back at the very top — always fully grown.
+      _navCollapsed.value = false;
+    }
+    return false;
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final location = widget.location;
     final menuOpen = context.watch<MenuCubit>().state;
     final width = MediaQuery.sizeOf(context).width;
     final isRtl = Directionality.of(context) == TextDirection.rtl;
@@ -276,7 +319,7 @@ final class _AppShell extends StatelessWidget {
           context.read<MenuCubit>().dismiss();
           return;
         }
-        if (_exitRoots.contains(location)) {
+        if (_AppShell._exitRoots.contains(location)) {
           SystemNavigator.pop();
           return;
         }
@@ -287,14 +330,25 @@ final class _AppShell extends StatelessWidget {
       resizeToAvoidBottomInset: true,
       body: Stack(
         children: [
-          // Main content + bottom nav.
+          // Main content + bottom nav. The NotificationListener observes
+          // every vertical scroll inside the current screen and drives the
+          // nav's grow/shrink without touching any screen logic.
           Stack(
             children: [
-              child,
+              NotificationListener<ScrollNotification>(
+                onNotification: _onScroll,
+                child: widget.child,
+              ),
               if (AppBottomNav.showsOn(location))
                 Align(
                   alignment: Alignment.bottomCenter,
-                  child: AppBottomNav(location: location),
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _navCollapsed,
+                    builder: (context, collapsed, _) => AppBottomNav(
+                      location: location,
+                      collapsed: collapsed,
+                    ),
+                  ),
                 ),
               // Contact FAB — the website's floating headphones button.
               if (AppBottomNav.showsOn(location)) const ContactFab(),

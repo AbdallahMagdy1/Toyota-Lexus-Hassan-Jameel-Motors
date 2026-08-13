@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -348,7 +348,7 @@ final class _CartSummaryState extends State<_CartSummary> {
               SizedBox(height: context.rs(14)),
               FilledButton(
                 style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50),
+                    minimumSize: const Size.fromHeight(44),
                     shape: const StadiumBorder(),
                     textStyle: TextStyle(
                         fontSize: context.rf(14),
@@ -839,7 +839,7 @@ final class _PartsCheckoutScreenState extends State<PartsCheckoutScreen> {
                     ),
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
+                        minimumSize: const Size.fromHeight(44),
                         shape: const StadiumBorder(),
                         textStyle: TextStyle(
                             fontSize: context.rf(14),
@@ -961,7 +961,7 @@ final class _PartsCheckoutScreenState extends State<PartsCheckoutScreen> {
           const SizedBox(height: 20),
           FilledButton(
             style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder()),
             onPressed: () => context.go(Routes.parts),
             child: Text(t.commonDone),

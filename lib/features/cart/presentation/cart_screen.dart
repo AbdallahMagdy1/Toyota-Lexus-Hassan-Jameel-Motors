@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router/routes.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/back_header.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../online_store/data/online_store_repository.dart';
 import '../../online_store/presentation/car_sheet.dart';
@@ -48,46 +50,30 @@ final class _CartScreenState extends State<CartScreen>
       bottom: false,
       child: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(context.rs(8), context.rs(6), context.rs(8), 0),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => appBack(context),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                ),
-                Expanded(
-                  child: Text(
-                    t.cartTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: context.rf(17), fontWeight: FontWeight.w800),
-                  ),
-                ),
-                // Clears whichever cart the active tab shows.
-                ListenableBuilder(
-                  listenable: _tab,
-                  builder: (context, _) {
-                    final vehiclesTab = _tab.index == 0;
-                    final hasItems = vehiclesTab
-                        ? vehicleItems.isNotEmpty
-                        : partsItems.isNotEmpty;
-                    if (!hasItems) return const SizedBox(width: 48);
-                    return IconButton(
-                      tooltip: t.storeClearFilters,
-                      onPressed: () {
-                        if (vehiclesTab) {
-                          context.read<CartCubit>().clear();
-                        } else {
-                          context.read<PartsCartCubit>().clear();
-                          PartsCoupon.current.value = null;
-                        }
-                      },
-                      icon: const Icon(Icons.delete_sweep_outlined, size: 22),
-                    );
+          BackHeader(
+            title: t.cartTitle,
+            // Clears whichever cart the active tab shows.
+            trailing: ListenableBuilder(
+              listenable: _tab,
+              builder: (context, _) {
+                final vehiclesTab = _tab.index == 0;
+                final hasItems = vehiclesTab
+                    ? vehicleItems.isNotEmpty
+                    : partsItems.isNotEmpty;
+                if (!hasItems) return const SizedBox(width: 48);
+                return IconButton(
+                  tooltip: t.storeClearFilters,
+                  onPressed: () {
+                    if (vehiclesTab) {
+                      context.read<CartCubit>().clear();
+                    } else {
+                      context.read<PartsCartCubit>().clear();
+                      PartsCoupon.current.value = null;
+                    }
                   },
-                ),
-              ],
+                  icon: const Icon(Icons.delete_sweep_outlined, size: 22),
+                );
+              },
             ),
           ),
           // ── Brand-styled tabs: vehicles cart / spare-parts cart ──
@@ -135,31 +121,16 @@ final class _VehiclesCartTab extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final items = context.watch<CartCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
           Expanded(
             child: items.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.shopping_cart_outlined,
-                            size: 44,
-                            color: scheme.onSurface.withValues(alpha: 0.3)),
-                        SizedBox(height: context.rs(12)),
-                        Padding(
-                          padding:
-                              EdgeInsets.symmetric(horizontal: context.rs(40)),
-                          child:
-                              Text(t.cartEmpty, textAlign: TextAlign.center),
-                        ),
-                        TextButton(
-                          onPressed: () => context.push(Routes.onlineStore),
-                          child: Text(t.cartBrowse),
-                        ),
-                      ],
-                    ),
+                ? AppEmptyState(
+                    icon: Icons.shopping_cart_outlined,
+                    title: t.pcEmpty,
+                    message: t.cartEmpty,
+                    actionLabel: t.cartBrowse,
+                    onAction: () => context.push(Routes.onlineStore),
                   )
                 : ListView.builder(
                     padding: EdgeInsets.fromLTRB(context.rs(20), context.rs(10),

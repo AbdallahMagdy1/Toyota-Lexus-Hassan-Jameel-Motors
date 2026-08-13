@@ -134,6 +134,30 @@ final class ProfileRepository {
           {required String guid, required String email}) =>
       _action(ApiPaths.userUpdateEmail, {'guid': guid, 'email': email});
 
+  /// GET /api/user/image/{guid} — the website's GetUserImage: the raw
+  /// base64 stored in Web_Users.Logo (null when the user has no photo).
+  Future<String?> fetchImage(String guid) async {
+    try {
+      final res =
+          await _api.get<Map<String, dynamic>>('${ApiPaths.userImage}/$guid');
+      if (res.statusCode == 200) {
+        final logo = res.data?['logo'] as String?;
+        return (logo == null || logo.isEmpty) ? null : logo;
+      }
+    } on DioException {
+      // fall through
+    }
+    return null;
+  }
+
+  /// POST /api/user/update-image — the website's UpdateWeb_users(Logo)
+  /// with the picked photo as base64 (no data-url prefix).
+  Future<ProfileActionResult> updateImage({
+    required String guid,
+    required String logoBase64,
+  }) =>
+      _action(ApiPaths.userUpdateImage, {'guid': guid, 'logo': logoBase64});
+
   Future<bool> deleteAccount(String guid) async {
     try {
       final res = await _api.post<Map<String, dynamic>>(

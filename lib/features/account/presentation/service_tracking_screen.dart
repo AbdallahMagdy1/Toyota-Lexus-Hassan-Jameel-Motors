@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
@@ -13,6 +13,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -178,7 +179,7 @@ final class _View extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: state.loading
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonList(itemCount: 4, itemHeight: context.rs(110))
               : ListView(
                   padding: EdgeInsets.fromLTRB(context.rs(16), context.rs(18),
                       context.rs(16), context.rs(110)),
@@ -187,7 +188,7 @@ final class _View extends StatelessWidget {
                       Expanded(
                         child: Text(t.trackTitle,
                             style: TextStyle(
-                                fontSize: context.rf(24),
+                                fontSize: context.rf(19),
                                 fontWeight: FontWeight.w800)),
                       ),
                       Container(
@@ -229,20 +230,11 @@ final class _View extends StatelessWidget {
                     ]),
                     SizedBox(height: context.rs(14)),
                     if (state.orders.isEmpty)
-                      Padding(
-                        padding: EdgeInsets.all(context.rs(40)),
-                        child: Column(children: [
-                          Icon(Icons.car_repair_rounded,
-                              size: 44,
-                              color: scheme.onSurface.withValues(alpha: 0.25)),
-                          SizedBox(height: context.rs(10)),
-                          Text(t.trackEmpty,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                  fontSize: context.rf(13),
-                                  color: scheme.onSurface
-                                      .withValues(alpha: 0.55))),
-                        ]),
+                      AppEmptyState(
+                        icon: Icons.car_repair_rounded,
+                        title: t.trackTitle,
+                        message: t.trackEmpty,
+                        compact: true,
                       ),
                     for (final o in state.orders)
                       Padding(
@@ -367,10 +359,7 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
             if (_tab == 4)
               _FinanceMiniList(future: _finFuture)
             else if (snap.connectionState != ConnectionState.done)
-              const Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: CircularProgressIndicator()),
-              )
+              SkeletonList(itemCount: 3, itemHeight: context.rs(90))
             else if (filtered.isEmpty)
               Padding(
                 padding: EdgeInsets.all(context.rs(24)),
@@ -423,10 +412,7 @@ final class _FinanceMiniList extends StatelessWidget {
       future: future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return const Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return SkeletonList(itemCount: 2, itemHeight: context.rs(90));
         }
         final items = snap.data ?? const <FinanceRequest>[];
         if (items.isEmpty) {

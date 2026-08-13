@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -92,7 +92,7 @@ final class _LeadView extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () {
                 Navigator.of(context).pop();
@@ -355,7 +355,7 @@ final class _LeadView extends StatelessWidget {
               ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
@@ -675,7 +675,7 @@ final class _AbsherSheetState extends State<_AbsherSheet> {
             const SizedBox(height: 16),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: _busy ? null : (otpStage ? _confirm : _send),
               child: _busy

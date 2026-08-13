@@ -8,6 +8,7 @@ import '../../../core/storage/local_store.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -117,26 +118,24 @@ final class _StoreView extends StatelessWidget {
           const _PendingPurchaseBanner(),
           Expanded(
             child: switch (state.status) {
-              StoreStatus.loading =>
-                const Center(child: CircularProgressIndicator()),
-              StoreStatus.error => Center(
-                  child: TextButton(
-                      onPressed: cubit.load, child: Text(t.homeErrorRetry))),
+              StoreStatus.loading => SkeletonList(
+                  itemCount: 4,
+                  itemHeight: context.rs(150),
+                  padding: EdgeInsets.fromLTRB(context.rs(16), context.rs(12),
+                      context.rs(16), context.rs(140)),
+                ),
+              StoreStatus.error => AppErrorState(
+                  title: t.stateErrorTitle,
+                  message: t.stateErrorBody,
+                  retryLabel: t.stateRetry,
+                  onRetry: cubit.load,
+                ),
               StoreStatus.ready => state.filtered.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.search_off_rounded,
-                              size: 40,
-                              color: scheme.onSurface.withValues(alpha: 0.35)),
-                          const SizedBox(height: 10),
-                          Text(t.storeNoResults),
-                          TextButton(
-                              onPressed: cubit.clearFilters,
-                              child: Text(t.storeClearFilters)),
-                        ],
-                      ),
+                  ? AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: t.storeNoResults,
+                      actionLabel: t.storeClearFilters,
+                      onAction: cubit.clearFilters,
                     )
                   : RefreshIndicator(
                       onRefresh: cubit.load,

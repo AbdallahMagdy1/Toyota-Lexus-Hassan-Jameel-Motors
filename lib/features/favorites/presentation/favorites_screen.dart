@@ -7,6 +7,8 @@ import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/back_header.dart';
 import '../../online_store/bloc/collections_cubits.dart';
 import '../../online_store/bloc/online_store_cubit.dart';
 import '../../online_store/presentation/online_store_screen.dart';
@@ -37,7 +39,6 @@ final class _FavoritesView extends StatelessWidget {
     final store = context.watch<OnlineStoreCubit>().state;
     final favorites = context.watch<FavoritesCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
-    final scheme = Theme.of(context).colorScheme;
 
     final cars =
         store.vehicles.where((v) => favorites.contains(v.slug ?? '')).toList();
@@ -46,51 +47,20 @@ final class _FavoritesView extends StatelessWidget {
       bottom: false,
       child: Column(
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(context.rs(8), context.rs(6), context.rs(8), 0),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => appBack(context),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                ),
-                Expanded(
-                  child: Text(
-                    t.favTitle,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: context.rf(17), fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
+          BackHeader(title: t.favTitle),
           Expanded(
             child: store.status == StoreStatus.loading
-                ? const Center(child: CircularProgressIndicator())
+                ? SkeletonGrid(
+                    crossAxisCount: context.isTablet ? 3 : 2,
+                    aspectRatio: 0.58,
+                  )
                 : cars.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.favorite_border_rounded,
-                                size: 44,
-                                color: scheme.onSurface.withValues(alpha: 0.3)),
-                            SizedBox(height: context.rs(12)),
-                            Padding(
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: context.rs(40)),
-                              child: Text(t.favEmpty,
-                                  textAlign: TextAlign.center),
-                            ),
-                            TextButton(
-                              onPressed: () =>
-                                  context.push(Routes.onlineStore),
-                              child: Text(t.cartBrowse),
-                            ),
-                          ],
-                        ),
+                    ? AppEmptyState(
+                        icon: Icons.favorite_border_rounded,
+                        title: t.favTitle,
+                        message: t.favEmpty,
+                        actionLabel: t.cartBrowse,
+                        onAction: () => context.push(Routes.onlineStore),
                       )
                     : GridView.builder(
                         padding: EdgeInsets.fromLTRB(context.rs(16),

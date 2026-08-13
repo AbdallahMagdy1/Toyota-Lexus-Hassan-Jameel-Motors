@@ -14,10 +14,12 @@ abstract final class ThemeFactory {
     // Reference-kit tokens: airy cool wash behind pure-white surfaces in
     // light mode (elevation via soft shadows, not hairline borders); dark
     // mode keeps subtle borders since shadows read poorly on near-black.
-    final background = isDark ? const Color(0xFF0A0B0D) : const Color(0xFFF2F5FA);
+    final background = isDark ? const Color(0xFF0A0B0D) : Colors.white;
     final surface = isDark ? const Color(0xFF14161B) : Colors.white;
-    final onSurface = isDark ? const Color(0xFFF2F3F5) : const Color(0xFF13161B);
-    final muted = isDark ? const Color(0xFF8B8F98) : const Color(0xFF6C7280);
+    final onSurface = isDark
+        ? const Color(0xFFF2F3F5)
+        : const Color(0xFF13161B);
+    final muted = isDark ? const Color(0xFF8B8F98) : Colors.white;
     final border = isDark ? const Color(0xFF23252B) : const Color(0xFFE8ECF2);
 
     final colorScheme = ColorScheme(
@@ -30,7 +32,9 @@ abstract final class ThemeFactory {
       onError: Colors.white,
       surface: surface,
       onSurface: onSurface,
-      surfaceContainerHighest: isDark ? const Color(0xFF1A1C21) : const Color(0xFFF0F1F3),
+      surfaceContainerHighest: isDark
+          ? const Color(0xFF1A1C21)
+          : const Color(0xFFF0F1F3),
       outline: border,
       outlineVariant: border,
     );
@@ -43,19 +47,21 @@ abstract final class ThemeFactory {
       scaffoldBackgroundColor: background,
       splashFactory: InkSparkle.splashFactory,
       visualDensity: VisualDensity.standard,
-      pageTransitionsTheme: const PageTransitionsTheme(builders: {
-        TargetPlatform.android: CupertinoPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      }),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         foregroundColor: onSurface,
         elevation: 0,
         centerTitle: true,
       ),
-      textTheme: Typography.material2021(platform: TargetPlatform.iOS)
-          .englishLike
-          .apply(bodyColor: onSurface, displayColor: onSurface),
+      textTheme: Typography.material2021(
+        platform: TargetPlatform.iOS,
+      ).englishLike.apply(bodyColor: onSurface, displayColor: onSurface),
       // NOTE: minimumSize must have a BOUNDED width here. Size.fromHeight
       // sets minWidth = ∞, which explodes ("BoxConstraints forces an
       // infinite width") for any themed button placed in a Row/unbounded
@@ -65,32 +71,54 @@ abstract final class ThemeFactory {
         style: FilledButton.styleFrom(
           backgroundColor: brandColor,
           foregroundColor: onBrand,
-          minimumSize: const Size(64, 50),
+          minimumSize: const Size(64, 44),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          textStyle:
+              const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: onSurface,
-          minimumSize: const Size(64, 50),
+          minimumSize: const Size(64, 44),
           side: BorderSide(color: border),
           shape: RoundedRectangleBorder(borderRadius: radius),
-          textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle:
+              const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
         ),
       ),
       textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(foregroundColor: scale[isDark ? 300 : 600] ?? brandColor),
+        style: TextButton.styleFrom(
+          foregroundColor: scale[isDark ? 300 : 600] ?? brandColor,
+        ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: isDark ? const Color(0xFF16181D) : const Color(0xFFF2F3F5),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: border)),
-        enabledBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: border)),
-        focusedBorder: OutlineInputBorder(borderRadius: radius, borderSide: BorderSide(color: brandColor, width: 1.6)),
-        errorBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: Color(0xFFE5484D))),
-        focusedErrorBorder: OutlineInputBorder(borderRadius: radius, borderSide: const BorderSide(color: Color(0xFFE5484D), width: 1.6)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: BorderSide(color: brandColor, width: 1.6),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: const BorderSide(color: Color(0xFFE5484D)),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: radius,
+          borderSide: const BorderSide(color: Color(0xFFE5484D), width: 1.6),
+        ),
         hintStyle: TextStyle(color: muted, fontSize: 15),
         labelStyle: TextStyle(color: muted),
       ),
@@ -121,7 +149,9 @@ abstract final class ThemeFactory {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark ? const Color(0xFF1F2127) : const Color(0xFF1C1D21),
+        backgroundColor: isDark
+            ? const Color(0xFF1F2127)
+            : const Color(0xFF1C1D21),
         contentTextStyle: const TextStyle(color: Colors.white, fontSize: 14.5),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),

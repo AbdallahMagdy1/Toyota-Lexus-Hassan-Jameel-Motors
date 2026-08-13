@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:video_player/video_player.dart';
@@ -185,7 +185,7 @@ final class _AuthScaffoldView extends StatelessWidget {
         style: FilledButton.styleFrom(
           backgroundColor: glow,
           foregroundColor: theme.brand.foregroundFor(Brightness.dark),
-          minimumSize: const Size(64, 52),
+          minimumSize: const Size(64, 44),
           shape: const StadiumBorder(),
           textStyle:
               const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
@@ -217,37 +217,45 @@ final class _AuthScaffoldView extends StatelessWidget {
               ),
             ),
           ),
+          // Keyboard-safe: the whole page scrolls when the viewport shrinks
+          // (LayoutBuilder gives the REMAINING height, so opening the
+          // keyboard can never overflow — on any auth screen).
           SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: height * 0.10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: context.rs(26)),
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: context.rf(28),
-                      fontWeight: FontWeight.w800,
-                      height: 1.15,
-                    ),
+            child: LayoutBuilder(
+              builder: (context, box) => SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: box.maxHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(context.rs(26),
+                            height * 0.08, context.rs(26), context.rs(16)),
+                        child: Text(
+                          title,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: context.rf(28),
+                            fontWeight: FontWeight.w800,
+                            height: 1.15,
+                          ),
+                        ),
+                      ),
+                      // The form floats over the gradient (no panel).
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                            context.rs(26), 0, context.rs(26), context.rs(8)),
+                        child: DefaultTextStyle.merge(
+                          style: const TextStyle(color: Colors.white),
+                          child: child,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const Spacer(),
-                // The form floats over the gradient (no panel).
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: height * 0.66),
-                  child: Padding(
-                    padding: EdgeInsets.fromLTRB(
-                        context.rs(26), 0, context.rs(26), context.rs(8)),
-                    child: DefaultTextStyle.merge(
-                      style: const TextStyle(color: Colors.white),
-                      child: child,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ],

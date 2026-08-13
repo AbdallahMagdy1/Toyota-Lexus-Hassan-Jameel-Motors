@@ -84,6 +84,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get authOtpInvalid => 'Invalid verification code.';
 
   @override
+  String get otpVerifiedTitle => 'Verified successfully';
+
+  @override
+  String otpValidFor(String time) {
+    return 'Code valid for $time';
+  }
+
+  @override
+  String get otpExpired => 'The code has expired — request a new one.';
+
+  @override
+  String get otpIncorrectTitle => 'Incorrect code';
+
+  @override
+  String get otpIncorrectHint => 'Check the code and tap to try again.';
+
+  @override
   String get authOtpResend => 'Resend code';
 
   @override
@@ -316,6 +333,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeErrorRetry => 'Couldn\'t load the page. Tap to retry.';
+
+  @override
+  String get stateErrorTitle => 'Something went wrong';
+
+  @override
+  String get stateErrorBody => 'Check your connection and try again.';
+
+  @override
+  String get stateRetry => 'Try again';
 
   @override
   String get homeSignOut => 'Sign Out';
@@ -1185,6 +1211,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String acLastBranchReading(String km) {
     return 'Last documented reading: $km KM';
+  }
+
+  @override
+  String get acChipReady => 'Ready';
+
+  @override
+  String acNextShort(String km) {
+    return 'Next service $km KM';
   }
 
   @override
@@ -2100,6 +2134,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pfSignedInAs => 'Signed in as';
+
+  @override
+  String get pfChangePhoto => 'Change photo';
+
+  @override
+  String get pfViewPhoto => 'View photo';
+
+  @override
+  String get pfPhotoUpdated => 'Photo updated';
+
+  @override
+  String get pfPhotoFailed => 'Couldn\'t update the photo — try again.';
 
   @override
   String get pfGuest => 'Guest';

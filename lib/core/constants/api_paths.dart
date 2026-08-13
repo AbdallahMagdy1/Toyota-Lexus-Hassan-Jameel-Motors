@@ -78,6 +78,10 @@ abstract final class ApiPaths {
   static const String userUpdatePhone = '/api/user/update-phone';
   static const String userUpdateEmail = '/api/user/update-email';
   static const String userDeleteAccount = '/api/user/delete-account';
+  // Profile avatar — the website's GetUserImage / UpdateWeb_users(Logo)
+  // cycle over Web_Users.Logo (base64).
+  static const String userImage = '/api/user/image'; // + '/{guid}'
+  static const String userUpdateImage = '/api/user/update-image';
 
   // Favorites + server notification history (website profile parity).
   static const String accountFavorites = '/api/app/account/favorites';

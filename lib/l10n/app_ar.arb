@@ -24,6 +24,16 @@
   "authOtpTitle": "رمز التحقق",
   "authOtpSentTo": "أرسلنا رمز التحقق إلى",
   "authOtpInvalid": "رمز التحقق غير صحيح.",
+  "otpVerifiedTitle": "تم التحقق بنجاح",
+  "otpValidFor": "الرمز صالح لمدة {time}",
+  "@otpValidFor": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "otpExpired": "انتهت صلاحية الرمز — اطلب رمزًا جديدًا.",
+  "otpIncorrectTitle": "الرمز غير صحيح",
+  "otpIncorrectHint": "تحقق من الرمز واضغط للمحاولة مرة أخرى.",
   "authOtpResend": "إعادة إرسال الرمز",
   "authBack": "رجوع",
   "authDevOtpHint": "رمز التطوير: {code}",
@@ -112,6 +122,9 @@
   "homeContactForPrice": "تواصل لمعرفة السعر",
   "homeComingSoonFeature": "قريباً",
   "homeErrorRetry": "تعذّر تحميل الصفحة. اضغط لإعادة المحاولة.",
+  "stateErrorTitle": "حدث خطأ ما",
+  "stateErrorBody": "تحقق من اتصالك بالإنترنت وحاول مرة أخرى.",
+  "stateRetry": "إعادة المحاولة",
   "homeSignOut": "تسجيل الخروج",
   "homeThemeMode": "الوضع الداكن",
   "settingsLanguage": "English",
@@ -459,6 +472,13 @@
       }
     }
   },
+  "acChipReady": "جاهزة",
+  "acNextShort": "الصيانة عند {km} كم",
+  "@acNextShort": {
+    "placeholders": {
+      "km": {"type": "String"}
+    }
+  },
   "acNextPm": "الصيانة القادمة عند {next} كم — متبقي تقريبًا {remaining} كم",
   "@acNextPm": {
     "placeholders": {
@@ -792,6 +812,10 @@
   "pfDeleteConfirmHint": "اكتب \"حذف\" للتأكيد",
   "pfDeleteWord": "حذف",
   "pfSignedInAs": "مسجّل الدخول باسم",
+  "pfChangePhoto": "تغيير الصورة",
+  "pfViewPhoto": "عرض الصورة",
+  "pfPhotoUpdated": "تم تحديث الصورة",
+  "pfPhotoFailed": "تعذّر تحديث الصورة — حاول مرة أخرى.",
   "pfGuest": "زائر",
   "pfSignIn": "تسجيل الدخول",
   "pfNoNotifications": "لا توجد إشعارات بعد",

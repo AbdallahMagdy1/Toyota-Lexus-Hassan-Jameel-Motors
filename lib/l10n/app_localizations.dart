@@ -242,6 +242,36 @@ abstract class AppLocalizations {
   /// **'Invalid verification code.'**
   String get authOtpInvalid;
 
+  /// No description provided for @otpVerifiedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified successfully'**
+  String get otpVerifiedTitle;
+
+  /// No description provided for @otpValidFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Code valid for {time}'**
+  String otpValidFor(String time);
+
+  /// No description provided for @otpExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'The code has expired — request a new one.'**
+  String get otpExpired;
+
+  /// No description provided for @otpIncorrectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect code'**
+  String get otpIncorrectTitle;
+
+  /// No description provided for @otpIncorrectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the code and tap to try again.'**
+  String get otpIncorrectHint;
+
   /// No description provided for @authOtpResend.
   ///
   /// In en, this message translates to:
@@ -685,6 +715,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t load the page. Tap to retry.'**
   String get homeErrorRetry;
+
+  /// No description provided for @stateErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Something went wrong'**
+  String get stateErrorTitle;
+
+  /// No description provided for @stateErrorBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Check your connection and try again.'**
+  String get stateErrorBody;
+
+  /// No description provided for @stateRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get stateRetry;
 
   /// No description provided for @homeSignOut.
   ///
@@ -2347,6 +2395,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last documented reading: {km} KM'**
   String acLastBranchReading(String km);
+
+  /// No description provided for @acChipReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get acChipReady;
+
+  /// No description provided for @acNextShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Next service {km} KM'**
+  String acNextShort(String km);
 
   /// No description provided for @acNextPm.
   ///
@@ -4141,6 +4201,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Signed in as'**
   String get pfSignedInAs;
+
+  /// No description provided for @pfChangePhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Change photo'**
+  String get pfChangePhoto;
+
+  /// No description provided for @pfViewPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'View photo'**
+  String get pfViewPhoto;
+
+  /// No description provided for @pfPhotoUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Photo updated'**
+  String get pfPhotoUpdated;
+
+  /// No description provided for @pfPhotoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the photo — try again.'**
+  String get pfPhotoFailed;
 
   /// No description provided for @pfGuest.
   ///

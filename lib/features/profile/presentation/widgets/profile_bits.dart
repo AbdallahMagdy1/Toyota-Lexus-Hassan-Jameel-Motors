@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../../../../core/utils/responsive.dart';
 import '../../../../shared/navigation/sheet_routes.dart' show SheetHandle;
@@ -108,7 +108,7 @@ final class ProfileSaveButton extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     return FilledButton(
       style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(52),
+        minimumSize: const Size.fromHeight(44),
         backgroundColor: destructive ? scheme.error : null,
         foregroundColor: destructive ? scheme.onError : null,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

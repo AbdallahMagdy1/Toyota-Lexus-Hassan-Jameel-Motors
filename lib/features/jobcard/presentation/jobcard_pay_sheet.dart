@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -675,7 +675,7 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
           SizedBox(height: context.rs(14)),
           FilledButton.icon(
             style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder(),
                 textStyle: TextStyle(
                     fontSize: context.rf(14), fontWeight: FontWeight.w800)),

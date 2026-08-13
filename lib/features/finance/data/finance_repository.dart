@@ -22,14 +22,32 @@ final class FinanceRepository {
     }
   }
 
+  /// The agreed applicant types — G4 individuals / G3 companies — used
+  /// whenever the API answers without custGroups so the "نوع مقدم الطلب"
+  /// picker is never empty.
+  static const List<FinanceCustGroup> kDefaultCustGroups = [
+    FinanceCustGroup(
+        id: 'G4', nameAr: 'أفراد', nameEn: 'Individuals', needIdentity: true),
+    FinanceCustGroup(
+        id: 'G3',
+        nameAr: 'شركات ومؤسسات',
+        nameEn: 'Companies & Organizations',
+        needIdentity: false),
+  ];
+
+  static FinanceFilters _withCustGroupFallback(FinanceFilters f) =>
+      f.custGroups.isNotEmpty
+          ? f
+          : FinanceFilters(groups: f.groups, custGroups: kDefaultCustGroups);
+
   Future<FinanceFilters> filters() async {
     try {
       final res = await _api.get<Map<String, dynamic>>(ApiPaths.financeFilters);
-      return res.data == null
+      return _withCustGroupFallback(res.data == null
           ? const FinanceFilters()
-          : FinanceFilters.fromJson(res.data!);
+          : FinanceFilters.fromJson(res.data!));
     } on DioException {
-      return const FinanceFilters();
+      return _withCustGroupFallback(const FinanceFilters());
     }
   }
 

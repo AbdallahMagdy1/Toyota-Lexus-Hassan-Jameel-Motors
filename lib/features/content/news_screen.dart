@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +9,7 @@ import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/app_states.dart';
 import '../home/presentation/widgets/home_bits.dart';
 import '../settings/bloc/locale_cubit.dart';
 import '../settings/bloc/theme_cubit.dart';
@@ -73,7 +74,7 @@ final class _NewsView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: state.loading
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonList(itemCount: 4, itemHeight: context.rs(120))
               : RefreshIndicator(
                   onRefresh: cubit.load,
                   child: ListView(
@@ -83,7 +84,7 @@ final class _NewsView extends StatelessWidget {
                     children: [
                       Text(t.newsTitle,
                           style: TextStyle(
-                              fontSize: context.rf(24),
+                              fontSize: context.rf(19),
                               fontWeight: FontWeight.w800)),
                       SizedBox(height: context.rs(2)),
                       Text(t.newsSubtitle,
@@ -93,9 +94,10 @@ final class _NewsView extends StatelessWidget {
                                   scheme.onSurface.withValues(alpha: 0.55))),
                       SizedBox(height: context.rs(16)),
                       if (items.isEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(context.rs(30)),
-                          child: Center(child: Text(t.newsEmpty)),
+                        AppEmptyState(
+                          icon: Icons.newspaper_outlined,
+                          title: t.newsEmpty,
+                          compact: true,
                         ),
                       for (final (i, n) in items.indexed)
                         Padding(

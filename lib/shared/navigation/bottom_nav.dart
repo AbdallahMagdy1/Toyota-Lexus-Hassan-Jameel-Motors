@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -6,12 +7,18 @@ import '../../app/router/routes.dart';
 import '../../core/utils/responsive.dart';
 import '../../features/cart/bloc/cart_cubit.dart';
 
-/// The reference's floating dark pill nav: Home / Favorites / Cart / Profile,
-/// active tab highlighted, live cart badge.
+/// Instagram-style floating pill nav: a wide stadium bar hugging the bottom,
+/// active tab in a soft circular highlight, live cart badge — and dynamic
+/// with scrolling: [collapsed] shrinks the whole bar toward the bottom edge
+/// while the user scrolls down, springing back on scroll-up (the shell
+/// drives this from the page's scroll notifications).
 final class AppBottomNav extends StatelessWidget {
-  const AppBottomNav({super.key, required this.location});
+  const AppBottomNav({super.key, required this.location, this.collapsed = false});
 
   final String location;
+
+  /// True while the user is scrolling down — the bar scales down compactly.
+  final bool collapsed;
 
   static const tabs = [
     (Routes.home, Icons.home_rounded),
@@ -29,40 +36,58 @@ final class AppBottomNav extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cartCount = context.select((CartCubit c) => c.state.length);
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        context.rs(38),
-        0,
-        context.rs(38),
-        context.rs(12),
-      ),
-      child: Material(
-        // Light mode = white pill, dark mode = dark pill.
-        color: isDark ? const Color(0xFF1A1C21) : Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        elevation: 8,
-        shadowColor: Colors.black.withValues(alpha: isDark ? 0.35 : 0.18),
-        child: SizedBox(
-          height: context.rs(59),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              for (final (route, icon) in tabs)
-                _NavItem(
-                  icon: icon,
-                  active: location == route,
-                  badge: route == Routes.cart && cartCount > 0
-                      ? cartCount
-                      : null,
-                  activeColor: scheme.primary,
-                  inactiveColor: isDark
-                      ? Colors.white.withValues(alpha: 0.6)
-                      : const Color(0xFF141519).withValues(alpha: 0.45),
-                  onTap: () {
-                    if (location != route) context.go(route);
-                  },
-                ),
-            ],
+    return AnimatedScale(
+      // Instagram-like breathing: shrink toward the bottom center while
+      // scrolling down, grow back on scroll-up. Transform-only — cheap.
+      scale: collapsed ? 0.84 : 1,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      alignment: Alignment.bottomCenter,
+      child: AnimatedOpacity(
+        opacity: collapsed ? 0.9 : 1,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            context.rs(20),
+            0,
+            context.rs(20),
+            context.rs(10),
+          ),
+          child: Material(
+            // Light mode = white pill, dark mode = near-black pill (ref).
+            color: isDark ? const Color(0xFF1A1C21) : Colors.white,
+            borderRadius: BorderRadius.circular(999),
+            elevation: 10,
+            shadowColor:
+                Colors.black.withValues(alpha: isDark ? 0.4 : 0.18),
+            child: SizedBox(
+              height: context.rs(62),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  for (final (route, icon) in tabs)
+                    _NavItem(
+                      icon: icon,
+                      active: location == route,
+                      badge: route == Routes.cart && cartCount > 0
+                          ? cartCount
+                          : null,
+                      activeColor: scheme.primary,
+                      inactiveColor: isDark
+                          ? Colors.white.withValues(alpha: 0.65)
+                          : const Color(0xFF141519).withValues(alpha: 0.5),
+                      onTap: () {
+                        if (location != route) {
+                          // Subtle selection tick — premium tab feel.
+                          HapticFeedback.selectionClick();
+                          context.go(route);
+                        }
+                      },
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -93,45 +118,35 @@ final class _NavItem extends StatelessWidget {
       onTap: onTap,
       customBorder: const CircleBorder(),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOut,
-        width: context.rs(50),
-        height: context.rs(44),
+        width: context.rs(48),
+        height: context.rs(48),
         decoration: BoxDecoration(
-          // Reference-kit active pill: brand gradient + colored glow.
-          gradient: active
-              ? LinearGradient(
-                  colors: [activeColor, activeColor.withValues(alpha: 0.78)],
-                )
-              : null,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: activeColor.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ]
-              : const [],
+          // Instagram-style active state: a soft circular highlight behind
+          // the icon (brand-tinted so each brand keeps its identity).
+          shape: BoxShape.circle,
+          color: active
+              ? activeColor.withValues(alpha: 0.14)
+              : Colors.transparent,
         ),
         child: Stack(
           alignment: Alignment.center,
           children: [
             AnimatedScale(
-              scale: active ? 1.08 : 1,
-              duration: const Duration(milliseconds: 220),
+              scale: active ? 1.1 : 1,
+              duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutBack,
               child: Icon(
                 icon,
-                size: 20,
-                color: active ? Colors.white : inactiveColor,
+                size: context.rs(24),
+                color: active ? activeColor : inactiveColor,
               ),
             ),
             if (badge != null)
               PositionedDirectional(
                 top: 6,
-                end: 8,
+                end: 4,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4.5,

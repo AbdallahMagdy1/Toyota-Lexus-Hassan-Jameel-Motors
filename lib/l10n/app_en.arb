@@ -24,6 +24,16 @@
   "authOtpTitle": "Verification code",
   "authOtpSentTo": "We sent a verification code to",
   "authOtpInvalid": "Invalid verification code.",
+  "otpVerifiedTitle": "Verified successfully",
+  "otpValidFor": "Code valid for {time}",
+  "@otpValidFor": {
+    "placeholders": {
+      "time": {"type": "String"}
+    }
+  },
+  "otpExpired": "The code has expired — request a new one.",
+  "otpIncorrectTitle": "Incorrect code",
+  "otpIncorrectHint": "Check the code and tap to try again.",
   "authOtpResend": "Resend code",
   "authBack": "Back",
   "authDevOtpHint": "Dev OTP: {code}",
@@ -112,6 +122,9 @@
   "homeContactForPrice": "Contact for price",
   "homeComingSoonFeature": "Coming soon",
   "homeErrorRetry": "Couldn't load the page. Tap to retry.",
+  "stateErrorTitle": "Something went wrong",
+  "stateErrorBody": "Check your connection and try again.",
+  "stateRetry": "Try again",
   "homeSignOut": "Sign Out",
   "homeThemeMode": "Dark mode",
   "settingsLanguage": "العربية",
@@ -459,6 +472,13 @@
       }
     }
   },
+  "acChipReady": "Ready",
+  "acNextShort": "Next service {km} KM",
+  "@acNextShort": {
+    "placeholders": {
+      "km": {"type": "String"}
+    }
+  },
   "acNextPm": "Next maintenance at {next} KM — about {remaining} KM to go",
   "@acNextPm": {
     "placeholders": {
@@ -792,6 +812,10 @@
   "pfDeleteConfirmHint": "Type \"DELETE\" to confirm",
   "pfDeleteWord": "DELETE",
   "pfSignedInAs": "Signed in as",
+  "pfChangePhoto": "Change photo",
+  "pfViewPhoto": "View photo",
+  "pfPhotoUpdated": "Photo updated",
+  "pfPhotoFailed": "Couldn't update the photo — try again.",
   "pfGuest": "Guest",
   "pfSignIn": "Sign in",
   "pfNoNotifications": "No notifications yet",

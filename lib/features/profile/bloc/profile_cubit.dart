@@ -1,3 +1,6 @@
+import 'dart:convert' show base64Decode;
+import 'dart:typed_data' show Uint8List;
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -15,6 +18,8 @@ final class ProfileState extends Equatable {
     this.accountTypes,
     this.lookupsBusy = false,
     this.lookupsFailed = false,
+    this.avatar,
+    this.avatarBusy = false,
   });
 
   final ProfileStatus status;
@@ -27,6 +32,13 @@ final class ProfileState extends Equatable {
   final bool lookupsBusy;
   final bool lookupsFailed;
 
+  /// Decoded profile photo (Web_Users.Logo, base64 → bytes decoded ONCE
+  /// here so the UI never re-decodes per frame). Null = no photo.
+  final Uint8List? avatar;
+
+  /// True while a new photo is uploading.
+  final bool avatarBusy;
+
   bool get lookupsReady => settings != null && accountTypes != null;
 
   ProfileState copyWith({
@@ -36,6 +48,8 @@ final class ProfileState extends Equatable {
     List<AccountType>? accountTypes,
     bool? lookupsBusy,
     bool? lookupsFailed,
+    Uint8List? avatar,
+    bool? avatarBusy,
   }) =>
       ProfileState(
         status: status ?? this.status,
@@ -44,11 +58,21 @@ final class ProfileState extends Equatable {
         accountTypes: accountTypes ?? this.accountTypes,
         lookupsBusy: lookupsBusy ?? this.lookupsBusy,
         lookupsFailed: lookupsFailed ?? this.lookupsFailed,
+        avatar: avatar ?? this.avatar,
+        avatarBusy: avatarBusy ?? this.avatarBusy,
       );
 
   @override
-  List<Object?> get props =>
-      [status, user, settings, accountTypes, lookupsBusy, lookupsFailed];
+  List<Object?> get props => [
+        status,
+        user,
+        settings,
+        accountTypes,
+        lookupsBusy,
+        lookupsFailed,
+        avatar,
+        avatarBusy,
+      ];
 }
 
 /// Owns the profile-hub data: the full user record plus the "my data"
@@ -75,9 +99,39 @@ final class ProfileCubit extends Cubit<ProfileState> {
       emit(state.copyWith(status: ProfileStatus.ready));
       return;
     }
+    loadImage(); // avatar fetch runs in parallel with the record fetch
     final user = await _repo.fetchUser(guid);
     if (isClosed) return;
     emit(state.copyWith(status: ProfileStatus.ready, user: user));
+  }
+
+  /// The website GetUserImage cycle: Web_Users.Logo base64 → bytes.
+  Future<void> loadImage() async {
+    final guid = _guid;
+    if (guid == null) return;
+    final b64 = await _repo.fetchImage(guid);
+    if (isClosed || b64 == null) return;
+    try {
+      emit(state.copyWith(avatar: base64Decode(b64)));
+    } on FormatException {
+      // Corrupt/legacy value — keep the initial-letter avatar.
+    }
+  }
+
+  /// Upload a newly picked photo (already base64, no data-url prefix) —
+  /// the website's UpdateWeb_users(Logo). Optimistically shows the new
+  /// photo once the server confirms.
+  Future<bool> changeImage(String base64) async {
+    final guid = _guid;
+    if (guid == null || state.avatarBusy) return false;
+    emit(state.copyWith(avatarBusy: true));
+    final result = await _repo.updateImage(guid: guid, logoBase64: base64);
+    if (isClosed) return result.ok;
+    emit(state.copyWith(
+      avatarBusy: false,
+      avatar: result.ok ? base64Decode(base64) : null,
+    ));
+    return result.ok;
   }
 
   /// Countries/cities/genders + account types for the "my data" form.

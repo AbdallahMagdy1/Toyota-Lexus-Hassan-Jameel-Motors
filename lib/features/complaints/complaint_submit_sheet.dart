@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 
@@ -247,7 +247,7 @@ final class _SubmitSheetBodyState extends State<_SubmitSheetBody> {
         SizedBox(height: context.rs(26)),
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(44),
             shape: const StadiumBorder(),
             textStyle: TextStyle(
                 fontSize: context.rf(14), fontWeight: FontWeight.w800),
@@ -450,7 +450,7 @@ final class _SubmitSheetBodyState extends State<_SubmitSheetBody> {
           ),
         FilledButton(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(44),
             shape: const StadiumBorder(),
             textStyle: TextStyle(
                 fontSize: context.rf(14), fontWeight: FontWeight.w800),

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart' show DateFormat;
 import '../../../../core/di/injector.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_states.dart';
 import '../../../notifications/notifications.dart';
 import '../../../settings/bloc/locale_cubit.dart';
 import '../../bloc/profile_cubit.dart';
@@ -185,10 +186,7 @@ final class _NotificationsSheetState extends State<_NotificationsSheet> {
           ],
           sectionLabel(t.pfNotifications),
           if (_loading)
-            Padding(
-              padding: EdgeInsets.symmetric(vertical: context.rs(28)),
-              child: const Center(child: CircularProgressIndicator()),
-            )
+            SkeletonList(itemCount: 3, itemHeight: context.rs(64))
           else if (history.isEmpty)
             Padding(
               padding: EdgeInsets.symmetric(vertical: context.rs(18)),

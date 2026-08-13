@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -10,6 +10,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/navigation/sheet_routes.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -58,7 +59,24 @@ final class _PartsView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: state.status == PartsStatus.loading
-              ? const Center(child: CircularProgressIndicator())
+              ? Shimmer(
+                  child: SingleChildScrollView(
+                    physics: const NeverScrollableScrollPhysics(),
+                    child: Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.fromLTRB(context.rs(20),
+                              context.rs(16), context.rs(20), context.rs(16)),
+                          child: SkeletonBox(
+                              width: double.infinity,
+                              height: context.rs(150),
+                              radius: 20),
+                        ),
+                        const SkeletonGrid(itemCount: 4, aspectRatio: 0.72),
+                      ],
+                    ),
+                  ),
+                )
               : NotificationListener<ScrollNotification>(
                   onNotification: (n) {
                     if (n.metrics.extentAfter < 400) cubit.loadMore();
@@ -240,16 +258,15 @@ final class _PartsView extends StatelessWidget {
                         // ── Grid ──
                         if (state.searching)
                           const SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.all(40),
-                              child: Center(child: CircularProgressIndicator()),
-                            ),
+                            child:
+                                SkeletonGrid(itemCount: 4, aspectRatio: 0.72),
                           )
                         else if (state.items.isEmpty)
                           SliverToBoxAdapter(
-                            child: Padding(
-                              padding: EdgeInsets.all(context.rs(40)),
-                              child: Center(child: Text(t.partsEmpty)),
+                            child: AppEmptyState(
+                              icon: Icons.search_off_rounded,
+                              title: t.partsEmpty,
+                              compact: true,
                             ),
                           )
                         else
@@ -858,7 +875,7 @@ final class _PartDetailSheetState extends State<_PartDetailSheet> {
               final inCart = cart.contains(part.guid ?? '');
               return FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   textStyle: TextStyle(

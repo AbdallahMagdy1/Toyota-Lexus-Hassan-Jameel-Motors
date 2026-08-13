@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -414,7 +414,7 @@ final class _PurchaseCompleteScreenState extends State<PurchaseCompleteScreen> {
           FilledButton(
             onPressed: () => setState(() => _active = 1),
             style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(50)),
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
             child: Text(
                 _chosen.isEmpty ? t.cpcContinueWithout : t.cpcConfirmSelection),
           ),
@@ -895,7 +895,7 @@ final class _ContractStepState extends State<_ContractStep> {
                 onPressed: () =>
                     widget.onSigned((guid: _orderGuid, id: _orderId)),
                 style: FilledButton.styleFrom(
-                    minimumSize: const Size.fromHeight(50)),
+                    minimumSize: const Size.fromHeight(44)),
                 child: Text(t.cpcContinue),
               )
             else if (widget.isTest) ...[
@@ -925,7 +925,7 @@ final class _ContractStepState extends State<_ContractStep> {
                             widget.onSigned((guid: _orderGuid, id: _orderId))
                         : null,
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50)),
+                        minimumSize: const Size.fromHeight(44)),
                     child: Text(t.cpcSignTest),
                   ),
                 ),
@@ -939,7 +939,7 @@ final class _ContractStepState extends State<_ContractStep> {
                   child: FilledButton.icon(
                     onPressed: canSign && !_signing ? _sendSign : null,
                     style: FilledButton.styleFrom(
-                        minimumSize: const Size.fromHeight(50)),
+                        minimumSize: const Size.fromHeight(44)),
                     icon: _signing
                         ? const SizedBox(
                             width: 18,
@@ -1790,7 +1790,7 @@ final class _PaymentStepState extends State<_PaymentStep> {
                         }
                       : (_paying || _remaining <= 0 ? null : _pay),
                   style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50)),
+                      minimumSize: const Size.fromHeight(44)),
                   child: _paying
                       ? const SizedBox(
                           width: 20,

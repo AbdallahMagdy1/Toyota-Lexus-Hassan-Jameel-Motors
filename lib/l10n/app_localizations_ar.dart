@@ -84,6 +84,23 @@ class AppLocalizationsAr extends AppLocalizations {
   String get authOtpInvalid => 'رمز التحقق غير صحيح.';
 
   @override
+  String get otpVerifiedTitle => 'تم التحقق بنجاح';
+
+  @override
+  String otpValidFor(String time) {
+    return 'الرمز صالح لمدة $time';
+  }
+
+  @override
+  String get otpExpired => 'انتهت صلاحية الرمز — اطلب رمزًا جديدًا.';
+
+  @override
+  String get otpIncorrectTitle => 'الرمز غير صحيح';
+
+  @override
+  String get otpIncorrectHint => 'تحقق من الرمز واضغط للمحاولة مرة أخرى.';
+
+  @override
   String get authOtpResend => 'إعادة إرسال الرمز';
 
   @override
@@ -314,6 +331,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get homeErrorRetry => 'تعذّر تحميل الصفحة. اضغط لإعادة المحاولة.';
+
+  @override
+  String get stateErrorTitle => 'حدث خطأ ما';
+
+  @override
+  String get stateErrorBody => 'تحقق من اتصالك بالإنترنت وحاول مرة أخرى.';
+
+  @override
+  String get stateRetry => 'إعادة المحاولة';
 
   @override
   String get homeSignOut => 'تسجيل الخروج';
@@ -1176,6 +1202,14 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String acLastBranchReading(String km) {
     return 'آخر قراءة موثقة: $km كم';
+  }
+
+  @override
+  String get acChipReady => 'جاهزة';
+
+  @override
+  String acNextShort(String km) {
+    return 'الصيانة عند $km كم';
   }
 
   @override
@@ -2086,6 +2120,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pfSignedInAs => 'مسجّل الدخول باسم';
+
+  @override
+  String get pfChangePhoto => 'تغيير الصورة';
+
+  @override
+  String get pfViewPhoto => 'عرض الصورة';
+
+  @override
+  String get pfPhotoUpdated => 'تم تحديث الصورة';
+
+  @override
+  String get pfPhotoFailed => 'تعذّر تحديث الصورة — حاول مرة أخرى.';
 
   @override
   String get pfGuest => 'زائر';

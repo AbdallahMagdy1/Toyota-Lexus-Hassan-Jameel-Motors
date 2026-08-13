@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -222,7 +222,7 @@ final class _DetailSheet extends StatelessWidget {
                 context.rs(18), context.rs(8), context.rs(18), context.rs(10)),
             child: FilledButton.icon(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
@@ -574,7 +574,7 @@ final class _PayView extends StatelessWidget {
             const SizedBox(height: 12),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
                 side: BorderSide(color: scheme.outline.withValues(alpha: 0.8)),
@@ -789,7 +789,7 @@ final class _PayView extends StatelessWidget {
             const SizedBox(height: 10),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
@@ -948,7 +948,7 @@ final class _Result extends StatelessWidget {
           const SizedBox(height: 18),
           FilledButton(
             style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder()),
             onPressed: () => Navigator.of(context).pop(),
             child: Text(t.commonDone),

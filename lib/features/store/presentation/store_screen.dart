@@ -14,7 +14,11 @@ import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/keep_alive_section.dart';
 import '../../../shared/widgets/page_dots.dart';
+import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/quick_links_panel.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../onboarding/data/onboarding_repository.dart';
@@ -50,32 +54,35 @@ final class StoreScreen extends StatelessWidget {
           child: ListView(
             padding: EdgeInsets.only(bottom: context.rs(140)),
             children: [
+              // Self-fetching sections are pinned with KeepAliveSection so
+              // scrolling them off-screen never disposes their state (which
+              // used to refetch parts/protection on every scroll-back).
               // All Hassan Jameel services — the reference's tile row.
               SectionHeader(
                   title: t.acAllServices, subtitle: t.acAllServicesSub),
-              const _StoreServices(),
+              const KeepAliveSection(child: _StoreServices()),
               SectionHeader(
                 title: t.homeOnlineStore,
                 subtitle: t.svcStoreSub,
                 actionLabel: t.homeViewAll,
                 onAction: () => context.push(Routes.onlineStore),
               ),
-              const _StoreHero(),
+              const KeepAliveSection(child: _StoreHero()),
               SectionHeader(
                 title: t.ghSvcProtection,
                 subtitle: t.svcProtectionSub,
                 actionLabel: t.homeViewAll,
                 onAction: () => context.push(Routes.protection),
               ),
-              const _StorePackages(),
+              const KeepAliveSection(child: _StorePackages()),
               SectionHeader(
                 title: t.ghSpareParts,
                 subtitle: t.svcPartsSub,
                 actionLabel: t.homeViewAll,
                 onAction: () => context.push(Routes.parts),
               ),
-              const _StoreParts(),
-              const _StoreOffers(),
+              const KeepAliveSection(child: _StoreParts()),
+              const KeepAliveSection(child: _StoreOffers()),
             ],
           ),
         ),
@@ -178,22 +185,15 @@ final class _StorePartsState extends State<_StoreParts> {
           future: _future,
           builder: (context, snap) {
             if (snap.connectionState != ConnectionState.done) {
-              return const Padding(
-                padding: EdgeInsets.all(26),
-                child: Center(child: CircularProgressIndicator()),
-              );
+              return SkeletonRail(
+                  height: context.rs(212), itemWidth: context.rs(160));
             }
             final items = snap.data?.items ?? const <PartItem>[];
             if (items.isEmpty) {
-              return Padding(
-                padding: EdgeInsets.all(context.rs(24)),
-                child: Center(
-                  child: Text(t.partsEmpty,
-                      style: TextStyle(
-                          fontSize: context.rf(12),
-                          color:
-                              scheme.onSurface.withValues(alpha: 0.55))),
-                ),
+              return AppEmptyState(
+                icon: Icons.settings_suggest_outlined,
+                title: t.partsEmpty,
+                compact: true,
               );
             }
 
@@ -325,9 +325,9 @@ final class _StoreServices extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
 
-    // Every Hassan Jameel service, one tap away.
+    // Every Hassan Jameel service, one tap away — the Quick Links panel
+    // (first service = the filled brand tile, scroll bar under the row).
     final services = <(IconData, String, String)>[
       (Icons.build_circle_outlined, t.mhTitle, Routes.maintenance),
       (Icons.shield_outlined, t.ghSvcProtection, Routes.protection),
@@ -344,67 +344,10 @@ final class _StoreServices extends StatelessWidget {
       (Icons.support_agent_outlined, t.contactTitle, Routes.contact),
     ];
 
-    return SizedBox(
-      height: context.rs(114),
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        clipBehavior: Clip.none,
-        padding: EdgeInsets.symmetric(horizontal: context.rs(16)),
-        itemCount: services.length,
-        separatorBuilder: (_, _) => SizedBox(width: context.rs(9)),
-        itemBuilder: (context, i) {
-          final (icon, label, route) = services[i];
-          return SizedBox(
-            width: context.rs(86),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
-              child: InkWell(
-                onTap: () => context.push(route),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  padding: EdgeInsets.symmetric(vertical: context.rs(12)),
-                  decoration: softCardDecoration(context, radius: 16),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: context.rs(44),
-                        height: context.rs(44),
-                        decoration: BoxDecoration(
-                          color: scheme.primary.withValues(alpha: 0.07),
-                          borderRadius: BorderRadius.circular(13),
-                          border: Border.all(
-                            color:
-                                scheme.primary.withValues(alpha: 0.35),
-                          ),
-                        ),
-                        child:
-                            Icon(icon, size: 20, color: scheme.primary),
-                      ),
-                      SizedBox(height: context.rs(8)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: context.rs(4)),
-                        child: Text(
-                          label,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: context.rf(10),
-                              height: 1.25,
-                              fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    return QuickLinksPanel(actions: [
+      for (final (icon, label, route) in services)
+        (icon, label, () => context.push(route)),
+    ]);
   }
 }
 
@@ -483,9 +426,14 @@ final class _StoreHeroState extends State<_StoreHero> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return SizedBox(
-            height: context.rs(240),
-            child: const Center(child: CircularProgressIndicator()),
+          return Shimmer(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+              child: SkeletonBox(
+                  width: double.infinity,
+                  height: context.rs(224),
+                  radius: 22),
+            ),
           );
         }
         final all = snap.data ?? const <OnlineVehicle>[];
@@ -499,9 +447,10 @@ final class _StoreHeroState extends State<_StoreHero> {
         _count = items.length;
         WidgetsBinding.instance.addPostFrameCallback((_) => _startAuto());
 
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         return Column(children: [
           SizedBox(
-            height: context.rs(238),
+            height: context.rs(288),
             child: PageView.builder(
               controller: _controller,
               itemCount: items.length,
@@ -511,186 +460,180 @@ final class _StoreHeroState extends State<_StoreHero> {
                 // Backdrop priority: car_bg placement match → model shared
                 // Background → brand-glow gradient.
                 final bg = _bgFor(v.groupEn ?? '', v.year) ?? v.background(lang);
+                // Services-mock slide: rounded media card with the
+                // lightweight bottom fade, then title row + soft pill CTA
+                // below the image.
                 return Padding(
                   padding:
                       EdgeInsets.symmetric(horizontal: context.rs(5)),
                   child: GestureDetector(
                     onTap: () => openCarSheet(context, v),
-                    child: Container(
-                      clipBehavior: Clip.antiAlias,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF121317),
-                        borderRadius: BorderRadius.circular(22),
-                      ),
-                      child: Stack(fit: StackFit.expand, children: [
-                        if ((bg ?? '').isNotEmpty) ...[
-                          // Image / GIF via the proxy; video via SlideMedia.
-                          isVideoUrl(bg)
-                              ? SlideMedia(
-                                  mediaType: 'video',
-                                  mediaUrl: bg,
-                                  fit: BoxFit.cover,
-                                )
-                              : HomeImage(
-                                  url: bg,
-                                  fit: BoxFit.cover,
-                                  logicalWidth: 400,
-                                ),
-                          // Legibility scrim over the artwork.
-                          DecoratedBox(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
                             decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.5),
-                                  Colors.black.withValues(alpha: 0.15),
-                                ],
-                              ),
+                              color: const Color(0xFF121317),
+                              borderRadius: BorderRadius.circular(18),
                             ),
-                          ),
-                        ] else ...[
-                          // Brand-glow backdrop (the hero look).
-                          DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [
-                                  Color.lerp(scheme.primary,
-                                      Colors.black, 0.55)!,
-                                  const Color(0xFF121317),
-                                  Color.lerp(scheme.primary,
-                                      Colors.black, 0.75)!,
-                                ],
-                              ),
-                            ),
-                          ),
-                          Positioned.fill(
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  center: const Alignment(0, 0.5),
-                                  radius: 1.1,
-                                  colors: [
-                                    scheme.primary
-                                        .withValues(alpha: 0.35),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                        // Ground shadow under the car — grounded, not floating.
-                        PositionedDirectional(
-                          start: context.rs(40),
-                          end: context.rs(40),
-                          bottom: context.rs(2),
-                          height: context.rs(22),
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: RadialGradient(
-                                radius: 0.9,
-                                colors: [
-                                  Colors.black.withValues(alpha: 0.5),
-                                  Colors.transparent,
-                                ],
-                              ),
-                              borderRadius: const BorderRadius.all(
-                                  Radius.elliptical(200, 11)),
-                            ),
-                          ),
-                        ),
-                        // Car pinned to the card's bottom edge with a subtle
-                        // 3D perspective tilt (same stage look as the home hero).
-                        PositionedDirectional(
-                          start: 0,
-                          end: 0,
-                          top: context.rs(52),
-                          bottom: context.rs(6),
-                          child: Transform(
-                            alignment: Alignment.bottomCenter,
-                            transform: Matrix4.identity()
-                              ..setEntry(3, 2, 0.0012)
-                              ..rotateX(-0.12)
-                              ..scaleByDouble(1.03, 1.03, 1.03, 1),
-                            child: HomeImage(
-                              url: v.image,
-                              fit: BoxFit.contain,
-                              alignment: Alignment.bottomCenter,
-                              logicalWidth: 380,
-                            ),
-                          ),
-                        ),
-                        PositionedDirectional(
-                          top: context.rs(14),
-                          start: context.rs(16),
-                          end: context.rs(16),
-                          child: Row(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      '${v.name(lang)} ${v.year ?? ''}'
-                                          .trim(),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                          fontSize: context.rf(15),
-                                          fontWeight: FontWeight.w800,
-                                          color: Colors.white),
+                            child: Stack(fit: StackFit.expand, children: [
+                              if ((bg ?? '').isNotEmpty)
+                                // Image / GIF via the proxy; video via
+                                // SlideMedia.
+                                isVideoUrl(bg)
+                                    ? SlideMedia(
+                                        mediaType: 'video',
+                                        mediaUrl: bg,
+                                        fit: BoxFit.cover,
+                                      )
+                                    : HomeImage(
+                                        url: bg,
+                                        fit: BoxFit.cover,
+                                        logicalWidth: 400,
+                                      )
+                              else ...[
+                                // Brand-glow backdrop (the hero look).
+                                DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                      colors: [
+                                        Color.lerp(scheme.primary,
+                                            Colors.black, 0.55)!,
+                                        const Color(0xFF121317),
+                                        Color.lerp(scheme.primary,
+                                            Colors.black, 0.75)!,
+                                      ],
                                     ),
-                                    if (v.minPrice != null &&
-                                        v.showPrice)
-                                      Row(children: [
-                                        Text(
-                                          t.homeFrom,
-                                          style: TextStyle(
-                                            fontSize: context.rf(10),
-                                            color: Colors.white
-                                                .withValues(alpha: 0.65),
-                                          ),
-                                        ),
-                                        SizedBox(width: context.rs(5)),
-                                        PriceText(
-                                          price: v.minPrice,
-                                          currency: t.currency,
-                                          contactForPrice:
-                                              t.homeContactForPrice,
-                                          fontSize: context.rf(14),
-                                          color: Colors.white,
-                                        ),
-                                      ]),
-                                  ],
+                                  ),
+                                ),
+                                Positioned.fill(
+                                  child: DecoratedBox(
+                                    decoration: BoxDecoration(
+                                      gradient: RadialGradient(
+                                        center: const Alignment(0, 0.5),
+                                        radius: 1.1,
+                                        colors: [
+                                          scheme.primary
+                                              .withValues(alpha: 0.35),
+                                          Colors.transparent,
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              // Ground shadow under the car.
+                              PositionedDirectional(
+                                start: context.rs(40),
+                                end: context.rs(40),
+                                bottom: context.rs(2),
+                                height: context.rs(22),
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    gradient: RadialGradient(
+                                      radius: 0.9,
+                                      colors: [
+                                        Colors.black
+                                            .withValues(alpha: 0.5),
+                                        Colors.transparent,
+                                      ],
+                                    ),
+                                    borderRadius: const BorderRadius.all(
+                                        Radius.elliptical(200, 11)),
+                                  ),
                                 ),
                               ),
-                              Container(
-                                padding: EdgeInsets.symmetric(
-                                    horizontal: context.rs(11),
-                                    vertical: context.rs(6)),
-                                decoration: BoxDecoration(
-                                  color: scheme.primary,
-                                  borderRadius:
-                                      BorderRadius.circular(999),
+                              // Car pinned to the bottom with the subtle
+                              // 3D stage tilt.
+                              PositionedDirectional(
+                                start: 0,
+                                end: 0,
+                                top: context.rs(28),
+                                bottom: context.rs(6),
+                                child: Transform(
+                                  alignment: Alignment.bottomCenter,
+                                  transform: Matrix4.identity()
+                                    ..setEntry(3, 2, 0.0012)
+                                    ..rotateX(-0.12)
+                                    ..scaleByDouble(1.03, 1.03, 1.03, 1),
+                                  child: HomeImage(
+                                    url: v.image,
+                                    fit: BoxFit.contain,
+                                    alignment: Alignment.bottomCenter,
+                                    logicalWidth: 380,
+                                  ),
                                 ),
+                              ),
+                              // Lightweight fade into the page background.
+                              GlassBottomFade(height: context.rs(44)),
+                            ]),
+                          ),
+                        ),
+                        SizedBox(height: context.rs(10)),
+                        // ── Services-mock text block: roundel + title +
+                        // price, then the soft pill CTA. ──
+                        Row(children: [
+                          Container(
+                            width: context.rs(26),
+                            height: context.rs(26),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: scheme.primary.withValues(
+                                  alpha: isDark ? 0.2 : 0.1),
+                            ),
+                            child: Icon(
+                                Icons.directions_car_filled_rounded,
+                                size: context.rs(13),
+                                color: scheme.primary),
+                          ),
+                          SizedBox(width: context.rs(8)),
+                          Expanded(
+                            child: Text(
+                              '${v.name(lang)} ${v.year ?? ''}'.trim(),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: context.rf(13.5),
+                                  fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          if (v.minPrice != null && v.showPrice) ...[
+                            SizedBox(width: context.rs(8)),
+                            PriceText(
+                              price: v.minPrice,
+                              currency: t.currency,
+                              contactForPrice: t.homeContactForPrice,
+                              fontSize: context.rf(12.5),
+                            ),
+                          ],
+                        ]),
+                        SizedBox(height: context.rs(10)),
+                        Material(
+                          color: scheme.primary
+                              .withValues(alpha: isDark ? 0.2 : 0.09),
+                          shape: const StadiumBorder(),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => openCarSheet(context, v),
+                            child: SizedBox(
+                              height: context.rs(40),
+                              child: Center(
                                 child: Text(
                                   t.homeBuyNow,
                                   style: TextStyle(
-                                      fontSize: context.rf(10.5),
+                                      fontSize: context.rf(12),
                                       fontWeight: FontWeight.w800,
-                                      color: scheme.onPrimary),
+                                      color: scheme.primary),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
                         ),
-                      ]),
+                      ],
                     ),
                   ),
                 );
@@ -744,10 +687,8 @@ final class _StorePackagesView extends StatelessWidget {
     final state = context.watch<ProtectionCubit>().state;
 
     if (state.status == ProtectionStatus.loading) {
-      return const Padding(
-        padding: EdgeInsets.all(26),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return SkeletonRail(
+          height: context.rs(268), itemWidth: context.rs(236));
     }
     if (state.status == ProtectionStatus.error || state.groups.isEmpty) {
       return const SizedBox.shrink();
@@ -809,85 +750,133 @@ final class _StorePackagesView extends StatelessWidget {
         ),
         SizedBox(height: context.rs(12)),
         if (state.servicesLoading)
-          const Padding(
-            padding: EdgeInsets.all(26),
-            child: Center(child: CircularProgressIndicator()),
-          )
+          SkeletonRail(height: context.rs(268), itemWidth: context.rs(236))
         else if (packages.isEmpty)
-          Padding(
-            padding: EdgeInsets.all(context.rs(24)),
-            child: Center(
-              child: Text(t.modelsNoData,
-                  style: TextStyle(
-                      fontSize: context.rf(12),
-                      color:
-                          scheme.onSurface.withValues(alpha: 0.55))),
-            ),
+          AppEmptyState(
+            icon: Icons.shield_outlined,
+            title: t.modelsNoData,
+            compact: true,
           )
         else
           CardRail(
-            height: context.rs(168),
-            itemWidth: context.rs(210),
+            height: context.rs(268),
+            itemWidth: context.rs(236),
             itemCount: packages.length,
             itemBuilder: (context, i) {
               final p = packages[i];
-              final tint = switch (p.tier) {
-                2 => const Color(0xFF7E57C2),
-                1 => const Color(0xFF8A7B4F),
-                _ => scheme.primary,
-              };
-              return HomeCard(
-                onTap: () => showProtectionDetailSheet(
-                  context,
-                  package: p,
-                  vehicleLabel: selectedModel?.name(lang),
-                ),
-                padding: EdgeInsets.all(context.rs(14)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Container(
-                        width: context.rs(34),
-                        height: context.rs(34),
-                        decoration: BoxDecoration(
-                          color: tint.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(11),
-                          border: Border.all(
-                              color: tint.withValues(alpha: 0.35)),
-                        ),
-                        child: Icon(Icons.shield_outlined,
-                            size: 17, color: tint),
+              final isDark =
+                  Theme.of(context).brightness == Brightness.dark;
+              // Same tier card as the home protection section: palette
+              // from the package NAME drives wash, roundel, badge + CTA.
+              final tier = packageTierColors(p.name(lang), scheme);
+              void open() => showProtectionDetailSheet(
+                    context,
+                    package: p,
+                    vehicleLabel: selectedModel?.name(lang),
+                  );
+              return Pressable(
+                child: Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(20),
+                  child: InkWell(
+                    onTap: open,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: EdgeInsets.all(context.rs(15)),
+                      decoration: softCardDecoration(context,
+                          radius: 20, tint: tier.color),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                width: context.rs(42),
+                                height: context.rs(42),
+                                decoration: BoxDecoration(
+                                    color: tier.color.withValues(
+                                        alpha: isDark ? 0.3 : 0.18),
+                                    shape: BoxShape.circle),
+                                child: Icon(Icons.verified_user_rounded,
+                                    size: 19,
+                                    color:
+                                        isDark ? tier.color : tier.deep),
+                              ),
+                              const Spacer(),
+                              if (i == 0)
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: context.rs(9),
+                                      vertical: context.rs(4)),
+                                  decoration: BoxDecoration(
+                                    color: tier.color.withValues(
+                                        alpha: isDark ? 0.3 : 0.18),
+                                    borderRadius:
+                                        BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    t.protPopular,
+                                    style: TextStyle(
+                                        fontSize: context.rf(8.5),
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.6,
+                                        color: isDark
+                                            ? tier.color
+                                            : tier.deep),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          SizedBox(height: context.rs(13)),
+                          Text(p.name(lang),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: context.rf(13.5),
+                                  fontWeight: FontWeight.w800)),
+                          SizedBox(height: context.rs(5)),
+                          Expanded(
+                            child: Text(
+                              p.description(lang).replaceAll('\n', ' '),
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: context.rf(11),
+                                  height: 1.45,
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.55)),
+                            ),
+                          ),
+                          PriceText(
+                              price: p.price,
+                              currency: t.currency,
+                              contactForPrice: t.homeContactForPrice,
+                              fontSize: context.rf(15),
+                              color: isDark ? tier.color : tier.deep),
+                          SizedBox(height: context.rs(10)),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: tier.color,
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size(64, 42),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius:
+                                        BorderRadius.circular(12)),
+                                textStyle: TextStyle(
+                                    fontSize: context.rf(12),
+                                    fontWeight: FontWeight.w800),
+                              ),
+                              onPressed: open,
+                              child: Text(t.protSelectPackage),
+                            ),
+                          ),
+                        ],
                       ),
-                      const Spacer(),
-                      Icon(
-                        Directionality.of(context) ==
-                                TextDirection.rtl
-                            ? Icons.chevron_left_rounded
-                            : Icons.chevron_right_rounded,
-                        size: 18,
-                        color:
-                            scheme.onSurface.withValues(alpha: 0.4),
-                      ),
-                    ]),
-                    SizedBox(height: context.rs(10)),
-                    Text(
-                      p.name(lang),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                          fontSize: context.rf(13),
-                          height: 1.3,
-                          fontWeight: FontWeight.w800),
                     ),
-                    const Spacer(),
-                    PriceText(
-                      price: p.price,
-                      currency: t.currency,
-                      contactForPrice: t.homeContactForPrice,
-                      fontSize: context.rf(15),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },

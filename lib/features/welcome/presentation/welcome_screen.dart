@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -160,7 +160,7 @@ final class _WelcomeView extends StatelessWidget {
                     style: FilledButton.styleFrom(
                       backgroundColor: scheme.primary,
                       foregroundColor: scheme.onPrimary,
-                      minimumSize: const Size.fromHeight(52),
+                      minimumSize: const Size.fromHeight(44),
                       shape: const StadiumBorder(),
                       textStyle: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.w800),

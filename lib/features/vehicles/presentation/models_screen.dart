@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/back_header.dart';
+import '../../../shared/widgets/pressable.dart';
 import '../../home/data/home_repository.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -105,8 +107,29 @@ final class ModelsScreen extends StatelessWidget {
   }
 }
 
-final class _ModelsView extends StatelessWidget {
+/// Canonical section order (website order): sedan → suv → coupes →
+/// commercial → the rest as they arrive.
+int _categoryRank(String c) {
+  final n = c.toLowerCase();
+  const order = ['sedan', 'سيدان', 'suv', 'coupe', 'كوبيه', 'commercial',
+      'تجاري', 'hybrid', 'هجين', 'van', 'truck'];
+  for (var i = 0; i < order.length; i++) {
+    if (n.contains(order[i])) return i;
+  }
+  return order.length;
+}
+
+final class _ModelsView extends StatefulWidget {
   const _ModelsView();
+
+  @override
+  State<_ModelsView> createState() => _ModelsViewState();
+}
+
+final class _ModelsViewState extends State<_ModelsView> {
+  /// One-shot: pre-select the first section (sedan) once the catalog loads
+  /// — user taps afterwards (including "All") are never overridden.
+  bool _autoPicked = false;
 
   @override
   Widget build(BuildContext context) {
@@ -115,43 +138,70 @@ final class _ModelsView extends StatelessWidget {
     final state = context.watch<ModelsCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
+    // Presentation-only ordering of the category chips.
+    final categories = [...state.categories]
+      ..sort((a, b) => _categoryRank(a).compareTo(_categoryRank(b)));
+
+    if (!_autoPicked && !state.loading && categories.isNotEmpty) {
+      _autoPicked = true;
+      if (state.category == null) {
+        WidgetsBinding.instance.addPostFrameCallback(
+            (_) => cubit.setCategory(categories.first));
+      }
+    }
 
     return SafeArea(
       bottom: false,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(context.rs(8), context.rs(6), context.rs(8), 0),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => appBack(context),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-                ),
-                Expanded(
-                  child: Text(
-                    t.homeMeetTheModels,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: context.rf(17), fontWeight: FontWeight.w800),
-                  ),
-                ),
-                const SizedBox(width: 48),
-              ],
-            ),
-          ),
+          BackHeader(title: t.homeMeetTheModels),
           SizedBox(height: context.rs(8)),
           if (state.loading)
-            const Expanded(child: Center(child: CircularProgressIndicator()))
+            Expanded(
+              child: Shimmer(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: context.rs(20)),
+                      child: Row(
+                        children: [
+                          for (final w in [64.0, 84.0, 72.0])
+                            Padding(
+                              padding: EdgeInsetsDirectional.only(
+                                  end: context.rs(8)),
+                              child: SkeletonBox(
+                                  width: context.rs(w),
+                                  height: context.rs(34),
+                                  radius: 999),
+                            ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: context.rs(20)),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(context.rs(36), 0,
+                            context.rs(36), context.rs(32)),
+                        child: const SkeletonBox(
+                            width: double.infinity, radius: 26),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
           else ...[
+            // Sections lead (sedan first); "All" sits at the END of the row.
             FilterChipsRow(
-              labels: [t.homeAll, ...state.categories],
+              labels: [...categories, t.homeAll],
               selectedIndex: state.category == null
-                  ? 0
-                  : state.categories.indexOf(state.category!) + 1,
-              onSelected: (i) =>
-                  cubit.setCategory(i == 0 ? null : state.categories[i - 1]),
+                  ? categories.length
+                  : categories.indexOf(state.category!),
+              onSelected: (i) => cubit.setCategory(
+                  i == categories.length ? null : categories[i]),
             ),
             Padding(
               padding: EdgeInsets.fromLTRB(
@@ -178,22 +228,29 @@ final class _ModelsView extends StatelessWidget {
             ),
             Expanded(
               child: state.filtered.isEmpty
-                  ? Center(child: Text(t.storeNoResults))
-                  : PageView.builder(
+                  ? AppEmptyState(
+                      icon: Icons.search_off_rounded,
+                      title: t.storeNoResults,
+                    )
+                  // 2-column grid (3 on tablets) instead of the old pager.
+                  : GridView.builder(
                       key: ValueKey('models-${state.category}'),
-                      controller: cubit.pageController,
+                      padding: EdgeInsets.fromLTRB(context.rs(16),
+                          context.rs(4), context.rs(16), context.rs(40)),
+                      cacheExtent: 800,
+                      gridDelegate:
+                          SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: context.isTablet ? 3 : 2,
+                        mainAxisSpacing: context.rs(12),
+                        crossAxisSpacing: context.rs(12),
+                        childAspectRatio: 0.8,
+                      ),
                       itemCount: state.filtered.length,
-                      onPageChanged: cubit.onPage,
-                      itemBuilder: (context, i) => Padding(
-                        padding: EdgeInsets.only(bottom: context.rs(24)),
-                        child: _ModelCard(vehicle: state.filtered[i], lang: lang)
-                            .animate()
-                            .fadeIn(duration: 260.ms)
-                            .scale(
-                                begin: const Offset(0.97, 0.97),
-                                end: const Offset(1, 1),
-                                duration: 260.ms,
-                                curve: Curves.easeOut),
+                      itemBuilder: (context, i) => RepaintBoundary(
+                        child: _ModelGridCard(
+                                vehicle: state.filtered[i], lang: lang)
+                            .animate(delay: (25 * (i % 6)).ms)
+                            .fadeIn(duration: 220.ms),
                       ),
                     ),
             ),
@@ -204,10 +261,10 @@ final class _ModelsView extends StatelessWidget {
   }
 }
 
-/// The reference's big dark editorial card: brand small, model huge muted,
-/// specs row, car image, price + circular arrow action.
-final class _ModelCard extends StatelessWidget {
-  const _ModelCard({required this.vehicle, required this.lang});
+/// Compact grid card — the editorial panel scaled down for the 2-column
+/// grid: brand + name on the panel, Hero car image, price + arrow roundel.
+final class _ModelGridCard extends StatelessWidget {
+  const _ModelGridCard({required this.vehicle, required this.lang});
 
   final SliderVehicle vehicle;
   final String lang;
@@ -223,25 +280,25 @@ final class _ModelCard extends StatelessWidget {
     final arrowBg = isDark ? scheme.primary : scheme.onPrimary;
     final arrowFg = isDark ? scheme.onPrimary : scheme.primary;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(8)),
+    return Pressable(
       child: Material(
         color: panel,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(20),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: () => openModelSheet(context, vehicle),
           child: Padding(
-            padding: EdgeInsets.all(context.rs(20)),
+            padding: EdgeInsets.all(context.rs(12)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   vehicle.brandEn,
                   style: TextStyle(
-                    color: fg,
-                    fontSize: context.rf(15),
+                    color: fg.withValues(alpha: 0.75),
+                    fontSize: context.rf(10),
                     fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
                   ),
                 ),
                 Text(
@@ -249,28 +306,11 @@ final class _ModelCard extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: fg.withValues(alpha: 0.4),
-                    fontSize: context.rf(30),
+                    color: fg,
+                    fontSize: context.rf(13.5),
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.5,
+                    letterSpacing: -0.2,
                   ),
-                ),
-                SizedBox(height: context.rs(6)),
-                Row(
-                  children: [
-                    if (vehicle.seatsNumber != null)
-                      _SpecChip(
-                          icon: Icons.airline_seat_recline_normal_rounded,
-                          text: '${vehicle.seatsNumber}',
-                          color: fg),
-                    if (vehicle.hp != null)
-                      _SpecChip(
-                          icon: Icons.speed_rounded,
-                          text: '${vehicle.hp!.round()} HP',
-                          color: fg),
-                    if (vehicle.hybrid)
-                      _SpecChip(icon: Icons.eco_rounded, text: 'HEV', color: fg),
-                  ],
                 ),
                 // Car image.
                 Expanded(
@@ -279,7 +319,7 @@ final class _ModelCard extends StatelessWidget {
                     child: HomeImage(
                       url: vehicle.image(lang),
                       fit: BoxFit.contain,
-                      logicalWidth: MediaQuery.sizeOf(context).width,
+                      logicalWidth: 220,
                     ),
                   ),
                 ),
@@ -294,7 +334,7 @@ final class _ModelCard extends StatelessWidget {
                             t.modelsPrice,
                             style: TextStyle(
                               color: fg.withValues(alpha: 0.55),
-                              fontSize: context.rf(11),
+                              fontSize: context.rf(9),
                             ),
                           ),
                           PriceText(
@@ -302,30 +342,24 @@ final class _ModelCard extends StatelessWidget {
                                 vehicle.showPrice ? vehicle.minPrice : null,
                             currency: t.currency,
                             contactForPrice: t.homeContactForPrice,
-                            fontSize: context.rf(19),
+                            fontSize: context.rf(12.5),
                             color: fg,
                           ),
                         ],
                       ),
                     ),
                     // Circular brand-colored action, like the reference's ↗.
-                    Material(
-                      color: arrowBg,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: () => openModelSheet(context, vehicle),
-                        customBorder: const CircleBorder(),
-                        child: SizedBox(
-                          width: context.rs(48),
-                          height: context.rs(48),
-                          child: Icon(
-                            Directionality.of(context) == TextDirection.rtl
-                                ? Icons.north_west_rounded
-                                : Icons.north_east_rounded,
-                            size: 20,
-                            color: arrowFg,
-                          ),
-                        ),
+                    Container(
+                      width: context.rs(32),
+                      height: context.rs(32),
+                      decoration:
+                          BoxDecoration(color: arrowBg, shape: BoxShape.circle),
+                      child: Icon(
+                        Directionality.of(context) == TextDirection.rtl
+                            ? Icons.north_west_rounded
+                            : Icons.north_east_rounded,
+                        size: 15,
+                        color: arrowFg,
                       ),
                     ),
                   ],
@@ -334,36 +368,6 @@ final class _ModelCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-final class _SpecChip extends StatelessWidget {
-  const _SpecChip({required this.icon, required this.text, required this.color});
-
-  final IconData icon;
-  final String text;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsetsDirectional.only(end: context.rs(12)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: color.withValues(alpha: 0.6)),
-          SizedBox(width: context.rs(4)),
-          Text(
-            text,
-            style: TextStyle(
-              color: color.withValues(alpha: 0.7),
-              fontSize: context.rf(11),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }

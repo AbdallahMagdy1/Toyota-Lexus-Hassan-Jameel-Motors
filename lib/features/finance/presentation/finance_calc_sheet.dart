@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../core/di/injector.dart';
@@ -151,7 +151,7 @@ final class _CalcBody extends StatelessWidget {
         SizedBox(height: context.rs(14)),
         FilledButton.icon(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(44),
             shape: const StadiumBorder(),
             textStyle: TextStyle(
                 fontSize: context.rf(14), fontWeight: FontWeight.w800),
@@ -359,7 +359,7 @@ final class _CalcBody extends StatelessWidget {
             SizedBox(height: context.rs(16)),
             FilledButton(
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder(),
                 textStyle: TextStyle(
                     fontSize: context.rf(14), fontWeight: FontWeight.w800),

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -252,24 +252,37 @@ final class _FormHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(8)),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: onBack,
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          ),
-          Expanded(
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style:
-                  TextStyle(fontSize: context.rf(16), fontWeight: FontWeight.w800),
+    final scheme = Theme.of(context).colorScheme;
+    // Opaque bar + hairline so scrolling form content reads as passing
+    // UNDER the pinned header instead of merging with it.
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          bottom:
+              BorderSide(color: scheme.outline.withValues(alpha: 0.4)),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+            context.rs(8), 0, context.rs(8), context.rs(4)),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: onBack,
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
             ),
-          ),
-          const SizedBox(width: 48),
-        ],
+            Expanded(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    fontSize: context.rf(16), fontWeight: FontWeight.w800),
+              ),
+            ),
+            const SizedBox(width: 48),
+          ],
+        ),
       ),
     );
   }
@@ -558,7 +571,12 @@ Widget _serverError(BuildContext context, String? error) {
 /* ───────────────────────── Contact (callback) form ───────────────────────── */
 
 final class ContactForm extends StatelessWidget {
-  const ContactForm({super.key});
+  const ContactForm({super.key, this.onSuccess});
+
+  /// Host override for the success handling — when null (hosted inside the
+  /// car sheet) the sheet's success page shows; model-sheet hosts pass
+  /// their own close+snackbar.
+  final void Function(String? reference)? onSuccess;
 
   @override
   Widget build(BuildContext context) {
@@ -566,23 +584,23 @@ final class ContactForm extends StatelessWidget {
     final cubit = context.read<ContactFormCubit>();
     final state = context.watch<ContactFormCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
-    final sheet = context.read<CarSheetCubit>();
 
     Future<void> submit() async {
       final res = await cubit.submit();
-      if (res != null && context.mounted) sheet.showSuccess(res.reference);
+      if (res == null || !context.mounted) return;
+      if (onSuccess != null) {
+        onSuccess!(res.reference);
+      } else {
+        context.read<CarSheetCubit>().showSuccess(res.reference);
+      }
     }
 
+    // No "Order details" panel here — a callback request carries no payment
+    // yet, so the form goes straight to the applicant fields.
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(28)),
       children: [
-        // Compact collapsible order summary — the website's "Order details".
-        OrderSummaryCard(
-          vehicle: cubit.vehicle,
-          color: sheet.state.color,
-          downPayment: sheet.downPayment,
-        ),
-        SizedBox(height: context.rs(4)),
         // Absher autofill — website's "Autofill your details" strip.
         AbsherAutofillButton(onFilled: cubit.applyAbsher),
         PickerField<CustGroup>(
@@ -755,7 +773,8 @@ final class ReserveForm extends StatelessWidget {
     }
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(28)),
       children: [
         // The website's "Order details" panel — car + colours + total, down
         // payment, amount required and the "How you pay" platforms strip.
@@ -1053,7 +1072,7 @@ final class _FinanceRequirementsSheetState
           FilledButton(
             onPressed: () => Navigator.of(context).maybePop(),
             style:
-                FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+                FilledButton.styleFrom(minimumSize: const Size.fromHeight(44)),
             child: Text(t.commonDone),
           ),
         ],
@@ -1074,7 +1093,8 @@ final class _FinancePersonal extends StatelessWidget {
     final sheet = context.read<CarSheetCubit>();
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(28)),
       children: [
         // Compact collapsible order summary — the website's "Order details".
         OrderSummaryCard(
@@ -1180,7 +1200,8 @@ final class _FinanceWork extends StatelessWidget {
     }
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(28)),
       children: [
         FieldLabel(t.formJob),
         FormInput(controller: cubit.job, error: _errText(context, state.errors['job'])),
@@ -1294,7 +1315,8 @@ final class _FinanceDocs extends StatelessWidget {
     };
 
     return ListView(
-      padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(12), context.rs(20), context.rs(28)),
       children: [
         // Financing entity — the "Pick a bank" cards, not a dropdown.
         // Optional, like the website (bankID may be omitted).

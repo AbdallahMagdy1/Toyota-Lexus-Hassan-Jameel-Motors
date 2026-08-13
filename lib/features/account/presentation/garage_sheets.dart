@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -221,7 +221,7 @@ final class _AddCarView extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () {
                 Navigator.of(context).pop();
@@ -256,7 +256,7 @@ final class _AddCarView extends StatelessWidget {
             const SizedBox(height: 18),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(52),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: cubit.startForm,
               icon: const Icon(Icons.directions_car_filled_outlined),
@@ -265,7 +265,7 @@ final class _AddCarView extends StatelessWidget {
             const SizedBox(height: 10),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(52),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder(),
                 side: BorderSide(color: scheme.primary),
                 foregroundColor: scheme.primary,
@@ -395,7 +395,7 @@ final class _AddCarView extends StatelessWidget {
               ),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
                       fontSize: context.rf(14), fontWeight: FontWeight.w800)),
@@ -560,7 +560,7 @@ final class _MeterView extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: state.busy ? null : cubit.save,
               child: state.busy
@@ -720,7 +720,7 @@ final class _VehicleHubState extends State<_VehicleHub> {
             SizedBox(height: context.rs(12)),
             FilledButton.icon(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () => showMaintenanceBookingSheet(context, car: car),
               icon: const Icon(Icons.build_circle_outlined, size: 19),
@@ -731,7 +731,7 @@ final class _VehicleHubState extends State<_VehicleHub> {
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
+                    minimumSize: const Size.fromHeight(44),
                     shape: const StadiumBorder(),
                     side: BorderSide(color: scheme.primary),
                     foregroundColor: scheme.primary,
@@ -748,7 +748,7 @@ final class _VehicleHubState extends State<_VehicleHub> {
               Expanded(
                 child: OutlinedButton(
                   style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(46),
+                    minimumSize: const Size.fromHeight(44),
                     shape: const StadiumBorder(),
                     side: BorderSide(color: scheme.primary),
                     foregroundColor: scheme.primary,
@@ -886,7 +886,7 @@ final class _RenameCarViewState extends State<_RenameCarView> {
             const SizedBox(height: 16),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed:
                   _busy || _controller.text.trim().isEmpty ? null : _save,

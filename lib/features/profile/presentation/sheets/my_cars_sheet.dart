@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../core/di/injector.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
+import '../../../../shared/widgets/app_states.dart';
 import '../../../account/data/account_repository.dart';
 import '../../../account/domain/account_models.dart';
 import '../../../account/presentation/garage_sheets.dart';
@@ -82,10 +83,7 @@ final class _MyCarsSheetState extends State<_MyCarsSheet> {
       icon: Icons.directions_car_outlined,
       children: [
         if (cars == null && !_failed)
-          Padding(
-            padding: EdgeInsets.symmetric(vertical: context.rs(56)),
-            child: const Center(child: CircularProgressIndicator()),
-          )
+          SkeletonList(itemCount: 3, itemHeight: context.rs(72))
         else if (cars == null)
           Padding(
             padding: EdgeInsets.symmetric(vertical: context.rs(48)),
@@ -186,7 +184,7 @@ final class _MyCarsSheetState extends State<_MyCarsSheet> {
           SizedBox(height: context.rs(10)),
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
+              minimumSize: const Size.fromHeight(44),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15)),
             ),

@@ -15,6 +15,7 @@ import '../../core/network/api_client.dart';
 import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart';
+import '../../shared/widgets/app_states.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../settings/bloc/locale_cubit.dart';
 
@@ -262,22 +263,10 @@ final class _NotificationsView extends StatelessWidget {
                 ),
                 Expanded(
                   child: list.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.notifications_none_rounded,
-                                  size: 44,
-                                  color: scheme.onSurface
-                                      .withValues(alpha: 0.25)),
-                              SizedBox(height: context.rs(10)),
-                              Text(t.notifEmpty,
-                                  style: TextStyle(
-                                      fontSize: context.rf(13),
-                                      color: scheme.onSurface
-                                          .withValues(alpha: 0.55))),
-                            ],
-                          ),
+                      ? AppEmptyState(
+                          icon: Icons.notifications_none_rounded,
+                          title: t.notifEmpty,
+                          compact: true,
                         )
                       : ListView.separated(
                           padding: EdgeInsets.all(context.rs(16)),

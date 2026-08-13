@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../account/data/account_repository.dart';
 import '../../account/domain/account_models.dart';
 import '../../account/presentation/garage_sheets.dart' show showAddCarSheet;
@@ -56,11 +57,16 @@ final class _ProtectionView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: switch (state.status) {
-            ProtectionStatus.loading =>
-              const Center(child: CircularProgressIndicator()),
-            ProtectionStatus.error => Center(
-                child: TextButton(
-                    onPressed: cubit.load, child: Text(t.homeErrorRetry))),
+            ProtectionStatus.loading => SkeletonList(
+                itemCount: 4,
+                itemHeight: context.rs(120),
+              ),
+            ProtectionStatus.error => AppErrorState(
+                title: t.stateErrorTitle,
+                message: t.stateErrorBody,
+                retryLabel: t.stateRetry,
+                onRetry: cubit.load,
+              ),
             ProtectionStatus.ready => const _Body(),
           },
         ),
@@ -92,7 +98,7 @@ final class _Body extends StatelessWidget {
               children: [
                 Text(t.protTitle,
                     style: TextStyle(
-                        fontSize: context.rf(24),
+                        fontSize: context.rf(19),
                         fontWeight: FontWeight.w800)),
                 SizedBox(height: context.rs(4)),
                 Text(t.protSubtitle,
@@ -110,10 +116,7 @@ final class _Body extends StatelessWidget {
 
           // ── Packages ──
           if (state.servicesLoading)
-            const Padding(
-              padding: EdgeInsets.all(40),
-              child: Center(child: CircularProgressIndicator()),
-            )
+            SkeletonList(itemCount: 3, itemHeight: context.rs(120))
           else if (result == null)
             Padding(
               padding: EdgeInsets.all(context.rs(36)),
@@ -594,12 +597,14 @@ final class _PackageCard extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final (tileBg, tileFg) = selected || popular
-        ? (scheme.primary.withValues(alpha: 0.08), scheme.primary)
-        : (
-            scheme.onSurface.withValues(alpha: 0.05),
-            scheme.onSurface.withValues(alpha: 0.55)
-          );
+    // Tier palette from the package NAME (gold/silver/bronze/diamond) —
+    // the card wash, icon tile, badge and CTA all follow it.
+    final tier = packageTierColors(package.name(lang), scheme);
+    final accent = isDark ? tier.color : tier.deep;
+    final (tileBg, tileFg) = (
+      tier.color.withValues(alpha: isDark ? 0.28 : 0.16),
+      accent,
+    );
     final icon = switch (index % 3) {
       0 => Icons.layers_rounded,
       1 => Icons.shield_outlined,
@@ -618,12 +623,12 @@ final class _PackageCard extends StatelessWidget {
           padding: EdgeInsets.all(context.rs(15)),
           decoration: BoxDecoration(
             color: selected
-                ? scheme.primary.withValues(alpha: isDark ? 0.10 : 0.05)
+                ? tier.color.withValues(alpha: isDark ? 0.12 : 0.07)
                 : (isDark ? const Color(0xFF181B21) : scheme.surface),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: selected
-                  ? scheme.primary
+                  ? tier.color
                   : scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
               width: selected ? 1.6 : 1,
             ),
@@ -654,9 +659,7 @@ final class _PackageCard extends StatelessWidget {
                               fontSize: context.rf(13.5),
                               height: 1.25,
                               fontWeight: FontWeight.w800,
-                              color: selected
-                                  ? scheme.primary
-                                  : scheme.onSurface)),
+                              color: selected ? accent : scheme.onSurface)),
                     ),
                   ),
                   SizedBox(width: context.rs(8)),
@@ -666,11 +669,11 @@ final class _PackageCard extends StatelessWidget {
                       width: context.rs(22),
                       height: context.rs(22),
                       decoration: BoxDecoration(
-                        color: scheme.primary,
+                        color: tier.color,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_rounded,
-                          size: 14, color: scheme.onPrimary),
+                      child: const Icon(Icons.check_rounded,
+                          size: 14, color: Colors.white),
                     )
                   else if (popular)
                     Container(
@@ -678,14 +681,14 @@ final class _PackageCard extends StatelessWidget {
                           horizontal: context.rs(9),
                           vertical: context.rs(4)),
                       decoration: BoxDecoration(
-                        color: scheme.primary,
+                        color: tier.color,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(t.protPopular,
                           style: TextStyle(
                               fontSize: context.rf(8.5),
                               fontWeight: FontWeight.w800,
-                              color: scheme.onPrimary)),
+                              color: Colors.white)),
                     ),
                 ],
               ),
@@ -711,6 +714,8 @@ final class _PackageCard extends StatelessWidget {
                 selected
                     ? FilledButton.icon(
                         style: FilledButton.styleFrom(
+                          backgroundColor: tier.color,
+                          foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12)),
                           padding: EdgeInsets.symmetric(
@@ -735,9 +740,8 @@ final class _PackageCard extends StatelessWidget {
                               vertical: context.rs(10)),
                           minimumSize: Size.zero,
                           side: BorderSide(
-                              color:
-                                  scheme.primary.withValues(alpha: 0.7)),
-                          foregroundColor: scheme.primary,
+                              color: tier.color.withValues(alpha: 0.7)),
+                          foregroundColor: accent,
                           textStyle: TextStyle(
                               fontSize: context.rf(12),
                               fontWeight: FontWeight.w800),
@@ -750,7 +754,8 @@ final class _PackageCard extends StatelessWidget {
                     price: package.price,
                     currency: '',
                     contactForPrice: t.homeContactForPrice,
-                    fontSize: context.rf(17)),
+                    fontSize: context.rf(17),
+                    color: accent),
               ]),
             ],
           ),

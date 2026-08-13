@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../account/presentation/registered_home_view.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../coupons/presentation/coupon_banner_carousel.dart';
@@ -58,8 +59,13 @@ final class _HomeView extends StatelessWidget {
           const AppHeader(),
           Expanded(
             child: switch (state.status) {
-              HomeStatus.loading => const Center(child: CircularProgressIndicator()),
-              HomeStatus.error => _ErrorRetry(onRetry: cubit.load),
+              HomeStatus.loading => const _HomeSkeleton(),
+              HomeStatus.error => AppErrorState(
+                  title: t.stateErrorTitle,
+                  message: t.stateErrorBody,
+                  retryLabel: t.stateRetry,
+                  onRetry: cubit.load,
+                ),
               HomeStatus.ready => RefreshIndicator(
                   onRefresh: cubit.refresh,
                   child: CustomScrollView(
@@ -246,25 +252,64 @@ final class _HomeView extends StatelessWidget {
   }
 }
 
-final class _ErrorRetry extends StatelessWidget {
-  const _ErrorRetry({required this.onRetry});
-
-  final VoidCallback onRetry;
+/// Shimmering placeholder mirroring the home layout (hero panel → chips →
+/// card rails), so the page structure is visible while the feed loads and
+/// nothing jumps when it arrives.
+final class _HomeSkeleton extends StatelessWidget {
+  const _HomeSkeleton();
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return Center(
-      child: GestureDetector(
-        onTap: onRetry,
+    Widget header() => Padding(
+          padding: EdgeInsets.fromLTRB(
+              context.rs(20), context.rs(26), context.rs(20), context.rs(12)),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SkeletonLine(widthFactor: 0.45, height: 16),
+              SizedBox(height: 8),
+              SkeletonLine(widthFactor: 0.65, height: 11),
+            ],
+          ),
+        );
+
+    return Shimmer(
+      child: SingleChildScrollView(
+        physics: const NeverScrollableScrollPhysics(),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(Icons.wifi_off_rounded,
-                size: 40,
-                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4)),
-            const SizedBox(height: 12),
-            Text(t.homeErrorRetry),
+            // Hero slider placeholder.
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  context.rs(20), context.rs(16), context.rs(20), 0),
+              child: SkeletonBox(
+                  width: double.infinity,
+                  height: context.rs(170),
+                  radius: 22),
+            ),
+            header(),
+            SkeletonRail(height: context.rs(300), itemWidth: context.rs(216)),
+            header(),
+            // Filter chip placeholders.
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+              child: Row(
+                children: [
+                  for (final w in [64.0, 84.0, 72.0, 90.0])
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(end: context.rs(8)),
+                      child: SkeletonBox(
+                          width: context.rs(w),
+                          height: context.rs(34),
+                          radius: 999),
+                    ),
+                ],
+              ),
+            ),
+            SizedBox(height: context.rs(14)),
+            SkeletonRail(height: context.rs(240), itemWidth: context.rs(236)),
+            SizedBox(height: context.rs(40)),
           ],
         ),
       ),

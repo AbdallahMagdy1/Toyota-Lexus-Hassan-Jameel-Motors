@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -136,7 +136,7 @@ final class _SignUpView extends StatelessWidget {
             {required VoidCallback onPressed, required String label}) =>
         FilledButton(
           style: FilledButton.styleFrom(
-            minimumSize: const Size.fromHeight(50),
+            minimumSize: const Size.fromHeight(44),
             shape: const StadiumBorder(),
           ),
           onPressed: state.busy ? null : onPressed,
@@ -264,13 +264,29 @@ final class _SignUpView extends StatelessWidget {
         controller: cubit.otp,
         focusColor: scheme.primary,
         onSubmitted: (_) => cubit.confirm(),
+        // Result morph driven by the EXISTING cubit state — the invalid-OTP
+        // error fuses the boxes into the ✕ pill (tap to retry).
+        status: state.error == SignUpError.invalidOtp
+            ? OtpStatus.error
+            : OtpStatus.idle,
+        successLabel: t.otpVerifiedTitle,
+        errorLabel: t.otpIncorrectTitle,
+        errorHint: error ?? t.otpIncorrectHint,
       ),
       SizedBox(height: context.rs(10)),
-      if (error != null) ...[
+      // Non-OTP errors keep the banner; the OTP error renders in the pill.
+      if (error != null && state.error != SignUpError.invalidOtp) ...[
         ErrorBanner(text: error),
         SizedBox(height: context.rs(10))
       ],
       primaryButton(onPressed: cubit.confirm, label: t.absherConfirm),
+      SizedBox(height: context.rs(6)),
+      // Absher code validity countdown (display only — Absher has no
+      // resend action in this flow).
+      OtpTimerResend(
+        validForLabel: (time) => t.otpValidFor(time),
+        expiredLabel: t.otpExpired,
+      ),
       TextButton(onPressed: cubit.back, child: Text(t.authBack)),
     ];
   }

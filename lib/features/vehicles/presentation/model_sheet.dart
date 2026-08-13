@@ -9,7 +9,14 @@ import '../../../shared/navigation/sheet_routes.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/slope_hero.dart';
+import '../../auth/bloc/auth_bloc.dart';
+import '../../online_store/bloc/method_form_cubits.dart'
+    show ContactFormCubit;
+import '../../online_store/data/online_store_repository.dart';
+import '../../online_store/presentation/widgets/method_forms.dart'
+    show ContactForm;
 import '../../settings/bloc/locale_cubit.dart';
 import '../bloc/model_sheet_cubit.dart';
 import '../domain/specs_matrix.dart';
@@ -23,6 +30,81 @@ Future<void> openModelSheet(BuildContext context, SliderVehicle vehicle) {
     builder: (_) => BlocProvider(
       create: (_) => ModelSheetCubit(sl(), vehicle),
       child: ModelSheet(vehicle: vehicle),
+    ),
+  );
+}
+
+/// Callback-request form for models NOT sold in the online store — hosts
+/// the store's existing ContactForm (same cubit, same submit cycle) over a
+/// vehicle record built from the catalog model.
+Future<void> _openModelCallbackForm(
+    BuildContext context, SliderVehicle v) async {
+  final repo = sl<OnlineStoreRepository>();
+  final settings = await repo.formSettings();
+  if (!context.mounted) return;
+  final lang = sl<LocaleCubit>().state.languageCode;
+  final vehicle = OnlineVehicle(
+    slug: v.slug,
+    year: v.year,
+    brandEn: v.brandEn,
+    groupEn: v.groupEn,
+    groupAr: v.groupAr,
+    minPrice: v.minPrice,
+    image: v.image(lang),
+    brandId: v.brandId,
+    carGroupId: v.carGroupId,
+    type: v.type,
+    showPrice: v.showPrice,
+  );
+  if (!context.mounted) return;
+  final t = AppLocalizations.of(context);
+  await showModalBottomSheet<void>(
+    context: context,
+    // Root navigator so the sheet covers the shell's bottom-nav overlay.
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: true,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (sheetCtx) => BlocProvider(
+      create: (_) => ContactFormCubit(repo, vehicle, settings,
+          lang: lang, user: sl<AuthBloc>().state.user),
+      child: SizedBox(
+        height: MediaQuery.sizeOf(sheetCtx).height * 0.82,
+        child: Column(children: [
+          const SheetHandle(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+            child: Column(children: [
+              Text(t.methodContactTitle,
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 2),
+              Text(
+                '${v.name(lang)} ${v.year ?? ''}'.trim(),
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: Theme.of(sheetCtx)
+                      .colorScheme
+                      .onSurface
+                      .withValues(alpha: 0.6),
+                ),
+              ),
+            ]),
+          ),
+          Expanded(
+            child: ContactForm(
+              onSuccess: (reference) {
+                Navigator.of(sheetCtx, rootNavigator: true).pop();
+                ScaffoldMessenger.of(context)
+                  ..hideCurrentSnackBar()
+                  ..showSnackBar(
+                      SnackBar(content: Text(t.offersSubmitted)));
+              },
+            ),
+          ),
+        ]),
+      ),
     ),
   );
 }
@@ -44,40 +126,56 @@ final class ModelSheet extends StatelessWidget {
     return Column(
       children: [
         const SheetHandle(),
-        // Website-style pill tab bar (selected = filled primary).
-        SizedBox(
-          height: context.rs(44),
-          child: ListView.separated(
-            padding: EdgeInsets.symmetric(
-                horizontal: context.rs(16), vertical: context.rs(5)),
-            scrollDirection: Axis.horizontal,
-            itemCount: tabs.length,
-            separatorBuilder: (_, _) => SizedBox(width: context.rs(8)),
-            itemBuilder: (context, i) {
-              final selected = i == state.tab;
-              return GestureDetector(
-                onTap: () => cubit.setTab(i),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: EdgeInsets.symmetric(horizontal: context.rs(16)),
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: selected ? scheme.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    tabs[i],
-                    style: TextStyle(
-                      fontSize: context.rf(12.5),
-                      fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-                      color: selected
-                          ? scheme.onPrimary
-                          : scheme.onSurface.withValues(alpha: 0.6),
+        // Website-style pill tab bar — equal-width pills that always fit the
+        // sheet, so the last tab (المقارنة) is never cut off the edge.
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+              context.rs(12), context.rs(5), context.rs(12), context.rs(5)),
+          child: SizedBox(
+            height: context.rs(36),
+            child: Row(
+              children: [
+                for (var i = 0; i < tabs.length; i++) ...[
+                  if (i > 0) SizedBox(width: context.rs(4)),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap: () => cubit.setTab(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: i == state.tab
+                              ? scheme.primary
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: context.rs(6)),
+                            child: Text(
+                              tabs[i],
+                              maxLines: 1,
+                              style: TextStyle(
+                                fontSize: context.rf(12),
+                                fontWeight: i == state.tab
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                                color: i == state.tab
+                                    ? scheme.onPrimary
+                                    : scheme.onSurface
+                                        .withValues(alpha: 0.6),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
+                ],
+              ],
+            ),
           ),
         ),
         Expanded(
@@ -348,6 +446,20 @@ final class _OverviewTab extends StatelessWidget {
             ),
           ),
         ],
+        // Models NOT sold in the online store: the callback request is
+        // their purchase path — prominent CTA opening the store's form.
+        if (!vehicle.buyOnline) ...[
+          SizedBox(height: context.rs(20)),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              shape: const StadiumBorder(),
+            ),
+            onPressed: () => _openModelCallbackForm(context, vehicle),
+            icon: const Icon(Icons.support_agent_rounded, size: 18),
+            label: Text(t.methodContactTitle),
+          ),
+        ],
         SizedBox(height: context.rs(30)),
         ],
       ),
@@ -364,7 +476,9 @@ final class _GalleryTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final state = context.watch<ModelSheetCubit>().state;
-    if (state.loading) return const Center(child: CircularProgressIndicator());
+    if (state.loading) {
+      return const SkeletonGrid(itemCount: 4, aspectRatio: 1.25);
+    }
     final items =
         state.gallery.where((g) => (g.image ?? '').isNotEmpty).toList();
     if (items.isEmpty) return _Empty(text: t.modelsNoData);
@@ -400,7 +514,9 @@ final class _SpecsTab extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final state = context.watch<ModelSheetCubit>().state;
     final scheme = Theme.of(context).colorScheme;
-    if (state.loading) return const Center(child: CircularProgressIndicator());
+    if (state.loading) {
+      return SkeletonList(itemCount: 4, itemHeight: context.rs(64));
+    }
 
     final d = state.detail ?? vehicle;
     final stats = <(String, String)>[
@@ -662,7 +778,9 @@ final class _FeaturesTab extends StatelessWidget {
     final state = context.watch<ModelSheetCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
-    if (state.loading) return const Center(child: CircularProgressIndicator());
+    if (state.loading) {
+      return SkeletonList(itemCount: 4, itemHeight: context.rs(72));
+    }
     if (state.features.isEmpty) return _Empty(text: t.modelsNoData);
 
     return ListView.builder(
@@ -736,7 +854,9 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
     final state = context.watch<ModelSheetCubit>().state;
     final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
-    if (state.loading) return const Center(child: CircularProgressIndicator());
+    if (state.loading) {
+      return SkeletonList(itemCount: 5, itemHeight: context.rs(56));
+    }
 
     final trims = trimsInMatrix(state.trims, state.equipments);
     if (trims.length < 2 || state.equipments.isEmpty) {
@@ -860,16 +980,82 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
           ),
         ),
         SizedBox(height: context.rs(8)),
-        for (final section in sections) ...[
-          _SectionHeader(title: section.title),
-          SizedBox(height: context.rs(6)),
+        // ── Website "Compare side by side" tables: numbered section title,
+        // then a bordered 3-column table — spec label | trim A | trim B —
+        // with a sticky-style header row and diff rows softly tinted. ──
+        for (final (si, section) in sections.indexed) ...[
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                context.rs(2), context.rs(10), context.rs(2), context.rs(8)),
+            child: Row(children: [
+              Text(
+                '0${si + 1}',
+                style: TextStyle(
+                  fontSize: context.rf(10),
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.5,
+                  color: scheme.primary,
+                ),
+              ),
+              SizedBox(width: context.rs(8)),
+              Expanded(
+                child: Text(
+                  section.title,
+                  style: TextStyle(
+                      fontSize: context.rf(14.5),
+                      fontWeight: FontWeight.w800),
+                ),
+              ),
+            ]),
+          ),
           Container(
+            clipBehavior: Clip.antiAlias,
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? const Color(0xFF181B21)
+                  : scheme.surface,
               borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: scheme.outline.withValues(alpha: 0.5)),
             ),
             child: Column(
               children: [
+                // Header row: SPEC | trim A | trim B.
+                Container(
+                  padding: EdgeInsets.symmetric(
+                      horizontal: context.rs(12),
+                      vertical: context.rs(9)),
+                  color: scheme.surfaceContainerHighest
+                      .withValues(alpha: 0.55),
+                  child: Row(children: [
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        t.tabSpecs.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: context.rf(9),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.8,
+                          color:
+                              scheme.onSurface.withValues(alpha: 0.5),
+                        ),
+                      ),
+                    ),
+                    for (final trim in [a, b])
+                      Expanded(
+                        flex: 4,
+                        child: Text(
+                          trim.name(lang),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              fontSize: context.rf(10.5),
+                              height: 1.25,
+                              fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                  ]),
+                ),
                 for (var i = 0; i < section.rows.length; i++)
                   Container(
                     padding: EdgeInsets.symmetric(
@@ -879,68 +1065,45 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
                       color: section.rows[i].differsAcross(slugs)
                           ? scheme.primary.withValues(alpha: 0.05)
                           : null,
-                      borderRadius: i == 0
-                          ? const BorderRadius.vertical(
-                              top: Radius.circular(14))
-                          : i == section.rows.length - 1
-                              ? const BorderRadius.vertical(
-                                  bottom: Radius.circular(14))
-                              : null,
-                      border: i == 0
-                          ? null
-                          : Border(
-                              top: BorderSide(
-                                  color: scheme.outline
-                                      .withValues(alpha: 0.25))),
+                      border: Border(
+                          top: BorderSide(
+                              color: scheme.outline
+                                  .withValues(alpha: 0.3))),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Text(
-                          section.rows[i].label,
-                          style: TextStyle(
-                            fontSize: context.rf(11),
-                            height: 1.35,
-                            color:
-                                scheme.onSurface.withValues(alpha: 0.65),
+                        Expanded(
+                          flex: 5,
+                          child: Text(
+                            section.rows[i].label,
+                            style: TextStyle(
+                              fontSize: context.rf(10.5),
+                              height: 1.35,
+                              color: scheme.onSurface
+                                  .withValues(alpha: 0.65),
+                            ),
                           ),
                         ),
-                        SizedBox(height: context.rs(5)),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Align(
-                                alignment: AlignmentDirectional.centerStart,
-                                child: _SpecValue(
-                                    value: section.rows[i]
-                                            .values[a.slug] ??
-                                        '—'),
-                              ),
+                        for (final trim in [a, b])
+                          Expanded(
+                            flex: 4,
+                            child: Align(
+                              alignment:
+                                  AlignmentDirectional.centerStart,
+                              child: _SpecValue(
+                                  value: section.rows[i]
+                                          .values[trim.slug] ??
+                                      '—'),
                             ),
-                            Container(
-                              width: 1,
-                              height: 16,
-                              color:
-                                  scheme.outline.withValues(alpha: 0.4),
-                            ),
-                            Expanded(
-                              child: Align(
-                                alignment: AlignmentDirectional.centerEnd,
-                                child: _SpecValue(
-                                    value: section.rows[i]
-                                            .values[b.slug] ??
-                                        '—'),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
                       ],
                     ),
                   ),
               ],
             ),
           ),
-          SizedBox(height: context.rs(12)),
+          SizedBox(height: context.rs(8)),
         ],
       ],
     ).animate().fadeIn(duration: 240.ms);
@@ -954,12 +1117,10 @@ final class _Empty extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Text(
-        text,
-        style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5)),
-      ),
+    return AppEmptyState(
+      icon: Icons.directions_car_outlined,
+      title: text,
+      compact: true,
     );
   }
 }

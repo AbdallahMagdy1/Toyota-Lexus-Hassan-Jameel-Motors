@@ -8,6 +8,7 @@ import '../../core/network/api_client.dart';
 import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart';
+import '../../shared/widgets/app_states.dart';
 import '../account/presentation/registered_home_view.dart' show StageBar;
 import '../auth/bloc/auth_bloc.dart';
 import '../home/presentation/widgets/home_bits.dart';
@@ -153,7 +154,9 @@ final class _TrackerSheetBodyState extends State<_TrackerSheetBody> {
   }
 
   Widget _body(AppLocalizations t, ColorScheme scheme, String lang) {
-    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_loading) {
+      return SkeletonList(itemCount: 3, itemHeight: context.rs(96));
+    }
 
     if (_failed && (_items == null || _items!.isEmpty)) {
       // Error + retry — tappable, comfortably above the 44pt target.

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/responsive.dart';
+import '../../../../shared/widgets/pressable.dart';
 
 /// Shared building blocks for the home sections.
 
@@ -84,7 +86,9 @@ final class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Padding(
-      padding: EdgeInsets.fromLTRB(context.rs(20), context.rs(26), context.rs(20), context.rs(12)),
+      // Generous top gap — sections breathe instead of stacking tightly.
+      padding: EdgeInsets.fromLTRB(
+          context.rs(20), context.rs(34), context.rs(20), context.rs(14)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -95,9 +99,9 @@ final class SectionHeader extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontSize: context.rf(20),
+                    fontSize: context.rf(16.5),
                     fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 if (subtitle != null) ...[
@@ -105,7 +109,7 @@ final class SectionHeader extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: TextStyle(
-                      fontSize: context.rf(12.5),
+                      fontSize: context.rf(11.5),
                       color: scheme.onSurface.withValues(alpha: 0.55),
                     ),
                   ),
@@ -200,6 +204,17 @@ final class FilterChipsRow extends StatelessWidget {
                         color: scheme.outline
                             .withValues(alpha: isDark ? 0.6 : 0.5))
                     : null,
+                // Selected pill glows with the brand color — the same accent
+                // language as the bottom nav's active tab.
+                boxShadow: selected && !isDark
+                    ? [
+                        BoxShadow(
+                          color: scheme.primary.withValues(alpha: 0.28),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ]
+                    : null,
               ),
               child: Text(
                 labels[i],
@@ -244,21 +259,43 @@ final class CardRail extends StatelessWidget {
         itemCount: itemCount,
         cacheExtent: 600,
         separatorBuilder: (_, _) => SizedBox(width: context.rs(12)),
+        // The house entrance: quick staggered fade+slide as items appear —
+        // matches the list pattern used on store/offers/favorites screens.
         itemBuilder: (context, i) => RepaintBoundary(
-          child: itemWidth == null
-              ? itemBuilder(context, i)
-              : SizedBox(width: itemWidth, child: itemBuilder(context, i)),
+          child: (itemWidth == null
+                  ? itemBuilder(context, i)
+                  : SizedBox(width: itemWidth, child: itemBuilder(context, i)))
+              .animate(delay: (30 * (i % 6)).ms)
+              .fadeIn(duration: 240.ms, curve: Curves.easeOut)
+              .slideX(
+                  begin: 0.04,
+                  end: 0,
+                  duration: 240.ms,
+                  curve: Curves.easeOutCubic),
         ),
       ),
     );
   }
 }
 
-/// Flat design (user request): no drop shadows anywhere — separation comes
-/// from surface color + hairline borders instead. Kept as the single switch
-/// so every card updates together.
+/// The single elevation switch — every card updates together. Light mode
+/// gets a whisper-soft ambient shadow (premium "floating surface" depth);
+/// dark mode stays flat since shadows read poorly on near-black and the
+/// hairline border already separates surfaces there.
 List<BoxShadow> kSoftShadows(BuildContext context, {double opacity = 1}) {
-  return const [];
+  if (Theme.of(context).brightness == Brightness.dark) return const [];
+  return [
+    BoxShadow(
+      color: const Color(0xFF1B2430).withValues(alpha: 0.06 * opacity),
+      blurRadius: 22,
+      offset: const Offset(0, 10),
+    ),
+    BoxShadow(
+      color: const Color(0xFF1B2430).withValues(alpha: 0.04 * opacity),
+      blurRadius: 6,
+      offset: const Offset(0, 2),
+    ),
+  ];
 }
 
 /// The reference kit's soft surface decoration: white floating card in
@@ -283,16 +320,17 @@ BoxDecoration softCardDecoration(
                 : [tint.withValues(alpha: 0.10), Colors.white],
           ),
     borderRadius: BorderRadius.circular(radius),
-    // Hairline border in BOTH modes now that shadows are gone — it is the
-    // only separation light surfaces have left.
+    // Hairline border for structure + the soft ambient shadow for depth
+    // (light mode only — see kSoftShadows).
     border: Border.all(
-      color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
+      color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.35),
     ),
+    boxShadow: kSoftShadows(context),
   );
 }
 
-/// The shared card chrome — flat style: surface + hairline border in both
-/// modes (no drop shadows anywhere, per design direction).
+/// The shared card chrome: surface + hairline border, soft ambient shadow in
+/// light mode, and press-scale feedback on tappable cards.
 final class HomeCard extends StatelessWidget {
   const HomeCard({super.key, required this.child, this.onTap, this.padding});
 
@@ -304,25 +342,97 @@ final class HomeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Material(
-      color: isDark ? const Color(0xFF181B21) : scheme.surface,
-      borderRadius: BorderRadius.circular(20),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
+    final card = DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: kSoftShadows(context),
+      ),
+      child: Material(
+        color: isDark ? const Color(0xFF181B21) : scheme.surface,
+        borderRadius: BorderRadius.circular(20),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.35),
+              ),
             ),
+            child: child,
           ),
-          child: child,
+        ),
+      ),
+    );
+    return onTap == null ? card : Pressable(child: card);
+  }
+}
+
+/// The Services-mock bottom fade: a lightweight gradient band that melts
+/// the image bottom into the page background — pure gradient paint, no
+/// BackdropFilter, so it costs nothing while rails scroll. Place as the
+/// LAST child of the image's Stack, inside its ClipRRect so it takes the
+/// same rounded corners.
+final class GlassBottomFade extends StatelessWidget {
+  const GlassBottomFade({super.key, this.height = 56});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = Theme.of(context).scaffoldBackgroundColor;
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              bg.withValues(alpha: 0),
+              bg.withValues(alpha: 0.55),
+              bg.withValues(alpha: 0.94),
+            ],
+            stops: const [0, 0.55, 1],
+          ),
         ),
       ),
     );
   }
+}
+
+/// Protection-package tier palette resolved from the package NAME —
+/// gold ذهبية / silver فضية / bronze برونزية / diamond ماسية (falls back to
+/// the brand color for unknown tiers). `color` drives CTAs + overlay
+/// washes, `deep` icons/text on tinted surfaces.
+({Color color, Color deep}) packageTierColors(String name, ColorScheme scheme) {
+  final n = name.toLowerCase();
+  if (n.contains('ذهب') || n.contains('gold')) {
+    return (color: const Color(0xFFC9A227), deep: const Color(0xFF8A6D1B));
+  }
+  if (n.contains('فض') || n.contains('silver')) {
+    return (color: const Color(0xFF8E99A8), deep: const Color(0xFF5B6470));
+  }
+  if (n.contains('برونز') || n.contains('bronze')) {
+    return (color: const Color(0xFFB0793F), deep: const Color(0xFF7F5527));
+  }
+  // Platinum gets its own graphite-steel tone — checked BEFORE diamond so
+  // it never falls into the ice-blue diamond palette.
+  if (n.contains('بلاتين') || n.contains('platinum')) {
+    return (color: const Color(0xFF64748B), deep: const Color(0xFF364152));
+  }
+  if (n.contains('ماس') || n.contains('diamond')) {
+    return (color: const Color(0xFF3FA9CE), deep: const Color(0xFF1F7A99));
+  }
+  return (
+    color: scheme.primary,
+    deep: Color.lerp(scheme.primary, Colors.black, 0.25)!,
+  );
 }
 
 /// The Saudi Riyal symbol from the website's icomoon font (U+E900) — the

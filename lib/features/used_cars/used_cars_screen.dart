@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,6 +12,7 @@ import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/app_states.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../home/presentation/widgets/home_bits.dart';
 import '../settings/bloc/locale_cubit.dart';
@@ -76,7 +77,7 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
                 children: [
                   Text(t.ucTitle,
                       style: TextStyle(
-                          fontSize: context.rf(24),
+                          fontSize: context.rf(19),
                           fontWeight: FontWeight.w800)),
                   SizedBox(height: context.rs(4)),
                   Text(t.ucSubtitle,
@@ -88,7 +89,7 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
                   // "اعرض سيارتك" — the website's red CTA.
                   FilledButton.icon(
                     style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(50),
+                      minimumSize: const Size.fromHeight(44),
                       shape: const StadiumBorder(),
                       textStyle: TextStyle(
                           fontSize: context.rf(13.5),
@@ -104,14 +105,12 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
                   ),
                   SizedBox(height: context.rs(16)),
                   if (snap.connectionState != ConnectionState.done)
-                    const Padding(
-                      padding: EdgeInsets.all(40),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
+                    const SkeletonGrid(itemCount: 4, aspectRatio: 0.74)
                   else if (cars.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.all(context.rs(36)),
-                      child: Center(child: Text(t.ucEmpty)),
+                    AppEmptyState(
+                      icon: Icons.directions_car_outlined,
+                      title: t.ucEmpty,
+                      compact: true,
                     )
                   else
                     GridView.count(
@@ -481,7 +480,7 @@ final class _UsedCarDetailBodyState extends State<_UsedCarDetailBody> {
                     FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: _kGreen,
-                        minimumSize: const Size.fromHeight(50),
+                        minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                         textStyle: TextStyle(
@@ -824,7 +823,7 @@ final class _SellCarWizardState extends State<_SellCarWizard> {
             const SizedBox(height: 18),
             FilledButton(
               style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder()),
               onPressed: () => Navigator.of(context).pop(),
               child: Text(t.commonDone),
@@ -976,7 +975,7 @@ final class _SellCarWizardState extends State<_SellCarWizard> {
                 4 => [
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(52),
+                        minimumSize: const Size.fromHeight(44),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14)),
                         side: BorderSide(
@@ -1099,7 +1098,7 @@ final class _SellCarWizardState extends State<_SellCarWizard> {
               Expanded(
                 child: FilledButton(
                   style: FilledButton.styleFrom(
-                    minimumSize: const Size(64, 52),
+                    minimumSize: const Size(64, 44),
                     shape: const StadiumBorder(),
                     textStyle: TextStyle(
                         fontSize: context.rf(14), fontWeight: FontWeight.w800),

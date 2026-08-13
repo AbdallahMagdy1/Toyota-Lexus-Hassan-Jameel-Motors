@@ -174,6 +174,14 @@ final class _ForgotView extends StatelessWidget {
             controller: cubit.otp,
             focusColor: brandColor,
             onSubmitted: (_) => cubit.submitOtp(),
+            // Result morph from the EXISTING flow state — invalid OTP fuses
+            // the boxes into the ✕ pill (tap to retry).
+            status: state.error == ForgotError.invalidOtp
+                ? OtpStatus.error
+                : OtpStatus.idle,
+            successLabel: t.otpVerifiedTitle,
+            errorLabel: t.otpIncorrectTitle,
+            errorHint: t.otpIncorrectHint,
           ),
           if (state.devOtp != null) ...[
             const SizedBox(height: 8),
@@ -184,8 +192,21 @@ final class _ForgotView extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          if (error != null) ...[ErrorBanner(text: error), const SizedBox(height: 12)],
+          // Non-OTP errors keep the banner; invalid OTP renders in the pill.
+          if (error != null && state.error != ForgotError.invalidOtp) ...[
+            ErrorBanner(text: error),
+            const SizedBox(height: 12)
+          ],
           primaryButton(onPressed: cubit.submitOtp, label: t.authContinue),
+          const SizedBox(height: 6),
+          // Code-validity countdown; resend re-uses the existing sendOtp.
+          OtpTimerResend(
+            validForLabel: (time) => t.otpValidFor(time),
+            expiredLabel: t.otpExpired,
+            onResend: cubit.sendOtp,
+            resendLabel: t.authOtpResend,
+            busy: state.busy,
+          ),
         ];
 
       case ForgotStep.password:

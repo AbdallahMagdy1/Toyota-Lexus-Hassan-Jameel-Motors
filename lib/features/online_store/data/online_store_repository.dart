@@ -52,12 +52,35 @@ final class OnlineStoreRepository {
     }
   }
 
+  /// The agreed applicant types — G4 individuals / G3 companies — shown
+  /// whenever the API answers without custGroups so the "نوع مقدم الطلب"
+  /// picker is never empty.
+  static const List<CustGroup> kDefaultCustGroups = [
+    CustGroup(
+        id: 'G4',
+        nameAr: 'أفراد',
+        nameEn: 'Individuals',
+        needIdentity: true),
+    CustGroup(
+        id: 'G3',
+        nameAr: 'شركات ومؤسسات',
+        nameEn: 'Companies & Organizations',
+        needIdentity: false),
+  ];
+
+  static FormSettings _withCustGroupFallback(FormSettings s) =>
+      s.custGroups.isNotEmpty
+          ? s
+          : FormSettings(custGroups: kDefaultCustGroups, cities: s.cities);
+
   Future<FormSettings> formSettings() async {
     try {
       final res = await _api.get<Map<String, dynamic>>('/api/app/online/form-settings');
-      return res.data == null ? const FormSettings() : FormSettings.fromJson(res.data!);
+      return _withCustGroupFallback(res.data == null
+          ? const FormSettings()
+          : FormSettings.fromJson(res.data!));
     } on DioException {
-      return const FormSettings();
+      return _withCustGroupFallback(const FormSettings());
     }
   }
 

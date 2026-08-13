@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -9,6 +9,8 @@ import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/keep_alive_section.dart';
 import '../../coupons/presentation/coupon_banner_carousel.dart';
 import '../../finance/presentation/finance_calc_sheet.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -60,7 +62,7 @@ void showLoginPrompt(BuildContext context) {
           const SizedBox(height: 18),
           FilledButton(
             style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
+                minimumSize: const Size.fromHeight(44),
                 shape: const StadiumBorder()),
             onPressed: () {
               Navigator.of(sheetContext).pop();
@@ -96,19 +98,68 @@ final class _GuestHomeBody extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: switch (state.status) {
-            GuestHomeStatus.loading =>
-              const Center(child: CircularProgressIndicator()),
-            GuestHomeStatus.error => Center(
-                child: TextButton(
-                    onPressed: cubit.load, child: Text(t.homeErrorRetry))),
+            GuestHomeStatus.loading => Shimmer(
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(context.rs(20),
+                            context.rs(16), context.rs(20), context.rs(20)),
+                        child: SkeletonBox(
+                            width: double.infinity,
+                            height: context.rs(190),
+                            radius: 22),
+                      ),
+                      Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: context.rs(20)),
+                        child: Row(
+                          children: [
+                            for (var i = 0; i < 4; i++)
+                              Expanded(
+                                child: Padding(
+                                  padding: EdgeInsetsDirectional.only(
+                                      end: i == 3 ? 0 : context.rs(10)),
+                                  child: SkeletonBox(
+                                      height: context.rs(74), radius: 16),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: context.rs(26)),
+                      Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: context.rs(20)),
+                        child: const SkeletonLine(
+                            widthFactor: 0.45, height: 16),
+                      ),
+                      SizedBox(height: context.rs(14)),
+                      SkeletonRail(
+                          height: context.rs(210),
+                          itemWidth: context.rs(220)),
+                    ],
+                  ),
+                ),
+              ),
+            GuestHomeStatus.error => AppErrorState(
+                title: t.stateErrorTitle,
+                message: t.stateErrorBody,
+                retryLabel: t.stateRetry,
+                onRetry: cubit.load,
+              ),
             GuestHomeStatus.ready => RefreshIndicator(
                 onRefresh: cubit.load,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.only(bottom: context.rs(140)),
                   children: [
+                    // Stateful sections pinned so scroll-away never resets
+                    // their carousels/fetches.
                     _Hero(data: state.data, lang: lang),
-                    const CouponBannerCarousel(),
+                    const KeepAliveSection(child: CouponBannerCarousel()),
                     _QuickActions(lang: lang),
                     if (state.data.categories.isNotEmpty) ...[
                       SectionHeader(
@@ -121,13 +172,18 @@ final class _GuestHomeBody extends StatelessWidget {
                     ],
                     if (state.data.vehicleOffers.isNotEmpty) ...[
                       SectionHeader(title: t.ghFinanceOffers),
-                      _OffersCarousel(
-                          offers: state.data.vehicleOffers, lang: lang),
+                      KeepAliveSection(
+                        child: _OffersCarousel(
+                            offers: state.data.vehicleOffers, lang: lang),
+                      ),
                     ],
                     if (state.data.maintenanceOffers.isNotEmpty) ...[
                       SectionHeader(title: t.ghMaintOffers),
-                      _OffersCarousel(
-                          offers: state.data.maintenanceOffers, lang: lang),
+                      KeepAliveSection(
+                        child: _OffersCarousel(
+                            offers: state.data.maintenanceOffers,
+                            lang: lang),
+                      ),
                     ],
                     SectionHeader(title: t.ghServices),
                     _ServicesGrid(lang: lang),

@@ -1,4 +1,4 @@
-import 'package:flutter/gestures.dart';
+﻿import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -8,6 +8,7 @@ import '../../../core/di/injector.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/slope_hero.dart';
 import '../../finance/data/finance_repository.dart';
 import '../../finance/domain/finance_math.dart';
@@ -239,10 +240,7 @@ final class _Overview extends StatelessWidget {
                     // Variant-style color rows: selected row = filled dark
                     // pill with the price, like the Tesla trim selector.
                     if (state.loading && vehicle.uniqueColors.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 24),
-                        child: Center(child: CircularProgressIndicator()),
-                      )
+                      SkeletonList(itemCount: 3, itemHeight: context.rs(52))
                     else
                       for (final c in vehicle.uniqueColors)
                         _ColorRow(
@@ -374,7 +372,7 @@ final class _StoreFinanceCtaState extends State<_StoreFinanceCta> {
       width: double.infinity,
       child: OutlinedButton.icon(
         style: OutlinedButton.styleFrom(
-          minimumSize: const Size.fromHeight(46),
+          minimumSize: const Size.fromHeight(44),
           shape: const StadiumBorder(),
           side: BorderSide(color: scheme.primary.withValues(alpha: 0.6)),
           foregroundColor: scheme.primary,
@@ -643,7 +641,7 @@ final class _MethodsPage extends StatelessWidget {
             FilledButton(
               onPressed: state.accepted ? cubit.continueToForm : null,
               style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(50),
+                minimumSize: const Size.fromHeight(44),
                 textStyle: TextStyle(
                     fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
               ),

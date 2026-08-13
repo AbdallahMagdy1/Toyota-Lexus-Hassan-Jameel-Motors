@@ -1,4 +1,4 @@
-import 'package:dio/dio.dart';
+﻿import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -10,6 +10,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -168,7 +169,7 @@ final class _View extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: state.loading
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonList(itemCount: 4, itemHeight: context.rs(110))
               : RefreshIndicator(
                   onRefresh: cubit.load,
                   child: ListView(
@@ -178,13 +179,14 @@ final class _View extends StatelessWidget {
                     children: [
                       Text(t.finReqTitle,
                           style: TextStyle(
-                              fontSize: context.rf(24),
+                              fontSize: context.rf(19),
                               fontWeight: FontWeight.w800)),
                       SizedBox(height: context.rs(14)),
                       if (state.items.isEmpty)
-                        Padding(
-                          padding: EdgeInsets.all(context.rs(36)),
-                          child: Center(child: Text(t.finReqEmpty)),
+                        AppEmptyState(
+                          icon: Icons.account_balance_outlined,
+                          title: t.finReqEmpty,
+                          compact: true,
                         ),
                       for (final (i, r) in state.items.indexed)
                         Padding(

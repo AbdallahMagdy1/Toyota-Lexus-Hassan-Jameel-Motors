@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,6 +8,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
+import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../account/bloc/active_car_cubit.dart';
 import '../../account/data/account_repository.dart';
@@ -221,7 +222,7 @@ final class _Hero extends StatelessWidget {
             Expanded(
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                   textStyle: TextStyle(
@@ -237,7 +238,7 @@ final class _Hero extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(50),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16)),
                   side: BorderSide(
@@ -735,23 +736,13 @@ final class _PeriodicSchedule extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SectionHeader(title: t.mhPeriodicTitle, subtitle: t.mhPeriodicSub),
       switch (state.status) {
-        PeriodicStatus.loading => const Padding(
-            padding: EdgeInsets.all(34),
-            child: Center(child: CircularProgressIndicator()),
-          ),
-        PeriodicStatus.error => Padding(
-            padding: EdgeInsets.all(context.rs(24)),
-            child: Center(
-              child: Column(children: [
-                Text(t.mhPeriodicEmpty,
-                    style: TextStyle(
-                        fontSize: context.rf(12),
-                        color: scheme.onSurface.withValues(alpha: 0.55))),
-                SizedBox(height: context.rs(8)),
-                TextButton(
-                    onPressed: cubit.load, child: Text(t.homeErrorRetry)),
-              ]),
-            ),
+        PeriodicStatus.loading =>
+          SkeletonList(itemCount: 3, itemHeight: context.rs(80)),
+        PeriodicStatus.error => AppErrorState(
+            title: t.mhPeriodicEmpty,
+            retryLabel: t.stateRetry,
+            onRetry: cubit.load,
+            compact: true,
           ),
         PeriodicStatus.ready when state.details.isEmpty => Padding(
             padding: EdgeInsets.all(context.rs(24)),
@@ -1222,7 +1213,7 @@ final class _BottomCta extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: onBrand,
                   foregroundColor: scheme.primary,
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   textStyle: TextStyle(
@@ -1237,7 +1228,7 @@ final class _BottomCta extends StatelessWidget {
             Expanded(
               child: OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48),
+                  minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14)),
                   side: BorderSide(

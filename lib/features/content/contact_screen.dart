@@ -1,4 +1,4 @@
-import 'package:equatable/equatable.dart';
+﻿import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -10,6 +10,7 @@ import '../../l10n/app_localizations.dart';
 import '../../shared/navigation/sheet_routes.dart';
 import '../../shared/widgets/app_dropdown.dart';
 import '../../shared/widgets/app_header.dart';
+import '../../shared/widgets/app_states.dart';
 import '../auth/bloc/auth_bloc.dart';
 import '../complaints/complaints_section.dart';
 import '../home/presentation/widgets/home_bits.dart';
@@ -158,7 +159,7 @@ final class _ContactView extends StatelessWidget {
         const AppHeader(),
         Expanded(
           child: state.loading
-              ? const Center(child: CircularProgressIndicator())
+              ? SkeletonList(itemCount: 4, itemHeight: context.rs(96))
               : ListView(
                   padding: EdgeInsets.fromLTRB(context.rs(16), context.rs(18),
                       context.rs(16), context.rs(110)),
@@ -167,7 +168,7 @@ final class _ContactView extends StatelessWidget {
                     Text(t.contactTitle,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                            fontSize: context.rf(24),
+                            fontSize: context.rf(19),
                             fontWeight: FontWeight.w800)),
                     SizedBox(height: context.rs(4)),
                     Text(t.contactSubtitle,
@@ -297,7 +298,7 @@ final class _ContactView extends StatelessWidget {
                       // "افتح في خرائط Google" — outlined red, arrow at end.
                       OutlinedButton(
                         style: OutlinedButton.styleFrom(
-                          minimumSize: const Size.fromHeight(50),
+                          minimumSize: const Size.fromHeight(44),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(16)),
                           side: BorderSide(
@@ -547,7 +548,7 @@ final class _ContactView extends StatelessWidget {
                         ),
                       FilledButton(
                         style: FilledButton.styleFrom(
-                            minimumSize: const Size.fromHeight(50),
+                            minimumSize: const Size.fromHeight(44),
                             shape: const StadiumBorder(),
                             textStyle: TextStyle(
                                 fontSize: context.rf(14),
@@ -618,10 +619,7 @@ void showBranchesSheet(BuildContext context) {
                       fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 12),
               if (snap.connectionState != ConnectionState.done)
-                const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                const SkeletonList(itemCount: 2, itemHeight: 64)
               else if (branches.isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(12),
