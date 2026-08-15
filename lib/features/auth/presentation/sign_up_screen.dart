@@ -63,6 +63,7 @@ final class _SignUpView extends StatelessWidget {
           return AuthScaffold(
             placement: 'sign_up',
             title: t.absherTitle,
+            onBack: () => context.go(Routes.signIn),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,

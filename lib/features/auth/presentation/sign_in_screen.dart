@@ -72,6 +72,7 @@ final class _SignInView extends StatelessWidget {
           return AuthScaffold(
             placement: 'sign_in',
             title: state.step == SignInStep.otp ? t.authOtpTitle : t.authSignIn,
+            onBack: () => context.go(Routes.welcome),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -172,27 +173,37 @@ final class _SignInView extends StatelessWidget {
             ),
             onPressed: state.busy
                 ? null
-                : () => context.read<AuthBloc>().add(const AuthGuestRequested()),
+                : () {
+                    // Enter as guest — the redirect only bounces
+                    // AUTHENTICATED users off auth pages, so guests must
+                    // navigate home themselves.
+                    context.read<AuthBloc>().add(const AuthGuestRequested());
+                    context.go(Routes.home);
+                  },
             child: Text(t.authContinueAsGuest),
           ),
-          SizedBox(height: context.rs(18)),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(t.authNoAccount,
-                  style: TextStyle(
-                      color: scheme.onSurface.withValues(alpha: 0.6),
-                      fontSize: context.rf(12.5))),
-              const SizedBox(width: 6),
-              GestureDetector(
-                onTap: () => context.go(Routes.signUp),
-                child: Text(t.authSignUp,
-                    style: TextStyle(
-                        color: scheme.primary,
-                        fontSize: context.rf(12.5),
-                        fontWeight: FontWeight.w800)),
-              ),
-            ],
+          SizedBox(height: context.rs(20)),
+          // "No account?" + a REAL create-account button, centered.
+          Text(
+            t.authNoAccount,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: context.rf(12.5)),
+          ),
+          SizedBox(height: context.rs(10)),
+          OutlinedButton.icon(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(44),
+              shape: const StadiumBorder(),
+              side: BorderSide(color: Colors.white.withValues(alpha: 0.4)),
+              foregroundColor: Colors.white,
+              textStyle: TextStyle(
+                  fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
+            ),
+            onPressed: () => context.go(Routes.signUp),
+            icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+            label: Text(t.authSignUp),
           ),
         ];
 

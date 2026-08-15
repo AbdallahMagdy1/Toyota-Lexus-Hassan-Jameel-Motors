@@ -60,6 +60,13 @@ final class NavHistory {
     }
     return _stack.isEmpty ? null : _stack.last;
   }
+
+  /// Whether walking back from [current] has somewhere to go.
+  static bool hasBack(String current) => _stack.any((l) => l != current);
+
+  /// Whether [location] takes part in back history at all (entry/auth
+  /// screens never do).
+  static bool participates(String location) => !_excluded.contains(location);
 }
 
 /// The ONE safe back action for in-screen back buttons: pops a real pushed

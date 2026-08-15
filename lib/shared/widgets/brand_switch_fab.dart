@@ -23,6 +23,8 @@ final class ContactFab extends StatelessWidget {
         backgroundColor: scheme.primary,
         foregroundColor: scheme.onPrimary,
         shape: const CircleBorder(),
+        elevation: 0,
+        highlightElevation: 0,
         onPressed: () => _showContactPopup(context),
         child: const Icon(Icons.headset_mic_rounded, size: 20),
       ),
@@ -305,15 +307,6 @@ final class BrandSwitchCapsule extends StatelessWidget {
             decoration: BoxDecoration(
               color: active ? scheme.primary : Colors.transparent,
               shape: BoxShape.circle,
-              boxShadow: active
-                  ? [
-                      BoxShadow(
-                        color: scheme.primary.withValues(alpha: 0.35),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : const [],
             ),
             child: active
                 // Active roundel: white emblem on the solid brand circle.
@@ -331,23 +324,7 @@ final class BrandSwitchCapsule extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF181B21) : Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: isDark
-            ? Border.all(color: scheme.outline.withValues(alpha: 0.5))
-            : null,
-        boxShadow: isDark
-            ? const []
-            : [
-                BoxShadow(
-                  color: const Color(0xFF1B2A4A).withValues(alpha: 0.1),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-                BoxShadow(
-                  color: const Color(0xFF1B2A4A).withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 1),
-                ),
-              ],
+        border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

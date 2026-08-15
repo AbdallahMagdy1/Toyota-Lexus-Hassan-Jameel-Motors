@@ -41,6 +41,13 @@ final class LocalStore {
   bool get onboardingDone => _prefs.getBool(_kOnboardingDone) ?? false;
   Future<void> setOnboardingDone() => _prefs.setBool(_kOnboardingDone, true);
 
+  // "Entered the app as guest" — persists so the welcome screen shows only
+  // on the very first entry; cleared when a real account signs out.
+  static const _kGuestMode = 'hj_guest_mode';
+
+  bool get guestMode => _prefs.getBool(_kGuestMode) ?? false;
+  Future<void> setGuestMode(bool v) => _prefs.setBool(_kGuestMode, v);
+
   Map<String, dynamic>? get user {
     final raw = _prefs.getString(_kUser);
     if (raw == null) return null;

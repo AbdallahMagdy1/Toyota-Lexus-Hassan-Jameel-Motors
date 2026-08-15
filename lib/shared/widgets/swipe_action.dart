@@ -144,9 +144,6 @@ final class _SwipeActionState extends State<SwipeAction> {
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Color(0x40000000), blurRadius: 10),
-                    ],
                   ),
                   child: Icon(Icons.directions_car_rounded,
                       color: scheme.primary, size: 22),

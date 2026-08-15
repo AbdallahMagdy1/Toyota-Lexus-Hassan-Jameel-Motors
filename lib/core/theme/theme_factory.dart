@@ -142,9 +142,8 @@ abstract final class ThemeFactory {
           fontWeight: FontWeight.w800,
         ),
         checkmarkColor: onBrand,
-        elevation: isDark ? 0 : 1.5,
+        elevation: 0,
         pressElevation: 0,
-        shadowColor: Colors.black.withValues(alpha: 0.10),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       ),
       snackBarTheme: SnackBarThemeData(

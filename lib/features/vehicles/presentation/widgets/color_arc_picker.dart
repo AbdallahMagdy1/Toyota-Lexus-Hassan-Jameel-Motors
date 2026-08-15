@@ -71,15 +71,6 @@ final class ColorArcPicker extends StatelessWidget {
                                 : scheme.outline.withValues(alpha: 0.7),
                             width: selected ? 2.2 : 1,
                           ),
-                          boxShadow: selected
-                              ? [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
                         ),
                         child: ClipOval(
                           child: HomeImage(

@@ -204,17 +204,6 @@ final class FilterChipsRow extends StatelessWidget {
                         color: scheme.outline
                             .withValues(alpha: isDark ? 0.6 : 0.5))
                     : null,
-                // Selected pill glows with the brand color — the same accent
-                // language as the bottom nav's active tab.
-                boxShadow: selected && !isDark
-                    ? [
-                        BoxShadow(
-                          color: scheme.primary.withValues(alpha: 0.28),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
-                    : null,
               ),
               child: Text(
                 labels[i],
@@ -278,25 +267,11 @@ final class CardRail extends StatelessWidget {
   }
 }
 
-/// The single elevation switch — every card updates together. Light mode
-/// gets a whisper-soft ambient shadow (premium "floating surface" depth);
-/// dark mode stays flat since shadows read poorly on near-black and the
-/// hairline border already separates surfaces there.
-List<BoxShadow> kSoftShadows(BuildContext context, {double opacity = 1}) {
-  if (Theme.of(context).brightness == Brightness.dark) return const [];
-  return [
-    BoxShadow(
-      color: const Color(0xFF1B2430).withValues(alpha: 0.06 * opacity),
-      blurRadius: 22,
-      offset: const Offset(0, 10),
-    ),
-    BoxShadow(
-      color: const Color(0xFF1B2430).withValues(alpha: 0.04 * opacity),
-      blurRadius: 6,
-      offset: const Offset(0, 2),
-    ),
-  ];
-}
+/// The single elevation switch — every card updates together. The app is
+/// fully FLAT: no shadows anywhere; hairline borders and tone separate
+/// surfaces instead (and skipping shadow layers is cheaper to paint).
+List<BoxShadow> kSoftShadows(BuildContext context, {double opacity = 1}) =>
+    const [];
 
 /// The reference kit's soft surface decoration: white floating card in
 /// light mode (no border), elevated bordered surface in dark. Optional
@@ -342,27 +317,23 @@ final class HomeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final card = DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: kSoftShadows(context),
-      ),
-      child: Material(
-        color: isDark ? const Color(0xFF181B21) : scheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.35),
-              ),
+    // Flat card — hairline border only, NO drop shadow: reads as a card on
+    // any background and paints in a single cheap layer.
+    final card = Material(
+      color: isDark ? const Color(0xFF181B21) : scheme.surface,
+      borderRadius: BorderRadius.circular(20),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: scheme.outline.withValues(alpha: isDark ? 0.5 : 0.35),
             ),
-            child: child,
           ),
+          child: child,
         ),
       ),
     );

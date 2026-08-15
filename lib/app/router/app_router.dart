@@ -33,6 +33,7 @@ import '../../features/protection/presentation/protection_screen.dart';
 import '../../features/vehicles/presentation/models_screen.dart';
 import '../../features/welcome/presentation/welcome_screen.dart';
 import '../../shared/navigation/bottom_nav.dart';
+import '../../shared/navigation/floating_back_fab.dart';
 import '../../shared/navigation/side_menu.dart';
 import '../../shared/widgets/brand_switch_fab.dart';
 import 'routes.dart';
@@ -97,8 +98,9 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
       final onAuthPage = state.matchedLocation == Routes.signIn ||
           state.matchedLocation == Routes.signUp ||
           state.matchedLocation == Routes.forgot;
-      // Onboarding is ALWAYS reachable (it shows first on every launch);
-      // only the welcome screen bounces signed-in users home.
+      // The onboarding greeting swiper is ALWAYS reachable — it opens on
+      // every launch. Only the welcome screen is one-time: it bounces
+      // anyone already inside the app (signed-in OR returning guest).
       final onEntry = state.matchedLocation == Routes.welcome;
 
       // Guests may open the auth pages (benefit prompts route them there);
@@ -352,6 +354,9 @@ final class _AppShellState extends State<_AppShell> {
                 ),
               // Contact FAB — the website's floating headphones button.
               if (AppBottomNav.showsOn(location)) const ContactFab(),
+              // Floating back button — appears whenever the manual history
+              // has a previous screen (mirrors the system-back behavior).
+              FloatingBackFab(location: location),
             ],
           ),
           // Dim scrim — fades in with the panel, tap to close. IgnorePointer

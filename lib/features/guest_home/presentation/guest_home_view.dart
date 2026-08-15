@@ -11,6 +11,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/keep_alive_section.dart';
+import '../../../shared/widgets/pressable.dart';
 import '../../coupons/presentation/coupon_banner_carousel.dart';
 import '../../finance/presentation/finance_calc_sheet.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -413,46 +414,110 @@ final class _CategoryRail extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return CardRail(
       height: context.rs(150),
       itemWidth: context.rs(170),
       itemCount: categories.length,
       itemBuilder: (context, i) {
         final c = categories[i];
-        return HomeCard(
-          onTap: () =>
-              context.push('${Routes.models}?category=${c.descEn ?? ''}'),
-          child: Padding(
-            padding: EdgeInsets.all(context.rs(12)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Center(
-                    child: HomeImage(
-                        url: c.image(lang),
-                        fit: BoxFit.contain,
-                        logicalWidth: 170),
+        // Flat tinted panel — no shadow, no border. RepaintBoundary +
+        // press-scale feedback keep the rail cheap and lively.
+        return RepaintBoundary(
+          child: Pressable(
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () =>
+                    context.push('${Routes.models}?category=${c.descEn ?? ''}'),
+                child: Ink(
+                  // White washed with the brand color (brand-tinted dark
+                  // panel in dark mode) — flat, no shadow.
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: isDark
+                          ? [
+                              scheme.primary.withValues(alpha: 0.2),
+                              const Color(0xFF15171C),
+                            ]
+                          : [
+                              scheme.primary.withValues(alpha: 0.12),
+                              Colors.white,
+                            ],
+                    ),
+                  ),
+                  padding: EdgeInsets.all(context.rs(12)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Center(
+                          child: HomeImage(
+                              url: c.image(lang),
+                              fit: BoxFit.contain,
+                              logicalWidth: 170),
+                        ),
+                      ),
+                      SizedBox(height: context.rs(6)),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c.name(lang),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: context.rf(13.5),
+                                      fontWeight: FontWeight.w800),
+                                ),
+                                Text(
+                                  t.ghCarsCount(c.carsCount),
+                                  style: TextStyle(
+                                    fontSize: context.rf(10.5),
+                                    color: scheme.onSurface
+                                        .withValues(alpha: 0.55),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Brand arrow roundel, like the models cards.
+                          Container(
+                            width: context.rs(28),
+                            height: context.rs(28),
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              Directionality.of(context) == TextDirection.rtl
+                                  ? Icons.north_west_rounded
+                                  : Icons.north_east_rounded,
+                              size: 13,
+                              color: scheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-                Text(
-                  c.name(lang),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                      fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  t.ghCarsCount(c.carsCount),
-                  style: TextStyle(
-                    fontSize: context.rf(10.5),
-                    color: scheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
-        ).animate(delay: (30 * (i % 6)).ms).fadeIn(duration: 260.ms);
+        )
+            .animate(delay: (35 * (i % 6)).ms)
+            .fadeIn(duration: 260.ms, curve: Curves.easeOut)
+            .slideY(begin: 0.06, end: 0, duration: 300.ms);
       },
     );
   }
@@ -477,68 +542,95 @@ final class _OffersCarousel extends StatelessWidget {
       itemBuilder: (context, i) {
         final o = offers[i];
         final days = o.daysLeft;
-        return HomeCard(
-          onTap: () => showOfferDetailSheet(context, o.slug),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Stack(
-                children: [
-                  HomeImage(
-                      url: o.image(lang), aspectRatio: 16 / 8, logicalWidth: 260),
-                  if (days != null)
-                    PositionedDirectional(
-                      top: 8,
-                      end: 8,
-                      child: Container(
-                        padding: EdgeInsets.symmetric(
-                            horizontal: context.rs(8), vertical: context.rs(4)),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          t.homeDaysLeft(days),
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: context.rf(9.5),
-                              fontWeight: FontWeight.w700),
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        // Flat panel, inset rounded image, no border/shadow — one cheap
+        // paint layer per card, isolated behind a RepaintBoundary.
+        return RepaintBoundary(
+          child: Pressable(
+            child: Material(
+              color:
+                  isDark ? const Color(0xFF1A1C21) : const Color(0xFFF6F7F9),
+              borderRadius: BorderRadius.circular(20),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => showOfferDetailSheet(context, o.slug),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsets.all(context.rs(8)),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Stack(
+                          children: [
+                            HomeImage(
+                                url: o.image(lang),
+                                aspectRatio: 16 / 8,
+                                logicalWidth: 260),
+                            if (days != null)
+                              PositionedDirectional(
+                                top: 8,
+                                end: 8,
+                                child: Container(
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: context.rs(8),
+                                      vertical: context.rs(4)),
+                                  decoration: BoxDecoration(
+                                    color:
+                                        Colors.black.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(999),
+                                  ),
+                                  child: Text(
+                                    t.homeDaysLeft(days),
+                                    style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: context.rf(9.5),
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                       ),
                     ),
-                ],
-              ),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.all(context.rs(12)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        o.title(lang),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: context.rf(13),
-                            fontWeight: FontWeight.w800,
-                            height: 1.25),
-                      ),
-                      const Spacer(),
-                      Text(
-                        o.typeName(lang),
-                        style: TextStyle(
-                          fontSize: context.rf(10.5),
-                          fontWeight: FontWeight.w700,
-                          color: scheme.primary,
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.fromLTRB(context.rs(12), 0,
+                            context.rs(12), context.rs(12)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              o.title(lang),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                  fontSize: context.rf(13),
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.25),
+                            ),
+                            const Spacer(),
+                            Text(
+                              o.typeName(lang),
+                              style: TextStyle(
+                                fontSize: context.rf(10.5),
+                                fontWeight: FontWeight.w700,
+                                color: scheme.primary,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
+            ),
           ),
-        ).animate(delay: (30 * (i % 6)).ms).fadeIn(duration: 260.ms);
+        )
+            .animate(delay: (35 * (i % 6)).ms)
+            .fadeIn(duration: 260.ms, curve: Curves.easeOut)
+            .slideY(begin: 0.06, end: 0, duration: 300.ms);
       },
     );
   }

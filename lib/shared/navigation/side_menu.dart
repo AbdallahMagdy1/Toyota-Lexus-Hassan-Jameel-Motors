@@ -109,8 +109,6 @@ final class SideMenu extends StatelessWidget {
       borderRadius:
           const BorderRadiusDirectional.horizontal(end: Radius.circular(28)),
       clipBehavior: Clip.antiAlias,
-      elevation: 24,
-      shadowColor: Colors.black.withValues(alpha: 0.5),
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.symmetric(

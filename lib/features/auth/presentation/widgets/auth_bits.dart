@@ -630,15 +630,9 @@ final class _OtpSlidePanelState extends State<OtpSlidePanel> {
           width: 52,
           height: 52,
           padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.18),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4)),
-            ],
           ),
           child: Image.asset(
             widget.brandKey == 'lexus'

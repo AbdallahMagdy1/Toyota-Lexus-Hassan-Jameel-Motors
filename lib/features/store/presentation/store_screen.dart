@@ -7,8 +7,6 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
-import '../../../core/utils/media_url.dart' show isVideoUrl;
-import '../../../shared/widgets/slide_media.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
@@ -21,8 +19,6 @@ import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/quick_links_panel.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
-import '../../onboarding/data/onboarding_repository.dart';
-import '../../onboarding/domain/onboarding_slide.dart';
 import '../../offers/bloc/offers_cubit.dart';
 import '../../offers/data/offers_repository.dart';
 import '../../offers/presentation/offers_screen.dart' show OfferCard;
@@ -368,34 +364,6 @@ final class _StoreHeroState extends State<_StoreHero> {
   int _page = 0;
   int _count = 0;
 
-  /// Dashboard 'car_bg' slides: TitleEn = model key ('corolla 2026'),
-  /// media = the background image/GIF drawn behind that model.
-  List<OnboardingSlide> _bgs = const [];
-
-  @override
-  void initState() {
-    super.initState();
-    final brandKey = sl<ThemeCubit>().state.brandKey;
-    sl<OnboardingRepository>().fetch(brandKey, placement: 'car_bg').then((s) {
-      if (mounted) setState(() => _bgs = s);
-    }).catchError((_) {});
-  }
-
-  /// Longest matching model key wins ('corolla cross 2026' beats 'corolla').
-  String? _bgFor(String name, String? year) {
-    final hay = '$name ${year ?? ''}'.toLowerCase();
-    OnboardingSlide? best;
-    for (final s in _bgs) {
-      final key = (s.titleEn ?? '').trim().toLowerCase();
-      if (key.isEmpty || (s.mediaUrl ?? '').isEmpty) continue;
-      if (hay.contains(key) &&
-          (best == null || key.length > (best.titleEn ?? '').trim().length)) {
-        best = s;
-      }
-    }
-    return best?.mediaUrl;
-  }
-
   @override
   void dispose() {
     _auto?.cancel();
@@ -457,183 +425,125 @@ final class _StoreHeroState extends State<_StoreHero> {
               onPageChanged: (i) => setState(() => _page = i),
               itemBuilder: (context, i) {
                 final v = items[i];
-                // Backdrop priority: car_bg placement match → model shared
-                // Background → brand-glow gradient.
-                final bg = _bgFor(v.groupEn ?? '', v.year) ?? v.background(lang);
-                // Services-mock slide: rounded media card with the
-                // lightweight bottom fade, then title row + soft pill CTA
-                // below the image.
+                // Meet-the-models card style: one solid brand panel (dark
+                // panel in dark mode), plain car image — no backdrop, no
+                // glow, no overlay. Flat paint = cheap to scroll.
+                final panel =
+                    isDark ? const Color(0xFF1A1C21) : scheme.primary;
+                final fg = isDark ? Colors.white : scheme.onPrimary;
+                final ctaBg = isDark ? scheme.primary : scheme.onPrimary;
+                final ctaFg = isDark ? scheme.onPrimary : scheme.primary;
+
                 return Padding(
                   padding:
                       EdgeInsets.symmetric(horizontal: context.rs(5)),
-                  child: GestureDetector(
-                    onTap: () => openCarSheet(context, v),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(
-                          child: Container(
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF121317),
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            child: Stack(fit: StackFit.expand, children: [
-                              if ((bg ?? '').isNotEmpty)
-                                // Image / GIF via the proxy; video via
-                                // SlideMedia.
-                                isVideoUrl(bg)
-                                    ? SlideMedia(
-                                        mediaType: 'video',
-                                        mediaUrl: bg,
-                                        fit: BoxFit.cover,
-                                      )
-                                    : HomeImage(
-                                        url: bg,
-                                        fit: BoxFit.cover,
-                                        logicalWidth: 400,
-                                      )
-                              else ...[
-                                // Brand-glow backdrop (the hero look).
-                                DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                      colors: [
-                                        Color.lerp(scheme.primary,
-                                            Colors.black, 0.55)!,
-                                        const Color(0xFF121317),
-                                        Color.lerp(scheme.primary,
-                                            Colors.black, 0.75)!,
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                                Positioned.fill(
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      gradient: RadialGradient(
-                                        center: const Alignment(0, 0.5),
-                                        radius: 1.1,
-                                        colors: [
-                                          scheme.primary
-                                              .withValues(alpha: 0.35),
-                                          Colors.transparent,
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                              // Ground shadow under the car.
-                              PositionedDirectional(
-                                start: context.rs(40),
-                                end: context.rs(40),
-                                bottom: context.rs(2),
-                                height: context.rs(22),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(
-                                    gradient: RadialGradient(
-                                      radius: 0.9,
-                                      colors: [
-                                        Colors.black
-                                            .withValues(alpha: 0.5),
-                                        Colors.transparent,
-                                      ],
-                                    ),
-                                    borderRadius: const BorderRadius.all(
-                                        Radius.elliptical(200, 11)),
-                                  ),
+                  child: RepaintBoundary(
+                    child: Material(
+                      color: panel,
+                      borderRadius: BorderRadius.circular(22),
+                      clipBehavior: Clip.antiAlias,
+                      child: InkWell(
+                        onTap: () => openCarSheet(context, v),
+                        child: Padding(
+                          padding: EdgeInsets.all(context.rs(16)),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                v.brandEn ?? '',
+                                style: TextStyle(
+                                  color: fg.withValues(alpha: 0.75),
+                                  fontSize: context.rf(10.5),
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
                                 ),
                               ),
-                              // Car pinned to the bottom with the subtle
-                              // 3D stage tilt.
-                              PositionedDirectional(
-                                start: 0,
-                                end: 0,
-                                top: context.rs(28),
-                                bottom: context.rs(6),
-                                child: Transform(
-                                  alignment: Alignment.bottomCenter,
-                                  transform: Matrix4.identity()
-                                    ..setEntry(3, 2, 0.0012)
-                                    ..rotateX(-0.12)
-                                    ..scaleByDouble(1.03, 1.03, 1.03, 1),
+                              Text(
+                                '${v.name(lang)} ${v.year ?? ''}'.trim(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: fg,
+                                  fontSize: context.rf(17),
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: -0.2,
+                                ),
+                              ),
+                              Expanded(
+                                child: Center(
                                   child: HomeImage(
                                     url: v.image,
                                     fit: BoxFit.contain,
-                                    alignment: Alignment.bottomCenter,
                                     logicalWidth: 380,
                                   ),
                                 ),
                               ),
-                              // Lightweight fade into the page background.
-                              GlassBottomFade(height: context.rs(44)),
-                            ]),
-                          ),
-                        ),
-                        SizedBox(height: context.rs(10)),
-                        // ── Services-mock text block: roundel + title +
-                        // price, then the soft pill CTA. ──
-                        Row(children: [
-                          Container(
-                            width: context.rs(26),
-                            height: context.rs(26),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: scheme.primary.withValues(
-                                  alpha: isDark ? 0.2 : 0.1),
-                            ),
-                            child: Icon(
-                                Icons.directions_car_filled_rounded,
-                                size: context.rs(13),
-                                color: scheme.primary),
-                          ),
-                          SizedBox(width: context.rs(8)),
-                          Expanded(
-                            child: Text(
-                              '${v.name(lang)} ${v.year ?? ''}'.trim(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontSize: context.rf(13.5),
-                                  fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                          if (v.minPrice != null && v.showPrice) ...[
-                            SizedBox(width: context.rs(8)),
-                            PriceText(
-                              price: v.minPrice,
-                              currency: t.currency,
-                              contactForPrice: t.homeContactForPrice,
-                              fontSize: context.rf(12.5),
-                            ),
-                          ],
-                        ]),
-                        SizedBox(height: context.rs(10)),
-                        Material(
-                          color: scheme.primary
-                              .withValues(alpha: isDark ? 0.2 : 0.09),
-                          shape: const StadiumBorder(),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: () => openCarSheet(context, v),
-                            child: SizedBox(
-                              height: context.rs(40),
-                              child: Center(
-                                child: Text(
-                                  t.homeBuyNow,
-                                  style: TextStyle(
-                                      fontSize: context.rf(12),
-                                      fontWeight: FontWeight.w800,
-                                      color: scheme.primary),
-                                ),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          t.modelsPrice,
+                                          style: TextStyle(
+                                            color:
+                                                fg.withValues(alpha: 0.55),
+                                            fontSize: context.rf(9.5),
+                                          ),
+                                        ),
+                                        PriceText(
+                                          price: v.showPrice
+                                              ? v.minPrice
+                                              : null,
+                                          currency: t.currency,
+                                          contactForPrice:
+                                              t.homeContactForPrice,
+                                          fontSize: context.rf(13),
+                                          color: fg,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  // "Buy Now" chip — contrasts with the
+                                  // panel, like the grid card's roundel.
+                                  Container(
+                                    height: context.rs(38),
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: context.rs(16)),
+                                    decoration: BoxDecoration(
+                                      color: ctaBg,
+                                      borderRadius:
+                                          BorderRadius.circular(999),
+                                    ),
+                                    child: Row(children: [
+                                      Text(
+                                        t.homeBuyNow,
+                                        style: TextStyle(
+                                          fontSize: context.rf(12),
+                                          fontWeight: FontWeight.w800,
+                                          color: ctaFg,
+                                        ),
+                                      ),
+                                      SizedBox(width: context.rs(6)),
+                                      Icon(
+                                        Directionality.of(context) ==
+                                                TextDirection.rtl
+                                            ? Icons.north_west_rounded
+                                            : Icons.north_east_rounded,
+                                        size: 14,
+                                        color: ctaFg,
+                                      ),
+                                    ]),
+                                  ),
+                                ],
                               ),
-                            ),
+                            ],
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 );

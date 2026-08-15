@@ -74,6 +74,7 @@ final class AuthScaffold extends StatelessWidget {
     required this.title,
     required this.child,
     this.placement = 'auth',
+    this.onBack,
   });
 
   final String title;
@@ -82,22 +83,27 @@ final class AuthScaffold extends StatelessWidget {
   /// Dashboard placement controlling this screen's background.
   final String placement;
 
+  /// When set, a frosted circular back button floats at the top start.
+  final VoidCallback? onBack;
+
   @override
   Widget build(BuildContext context) {
     final brandKey = context.read<ThemeCubit>().state.brandKey;
     return BlocProvider(
       create: (_) =>
           AuthBannerCubit(sl(), brandKey: brandKey, placement: placement),
-      child: _AuthScaffoldView(title: title, child: child),
+      child: _AuthScaffoldView(title: title, onBack: onBack, child: child),
     );
   }
 }
 
 final class _AuthScaffoldView extends StatelessWidget {
-  const _AuthScaffoldView({required this.title, required this.child});
+  const _AuthScaffoldView(
+      {required this.title, required this.child, this.onBack});
 
   final String title;
   final Widget child;
+  final VoidCallback? onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -227,22 +233,41 @@ final class _AuthScaffoldView extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: box.maxHeight),
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    // Everything is anchored to the bottom as ONE block —
+                    // the title sits right on top of its form instead of
+                    // hanging alone at the top of the screen.
+                    mainAxisAlignment: MainAxisAlignment.end,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Padding(
                         padding: EdgeInsets.fromLTRB(context.rs(26),
-                            height * 0.08, context.rs(26), context.rs(16)),
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: context.rf(28),
-                            fontWeight: FontWeight.w800,
-                            height: 1.15,
-                          ),
+                            height * 0.06, context.rs(26), context.rs(4)),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: context.rf(26),
+                                fontWeight: FontWeight.w800,
+                                height: 1.15,
+                              ),
+                            ),
+                            SizedBox(height: context.rs(8)),
+                            // Short brand accent under the title.
+                            Container(
+                              width: context.rs(34),
+                              height: 3.5,
+                              decoration: BoxDecoration(
+                                color: glow,
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      SizedBox(height: context.rs(18)),
                       // The form floats over the gradient (no panel).
                       Padding(
                         padding: EdgeInsets.fromLTRB(
@@ -258,6 +283,39 @@ final class _AuthScaffoldView extends StatelessWidget {
               ),
             ),
           ),
+          // Frosted circular back button — pinned to the top start corner
+          // (the expanding Stack would otherwise stretch it full-screen).
+          if (onBack != null)
+            Align(
+              alignment: AlignmentDirectional.topStart,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsetsDirectional.only(
+                      start: context.rs(16), top: context.rs(10)),
+                  child: Material(
+                    color: Colors.white.withValues(alpha: 0.14),
+                    shape: CircleBorder(
+                        side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.18))),
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: onBack,
+                      child: SizedBox(
+                        width: context.rs(38),
+                        height: context.rs(38),
+                        child: Icon(
+                          Directionality.of(context) == TextDirection.rtl
+                              ? Icons.arrow_forward_rounded
+                              : Icons.arrow_back_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );

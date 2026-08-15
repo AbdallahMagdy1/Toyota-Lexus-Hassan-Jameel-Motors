@@ -53,7 +53,7 @@ Future<void> setupInjector({String brand = 'toyota'}) async {
     ..registerLazySingleton<ThemeCubit>(
         () => ThemeCubit(sl(), sl(), fixedBrand: brand))
     ..registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl()))
-    ..registerLazySingleton<AuthBloc>(() => AuthBloc(sl()))
+    ..registerLazySingleton<AuthBloc>(() => AuthBloc(sl(), sl()))
     ..registerLazySingleton<ActiveCarCubit>(() => ActiveCarCubit(prefs))
     ..registerLazySingleton<FavoritesCubit>(() => FavoritesCubit(sl()))
     ..registerLazySingleton<CartCubit>(() => CartCubit(sl(), sl(), sl()))

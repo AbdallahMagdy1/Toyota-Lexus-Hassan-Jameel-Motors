@@ -280,29 +280,26 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
     );
     if (!mounted) return;
 
-    // Sadad has NO gateway redirect: approve prepares the bill, sadad-code
-    // uploads it and returns the invoice number to pay via the bank app.
+    // Sadad — the WORKING Agreements cycle (jobCard/index.jsx): the approve
+    // proc returns a url_payment that MUST be visited; that hop registers
+    // the bill and bounces back to the callback with PaymentMethod=sadad&
+    // PaymentType=Fully. Only AFTER it does CreateSadadCodeMT return the
+    // bill number. Skipping the hop (the old behavior here) left the bill
+    // unregistered, so no number ever came back.
     if (method == 'sadad') {
-      final sadad = await _repo.sadadCode(widget.guid);
-      if (!mounted) return;
-      final snum = jcStr(sadad, const ['sadadNumber', 'SadadNumber']);
-      if (snum.isNotEmpty && snum != 'null') {
-        setState(() {
-          _busy = false;
-          _sadadIssued = snum;
-        });
-        _load(silent: true); // pull the pending-Sadad payment status
-      } else {
-        final msg = jcStr(sadad,
-            const ['sadadMessage', 'MessageError', 'Error_messages', 'ErrorMessage']);
-        setState(() {
-          _busy = false;
-          _error = msg.isNotEmpty && msg != 'null'
-              ? msg
-              : tr('تعذّر إصدار فاتورة سداد. حاول مرة أخرى.',
-                  'Could not issue the Sadad invoice. Please try again.');
-        });
+      final url = jcStr(
+          res, const ['url_payment', 'URL_Payment', 'Url', 'url_paymen']);
+      if (url.isNotEmpty && url != 'null') {
+        await Navigator.of(context, rootNavigator: true)
+            .push<(String, String, String)>(MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _JobCardGatewayPage(url: url),
+        ));
+        if (!mounted) return;
       }
+      // Redirect completed / closed / not required by this proc variant —
+      // fetch the number either way; the code endpoint is idempotent.
+      await _issueSadad(res, tr);
       return;
     }
 
@@ -331,6 +328,44 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
       return;
     }
     await _confirmReturn(ret.$1, ret.$2, ret.$3, method, tr);
+  }
+
+  /// CreateSadadCodeMT — issues/reads the Sadad bill number after the
+  /// gateway hop. Parses tolerantly like the Agreements frontend: both
+  /// sadadNumber/SadadNumber spellings, strips embedded quotes, and only
+  /// accepts a numeric code.
+  Future<void> _issueSadad(
+      Map<String, dynamic>? approveRes, String Function(String, String) tr) async {
+    final sadad = await _repo.sadadCode(widget.guid);
+    if (!mounted) return;
+    final snum = jcStr(sadad, const ['sadadNumber', 'SadadNumber'])
+        .replaceAll('"', '')
+        .trim();
+    if (snum.isNotEmpty && snum != 'null' && int.tryParse(snum) != null) {
+      setState(() {
+        _busy = false;
+        _sadadIssued = snum;
+      });
+      _load(silent: true); // pull the pending-Sadad payment status
+    } else {
+      final msg = jcStr(sadad, const [
+        'sadadMessage', 'MessageError', 'Error_messages', 'ErrorMessage',
+      ]);
+      final approveMsg =
+          jcStr(approveRes, const ['MessageError', 'Error_messages']);
+      final best = msg.isNotEmpty && msg != 'null'
+          ? msg
+          : approveMsg.isNotEmpty && approveMsg != 'null'
+              ? approveMsg
+              : '';
+      setState(() {
+        _busy = false;
+        _error = best.isNotEmpty
+            ? best
+            : tr('تعذّر إصدار فاتورة سداد. حاول مرة أخرى.',
+                'Could not issue the Sadad invoice. Please try again.');
+      });
+    }
   }
 
   /// Post-return confirm/capture — the website's callback effect, plus the

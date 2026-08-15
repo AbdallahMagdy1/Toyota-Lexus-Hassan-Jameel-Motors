@@ -225,10 +225,17 @@ final class _BookingCubit extends Cubit<_BookingState> {
         ? Future.value(const <GarageCar>[])
         : _account.garage(user!.userId);
 
-    // Paint the service tiles the moment they arrive.
-    final services = await servicesF;
+    // Paint the service tiles the moment they arrive — in the fixed
+    // display order (صيانة عامة → دورية → سمكرة ودهان → فحص), stable so
+    // equal ranks keep the API order.
+    final services = [...await servicesF];
     if (isClosed) return;
-    emit(state.copyWith(services: services));
+    final indexed = services.asMap().entries.toList()
+      ..sort((a, b) {
+        final r = _serviceRank(a.value) - _serviceRank(b.value);
+        return r != 0 ? r : a.key - b.key;
+      });
+    emit(state.copyWith(services: [for (final e in indexed) e.value]));
 
     final branches = await branchesF;
     final (groups, models) = await settingsF;
@@ -253,6 +260,21 @@ final class _BookingCubit extends Cubit<_BookingState> {
     ));
     final car = garage.elementAtOrNull(myIndex);
     if (car?.meterReading != null) meter.text = '${car!.meterReading}';
+  }
+
+  /// Fixed main-service order: صيانة عامة → صيانة دورية → سمكرة ودهان → فحص.
+  static int _serviceRank(Map<String, dynamic> s) {
+    final n = '${s['nameAr'] ?? ''} ${s['nameEn'] ?? ''}'.toLowerCase();
+    if (n.contains('عامة') || n.contains('general')) return 0;
+    if (n.contains('دورية') || n.contains('periodic')) return 1;
+    if (n.contains('سمكرة') ||
+        n.contains('دهان') ||
+        n.contains('paint') ||
+        n.contains('body')) {
+      return 2;
+    }
+    if (n.contains('فحص') || n.contains('inspect')) return 3;
+    return 4;
   }
 
   /* step 1 — website drill: main → sub1 → (periodic → km packages). */
@@ -529,6 +551,14 @@ final class _BookingView extends StatelessWidget {
     final state = cubit.state;
     final scheme = Theme.of(context).colorScheme;
 
+    // Header copy follows the current step (the steps no longer repeat it).
+    final (headTitle, headSub) = switch (state.step) {
+      1 => (t.mbStep1Title, t.mbStep1Sub),
+      2 => (t.mbStep2Title, t.mbStep2Sub),
+      3 => (t.mbStep3Title, t.mbStep3Sub),
+      _ => ('', ''),
+    };
+
     return Material(
       color: scheme.surface,
       child: SafeArea(
@@ -537,51 +567,143 @@ final class _BookingView extends StatelessWidget {
           children: [
             Padding(
               padding: EdgeInsets.fromLTRB(
-                  context.rs(20), context.rs(10), context.rs(20), 0),
+                  context.rs(16), context.rs(10), context.rs(16), 0),
               child: Column(children: [
                 const SheetHandle(),
-                SizedBox(height: context.rs(14)),
-                // 3-segment progress, like the website's ProgressBar.
-                Row(children: [
-                  for (var s = 1; s <= 3; s++)
-                    Expanded(
-                      child: Container(
-                        height: 4,
-                        margin: EdgeInsetsDirectional.only(
-                            end: s < 3 ? context.rs(6) : 0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(99),
-                          color: s <= state.step.clamp(1, 3)
-                              ? scheme.primary
-                              : scheme.outline.withValues(alpha: 0.35),
-                        ),
-                      ),
-                    ),
-                ]),
-                SizedBox(height: context.rs(10)),
+                SizedBox(height: context.rs(12)),
+                // Curriculum-card style header: brand panel with the step
+                // copy and an animated circular progress ring.
                 if (state.step <= 3)
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text(
-                      t.mbStepOf(state.step),
-                      style: TextStyle(
-                          fontSize: context.rf(10.5),
-                          fontWeight: FontWeight.w800,
-                          color: scheme.primary),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(context.rs(18)),
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                t.mbStepOf(state.step),
+                                style: TextStyle(
+                                  fontSize: context.rf(10),
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
+                                  color: scheme.onPrimary
+                                      .withValues(alpha: 0.75),
+                                ),
+                              ),
+                              SizedBox(height: context.rs(5)),
+                              Text(
+                                headTitle,
+                                style: TextStyle(
+                                  fontSize: context.rf(18),
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
+                                  color: scheme.onPrimary,
+                                ),
+                              ),
+                              SizedBox(height: context.rs(3)),
+                              Text(
+                                headSub,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: context.rf(11),
+                                  height: 1.35,
+                                  color: scheme.onPrimary
+                                      .withValues(alpha: 0.75),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: context.rs(14)),
+                        _StepRing(step: state.step),
+                      ],
                     ),
                   ),
               ]),
             ),
             Expanded(
-              child: switch (state.step) {
-                1 => const _Step1(),
-                2 => const _Step2(),
-                3 => const _Step3(),
-                _ => const _Success(),
-              },
+              // Light fade+lift between steps — transform/opacity only, so
+              // the transition stays cheap.
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeIn,
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                            begin: const Offset(0, 0.02), end: Offset.zero)
+                        .animate(anim),
+                    child: child,
+                  ),
+                ),
+                child: KeyedSubtree(
+                  key: ValueKey(state.step),
+                  child: switch (state.step) {
+                    1 => const _Step1(),
+                    2 => const _Step2(),
+                    3 => const _Step3(),
+                    _ => const _Success(),
+                  },
+                ),
+              ),
             ),
             if (state.step <= 3) const _NavBar(),
             const _FooterBadges(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The reference card's circular progress: a white ring on the brand panel
+/// that sweeps smoothly as the step advances, with "1/3" in the middle.
+final class _StepRing extends StatelessWidget {
+  const _StepRing({required this.step});
+
+  final int step;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final s = step.clamp(1, 3);
+    return TweenAnimationBuilder<double>(
+      tween: Tween(end: s / 3),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) => SizedBox(
+        width: context.rs(58),
+        height: context.rs(58),
+        child: Stack(
+          fit: StackFit.expand,
+          alignment: Alignment.center,
+          children: [
+            CircularProgressIndicator(
+              value: value,
+              strokeWidth: 5,
+              strokeCap: StrokeCap.round,
+              color: scheme.onPrimary,
+              backgroundColor: scheme.onPrimary.withValues(alpha: 0.25),
+            ),
+            Center(
+              child: Text(
+                '$s/3',
+                style: TextStyle(
+                  fontSize: context.rf(13),
+                  fontWeight: FontWeight.w800,
+                  color: scheme.onPrimary,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -606,94 +728,102 @@ final class _Step1 extends StatelessWidget {
         m['nameAr']?.toString() ??
         '';
 
+    // The reference's stat rows: each service gets its own tint, so the
+    // list reads colorful like the mock's inner card.
+    const rowTints = [
+      Color(0xFF4C6FFF), // blue
+      Color(0xFFFF5E8A), // pink
+      Color(0xFF8B5CF6), // purple
+      Color(0xFFF59E0B), // orange
+    ];
+
     return ListView(
       padding: EdgeInsets.fromLTRB(
-          context.rs(20), context.rs(6), context.rs(20), context.rs(10)),
+          context.rs(16), context.rs(10), context.rs(16), context.rs(10)),
       children: [
-        Text(t.mbStep1Title,
-            style: TextStyle(
-                fontSize: context.rf(21), fontWeight: FontWeight.w800)),
-        Text(t.mbStep1Sub,
-            style: TextStyle(
-                fontSize: context.rf(11.5),
-                color: scheme.onSurface.withValues(alpha: 0.55))),
-        SizedBox(height: context.rs(14)),
-
-        // Main services — 2-col tiles, selected by INDEX (the legacy data
-        // shares one GUID across several services).
+        // Main services — the reference card's rows: one soft panel, a
+        // tinted icon square per row, selection = brand wash + check.
         if (state.services.isEmpty)
           const Padding(
             padding: EdgeInsets.all(48),
             child: Center(child: CircularProgressIndicator()),
-          ),
-        GridView.count(
-          crossAxisCount: 2,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          mainAxisSpacing: context.rs(12),
-          crossAxisSpacing: context.rs(12),
-          childAspectRatio: 1.28,
-          children: [
-            for (var i = 0; i < state.services.length; i++)
-              Builder(builder: (context) {
-                final selected = state.serviceIndex == i;
-                final s = state.services[i];
-                // The mock's tile: white soft card, soft-pink icon square
-                // top-start, bold label bottom-start; selection = red
-                // border + check.
-                return Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(20),
-                    onTap: () => cubit.selectService(i),
-                    child: Ink(
-                      padding: EdgeInsets.all(context.rs(14)),
-                      decoration:
-                          softCardDecoration(context, radius: 20).copyWith(
-                        border: selected
-                            ? Border.all(color: scheme.primary, width: 1.6)
-                            : null,
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(children: [
+          )
+        else
+          Container(
+            decoration: softCardDecoration(context, radius: 22),
+            padding: EdgeInsets.all(context.rs(6)),
+            child: Column(children: [
+              for (var i = 0; i < state.services.length; i++)
+                Builder(builder: (context) {
+                  final selected = state.serviceIndex == i;
+                  final s = state.services[i];
+                  final tint = rowTints[i % rowTints.length];
+                  return Padding(
+                    padding: EdgeInsets.only(
+                        bottom: i == state.services.length - 1
+                            ? 0
+                            : context.rs(4)),
+                    child: Material(
+                      color: selected
+                          ? scheme.primary.withValues(alpha: 0.08)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => cubit.selectService(i),
+                        child: Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.rs(10),
+                              vertical: context.rs(11)),
+                          child: Row(children: [
                             Container(
-                              width: context.rs(38),
-                              height: context.rs(38),
+                              width: context.rs(42),
+                              height: context.rs(42),
                               decoration: BoxDecoration(
-                                color:
-                                    scheme.primary.withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(12),
+                                color: tint.withValues(alpha: 0.13),
+                                borderRadius: BorderRadius.circular(13),
                               ),
                               child: Icon(_iconFor(svcName(s)),
-                                  size: 18, color: scheme.primary),
+                                  size: 19, color: tint),
                             ),
-                            const Spacer(),
-                            if (selected)
-                              Icon(Icons.check_circle_rounded,
-                                  size: 18, color: scheme.primary),
+                            SizedBox(width: context.rs(12)),
+                            Expanded(
+                              child: Text(
+                                svcName(s),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: context.rf(13),
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.3,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: context.rs(8)),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 180),
+                              transitionBuilder: (child, anim) =>
+                                  ScaleTransition(
+                                      scale: anim, child: child),
+                              child: selected
+                                  ? Icon(Icons.check_circle_rounded,
+                                      key: const ValueKey('on'),
+                                      size: 21,
+                                      color: scheme.primary)
+                                  : Icon(Icons.radio_button_off_rounded,
+                                      key: const ValueKey('off'),
+                                      size: 21,
+                                      color: scheme.onSurface
+                                          .withValues(alpha: 0.25)),
+                            ),
                           ]),
-                          const Spacer(),
-                          Text(
-                            svcName(s),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: context.rf(12.5),
-                              fontWeight: FontWeight.w800,
-                              height: 1.25,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
-                  ),
-                );
-              }),
-          ],
-        ),
+                  );
+                }),
+            ]),
+          ),
 
         // Sub-service drill (the website's second dropdown, as tappable rows).
         if (state.sub1Loading)
@@ -831,16 +961,8 @@ final class _Step2 extends StatelessWidget {
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
-          context.rs(20), context.rs(6), context.rs(20), context.rs(10)),
+          context.rs(16), context.rs(10), context.rs(16), context.rs(10)),
       children: [
-        Text(t.mbStep2Title,
-            style: TextStyle(
-                fontSize: context.rf(21), fontWeight: FontWeight.w800)),
-        Text(t.mbStep2Sub,
-            style: TextStyle(
-                fontSize: context.rf(11.5),
-                color: scheme.onSurface.withValues(alpha: 0.55))),
-        SizedBox(height: context.rs(14)),
         if (state.garage.isNotEmpty) ...[
           // The mock's segmented toggle: white track, red pill + check on
           // the selected side.
@@ -1003,16 +1125,8 @@ final class _Step3 extends StatelessWidget {
 
     return ListView(
       padding: EdgeInsets.fromLTRB(
-          context.rs(20), context.rs(6), context.rs(20), context.rs(10)),
+          context.rs(16), context.rs(10), context.rs(16), context.rs(10)),
       children: [
-        Text(t.mbStep3Title,
-            style: TextStyle(
-                fontSize: context.rf(21), fontWeight: FontWeight.w800)),
-        Text(t.mbStep3Sub,
-            style: TextStyle(
-                fontSize: context.rf(11.5),
-                color: scheme.onSurface.withValues(alpha: 0.55))),
-        SizedBox(height: context.rs(14)),
         if (state.branches.length > 1) ...[
           AppDropdown<String>(
             label: t.protBranch,
@@ -1179,13 +1293,31 @@ final class _NavBar extends StatelessWidget {
               style: TextStyle(color: scheme.error, fontSize: context.rf(12)),
             ),
           ),
-        // The mock's footer: big red stadium CTA taking the row, with the
-        // "السابق" text link beside it from step 2 on.
+        // The reference card's footer pills: outlined "السابق" beside the
+        // filled CTA, equal widths (RESUME / TRAINING PLAN).
         Row(children: [
+          if (state.step > 1) ...[
+            Expanded(
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size(64, 46),
+                  shape: const StadiumBorder(),
+                  side: BorderSide(color: scheme.primary, width: 1.4),
+                  foregroundColor: scheme.primary,
+                  textStyle: TextStyle(
+                      fontSize: context.rf(13.5),
+                      fontWeight: FontWeight.w800),
+                ),
+                onPressed: state.phase == _Phase.busy ? null : cubit.back,
+                child: Text(t.mbBack),
+              ),
+            ),
+            SizedBox(width: context.rs(10)),
+          ],
           Expanded(
             child: FilledButton(
               style: FilledButton.styleFrom(
-                minimumSize: const Size(64, 44),
+                minimumSize: const Size(64, 46),
                 shape: const StadiumBorder(),
                 textStyle: TextStyle(
                     fontSize: context.rf(14), fontWeight: FontWeight.w800),
@@ -1203,18 +1335,6 @@ final class _NavBar extends StatelessWidget {
                   : Text(state.step < 3 ? t.mbNext : t.protConfirmBooking),
             ),
           ),
-          if (state.step > 1) ...[
-            SizedBox(width: context.rs(14)),
-            TextButton(
-              onPressed: cubit.back,
-              style: TextButton.styleFrom(
-                foregroundColor: scheme.onSurface.withValues(alpha: 0.75),
-                textStyle: TextStyle(
-                    fontSize: context.rf(13.5), fontWeight: FontWeight.w800),
-              ),
-              child: Text(t.mbBack),
-            ),
-          ],
         ]),
       ]),
     );
@@ -1254,7 +1374,7 @@ final class _Success extends StatelessWidget {
   }
 }
 
-/// The website footer badges: حجز آمن · ضمان 12 شهر · إلغاء مجاني.
+/// The website footer badges: حجز آمن · إلغاء مجاني.
 final class _FooterBadges extends StatelessWidget {
   const _FooterBadges();
 
@@ -1271,7 +1391,6 @@ final class _FooterBadges extends StatelessWidget {
           // Green check badges, like the mock's trust row.
           for (final label in [
             t.mbBadgeSecure,
-            t.mbBadgeWarranty,
             t.mbBadgeFreeCancel,
           ]) ...[
             const Icon(Icons.check_circle_rounded,

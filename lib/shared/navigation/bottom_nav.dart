@@ -56,13 +56,16 @@ final class AppBottomNav extends StatelessWidget {
           ),
           child: Material(
             // Light mode = white pill, dark mode = near-black pill (ref).
+            // Flat — a hairline outline separates it instead of a shadow.
             color: isDark ? const Color(0xFF1A1C21) : Colors.white,
             borderRadius: BorderRadius.circular(999),
-            elevation: 10,
-            shadowColor:
-                Colors.black.withValues(alpha: isDark ? 0.4 : 0.18),
-            child: SizedBox(
+            child: Container(
               height: context.rs(62),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                    color: scheme.outline.withValues(alpha: 0.4)),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [

@@ -94,6 +94,8 @@ final class SliderVehicle extends Equatable {
     this.brandId,
     this.carGroupId,
     this.sn,
+    this.storeNumber,
+    this.productId,
     this.showPrice = true,
     this.hybrid = false,
     this.newCar = false,
@@ -124,6 +126,8 @@ final class SliderVehicle extends Equatable {
   final String? brandId;
   final String? carGroupId;
   final String? sn; // stock VIN — present on the online-detail lookup only
+  final int? storeNumber; // ERP per-category sort order (website arrangement)
+  final String? productId; // storeNumber tiebreak, like the website
   final bool showPrice;
   final bool hybrid;
   final bool newCar;
@@ -171,6 +175,8 @@ final class SliderVehicle extends Equatable {
         brandId: _s(j['brandId']),
         carGroupId: _s(j['carGroupId']),
         sn: _s(j['sn']),
+        storeNumber: _i(j['storeNumber']),
+        productId: _s(j['productId']),
         showPrice: j['showPric'] == true,
         hybrid: j['hybird'] == true,
         newCar: j['newCar'] == true,

@@ -75,7 +75,14 @@ final class ModelsCubit extends Cubit<ModelsState> {
   Future<void> _load(String brandKey) async {
     final feed = await _repo.fetch(brandKey);
     if (isClosed) return;
-    emit(state.copyWith(loading: false, vehicles: feed?.vehicles ?? const []));
+    // Website arrangement (ModelsCarousel): order by the ERP storeNumber,
+    // ties broken by productId — so sedan reads Yaris → Corolla → Camry →
+    // Crown, exactly like the site.
+    final vehicles = [...?feed?.vehicles]..sort((a, b) {
+        final s = (a.storeNumber ?? 1 << 30) - (b.storeNumber ?? 1 << 30);
+        return s != 0 ? s : (a.productId ?? '').compareTo(b.productId ?? '');
+      });
+    emit(state.copyWith(loading: false, vehicles: vehicles));
   }
 
   void setCategory(String? c) =>
