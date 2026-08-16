@@ -8,6 +8,7 @@ import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../../shared/widgets/app_dropdown.dart';
+import '../../../shared/widgets/brand_logo.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../account/data/account_repository.dart';
@@ -601,15 +602,6 @@ final class _PackageCard extends StatelessWidget {
     // the card wash, icon tile, badge and CTA all follow it.
     final tier = packageTierColors(package.name(lang), scheme);
     final accent = isDark ? tier.color : tier.deep;
-    final (tileBg, tileFg) = (
-      tier.color.withValues(alpha: isDark ? 0.28 : 0.16),
-      accent,
-    );
-    final icon = switch (index % 3) {
-      0 => Icons.layers_rounded,
-      1 => Icons.shield_outlined,
-      _ => Icons.auto_awesome_rounded,
-    };
 
     return Material(
       color: Colors.transparent,
@@ -621,75 +613,94 @@ final class _PackageCard extends StatelessWidget {
           duration: const Duration(milliseconds: 200),
           curve: Curves.easeOut,
           padding: EdgeInsets.all(context.rs(15)),
-          decoration: BoxDecoration(
-            color: selected
-                ? tier.color.withValues(alpha: isDark ? 0.12 : 0.07)
-                : (isDark ? const Color(0xFF181B21) : scheme.surface),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: selected
-                  ? tier.color
-                  : scheme.outline.withValues(alpha: isDark ? 0.5 : 0.45),
-              width: selected ? 1.6 : 1,
-            ),
+          clipBehavior: Clip.antiAlias,
+          // Same container language as the home-screen protection rail:
+          // tier-tinted soft wash + the big centered brand watermark; the
+          // tier border only marks the SELECTED card.
+          decoration: softCardDecoration(
+            context,
+            radius: 20,
+            tint: tier.color,
+          ).copyWith(
+            border: selected ? Border.all(color: tier.color, width: 1.6) : null,
           ),
-          child: Column(
+          child: Stack(
+            children: [
+              // Brand emblem — large, vertically centered, bleeding off the
+              // far edge, exactly like the home rail card.
+              PositionedDirectional(
+                end: -context.rs(30),
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: BrandMark(
+                    size: context.rs(150),
+                    color: tier.deep,
+                    opacity: isDark ? 0.08 : 0.06,
+                  ),
+                ),
+              ),
+              Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: context.rs(44),
-                    height: context.rs(44),
-                    decoration: BoxDecoration(
-                      color: tileBg,
-                      borderRadius: BorderRadius.circular(13),
-                    ),
-                    child: Icon(icon, size: 20, color: tileFg),
-                  ),
-                  SizedBox(width: context.rs(12)),
                   Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(top: context.rs(3)),
-                      child: Text(package.name(lang),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: context.rf(13.5),
-                              height: 1.25,
-                              fontWeight: FontWeight.w800,
-                              color: selected ? accent : scheme.onSurface)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(package.name(lang),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                                fontSize: context.rf(13.5),
+                                height: 1.25,
+                                fontWeight: FontWeight.w800,
+                                color: selected ? accent : scheme.onSurface)),
+                        if (popular) ...[
+                          SizedBox(height: context.rs(5)),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: context.rs(8),
+                                vertical: context.rs(3)),
+                            decoration: BoxDecoration(
+                              color: tier.color
+                                  .withValues(alpha: isDark ? 0.3 : 0.18),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                            child: Text(t.protPopular,
+                                style: TextStyle(
+                                    fontSize: context.rf(8.5),
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                    color: isDark ? tier.color : tier.deep)),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                   SizedBox(width: context.rs(8)),
-                  // Selected check, or the popular badge on the lead card.
-                  if (selected)
-                    Container(
-                      width: context.rs(22),
-                      height: context.rs(22),
-                      decoration: BoxDecoration(
-                        color: tier.color,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.check_rounded,
-                          size: 14, color: Colors.white),
-                    )
-                  else if (popular)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                          horizontal: context.rs(9),
-                          vertical: context.rs(4)),
-                      decoration: BoxDecoration(
-                        color: tier.color,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(t.protPopular,
-                          style: TextStyle(
-                              fontSize: context.rf(8.5),
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
+                  // Tier roundel — flips to a solid check when selected.
+                  Container(
+                    width: context.rs(34),
+                    height: context.rs(34),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? tier.color
+                          : tier.color
+                              .withValues(alpha: isDark ? 0.3 : 0.18),
+                      shape: BoxShape.circle,
                     ),
+                    child: selected
+                        ? const Icon(Icons.check_rounded,
+                            size: 17, color: Colors.white)
+                        : Icon(
+                            packageTierIcon(package.name(lang)),
+                            size: 17,
+                            color: isDark ? tier.color : tier.deep,
+                          ),
+                  ),
                 ],
               ),
               if (package.description(lang).isNotEmpty) ...[
@@ -757,6 +768,8 @@ final class _PackageCard extends StatelessWidget {
                     fontSize: context.rf(17),
                     color: accent),
               ]),
+            ],
+              ),
             ],
           ),
         ),

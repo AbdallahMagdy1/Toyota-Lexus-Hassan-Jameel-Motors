@@ -406,6 +406,28 @@ final class GlassBottomFade extends StatelessWidget {
   );
 }
 
+/// Tier icon matched to [packageTierColors] — a premium glyph per tier
+/// (medal, ribbon, diamond…) instead of one generic shield everywhere.
+IconData packageTierIcon(String name) {
+  final n = name.toLowerCase();
+  if (n.contains('ذهب') || n.contains('gold')) {
+    return Icons.workspace_premium_rounded;
+  }
+  if (n.contains('فض') || n.contains('silver')) {
+    return Icons.military_tech_rounded;
+  }
+  if (n.contains('برونز') || n.contains('bronze')) {
+    return Icons.shield_rounded;
+  }
+  if (n.contains('بلاتين') || n.contains('platinum')) {
+    return Icons.stars_rounded;
+  }
+  if (n.contains('ماس') || n.contains('diamond')) {
+    return Icons.diamond_rounded;
+  }
+  return Icons.auto_awesome_rounded;
+}
+
 /// The Saudi Riyal symbol from the website's icomoon font (U+E900) — the
 /// exact glyph the website CurrencyCode component renders before prices.
 const String kRiyalGlyph = '\uE900';

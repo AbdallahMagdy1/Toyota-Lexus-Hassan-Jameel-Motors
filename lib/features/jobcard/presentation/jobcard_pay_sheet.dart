@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -67,8 +68,19 @@ const List<_Gateway> _kGateways = [
     icon: Icons.credit_card_rounded,
     ar: 'كامل المبلغ',
     en: 'Pay in full',
-    subAr: 'مدى • فيزا • ماستركارد • أبل باي • STC Pay',
-    subEn: 'Mada • Visa • Mastercard • Apple Pay • STC Pay',
+    subAr: 'مدى • فيزا • ماستركارد • STC Pay',
+    subEn: 'Mada • Visa • Mastercard • STC Pay',
+  ),
+  // Same MyFatoorah 'full' channel as كامل المبلغ — a separate tile so Apple
+  // Pay users reach the gateway (which surfaces the Apple Pay sheet) in one
+  // tap. iOS-only: filtered out of the list on other platforms.
+  _Gateway(
+    method: 'applepay',
+    icon: Icons.apple_rounded,
+    ar: 'أبل باي',
+    en: 'Apple Pay',
+    subAr: 'ادفع بسرعة وأمان عبر أبل باي',
+    subEn: 'Pay fast and securely with Apple Pay',
   ),
   _Gateway(
     method: 'tabby',
@@ -269,10 +281,13 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
         if (jcTruthy(r, const ['Approved'])) jcStr(r, const ['GUID']),
     ].where((s) => s.isNotEmpty).join(',');
 
+    // Apple Pay is the SAME MyFatoorah 'full' channel server-side — the
+    // gateway page surfaces the Apple Pay sheet on Apple devices.
+    final backendType = method == 'applepay' ? 'full' : method;
     final res = await _repo.approvePayment(
       widget.guid,
       prudocts: prudocts,
-      paymentType: method,
+      paymentType: backendType,
       callback: _kCallback,
       // Only a code the server declared valid is forwarded — the backend
       // recomputes the discount itself.
@@ -374,7 +389,9 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
       String chosenMethod, String Function(String, String) tr) async {
     var gateway = pm;
     if (gateway.isEmpty) {
-      gateway = chosenMethod == 'full' ? 'myfatoorah' : chosenMethod;
+      gateway = chosenMethod == 'full' || chosenMethod == 'applepay'
+          ? 'myfatoorah'
+          : chosenMethod;
     }
     final res = switch (gateway) {
       'paytabs' when pt == 'partial' =>
@@ -692,8 +709,11 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
         if (_canPay) ...[
           _SectionLabel(tr('اختر طريقة الدفع', 'Choose a payment method')),
           for (final g in _kGateways)
-            _gatewayRow(context, g, tr,
-                disabled: g.bnpl && _tamaraClose),
+            // Apple Pay only exists on Apple devices.
+            if (g.method != 'applepay' ||
+                defaultTargetPlatform == TargetPlatform.iOS)
+              _gatewayRow(context, g, tr,
+                  disabled: g.bnpl && _tamaraClose),
           if (_error != null)
             Container(
               margin: EdgeInsets.only(top: context.rs(8)),

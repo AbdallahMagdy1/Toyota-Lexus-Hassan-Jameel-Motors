@@ -1195,7 +1195,7 @@ final class _GreetingState extends State<_Greeting>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$greeting 👋',
+                  greeting,
                   style: TextStyle(
                     fontSize: context.rf(12.5),
                     fontWeight: FontWeight.w800,
@@ -3182,16 +3182,19 @@ final class _ProtectionForCar extends StatelessWidget {
                               // watermark layer was introduced.
                               fit: StackFit.expand,
                               children: [
-                                // Brand emblem bled into the TOP-start corner
-                                // at a whisper of opacity — signs the package
-                                // as ours without competing with the content.
+                                // Brand emblem — LARGE, vertically centered,
+                                // bleeding off the far edge (left in Arabic)
+                                // at a whisper of opacity.
                                 PositionedDirectional(
-                                  top: -context.rs(18),
-                                  start: -context.rs(20),
-                                  child: BrandMark(
-                                    size: context.rs(104),
-                                    color: tier.deep,
-                                    opacity: isDark ? 0.07 : 0.05,
+                                  end: -context.rs(30),
+                                  top: 0,
+                                  bottom: 0,
+                                  child: Center(
+                                    child: BrandMark(
+                                      size: context.rs(150),
+                                      color: tier.deep,
+                                      opacity: isDark ? 0.08 : 0.06,
+                                    ),
                                   ),
                                 ),
                                 Column(
@@ -3260,7 +3263,7 @@ final class _ProtectionForCar extends StatelessWidget {
                                         shape: BoxShape.circle,
                                       ),
                                       child: Icon(
-                                        Icons.verified_user_rounded,
+                                        packageTierIcon(p.name(lang)),
                                         size: 17,
                                         color: isDark ? tier.color : tier.deep,
                                       ),
