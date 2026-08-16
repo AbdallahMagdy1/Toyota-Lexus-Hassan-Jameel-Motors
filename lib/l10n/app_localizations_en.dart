@@ -1052,7 +1052,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Genuine part with dealer warranty. Online payment is coming with the payment module — meanwhile you can buy this part from any Hassan Jameel branch.';
 
   @override
-  String get protTitle => 'Protection & polishing';
+  String get protTitle => 'Protection & shading';
 
   @override
   String get protSubtitle => 'Pick your car to load the available packages.';
@@ -1950,6 +1950,84 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get trkHubEmpty => 'Nothing to track yet.';
+
+  @override
+  String get trkStageBooked => 'Booked';
+
+  @override
+  String get trkStageReceived => 'Received';
+
+  @override
+  String get trkStageAgreement => 'Agreement';
+
+  @override
+  String get trkStageInProgress => 'In progress';
+
+  @override
+  String get trkStageQuality => 'Quality check';
+
+  @override
+  String get trkStageReady => 'Ready';
+
+  @override
+  String get trkStageDelivered => 'Delivered';
+
+  @override
+  String get trkAgreementTitle => 'Your approval is needed';
+
+  @override
+  String get trkAgreementBody =>
+      'Review and sign the repair agreement so the workshop can start.';
+
+  @override
+  String get trkAgreementCta => 'Review agreement';
+
+  @override
+  String get trkEta => 'Expected ready';
+
+  @override
+  String get trkCanceled => 'Canceled';
+
+  @override
+  String get trkRateTitle => 'How did we do?';
+
+  @override
+  String get trkRateBody =>
+      'Your car is delivered. Rate the service — it takes a minute.';
+
+  @override
+  String get trkRateCta => 'Rate the service';
+
+  @override
+  String get evalTitle => 'Service evaluation';
+
+  @override
+  String get evalNote => 'Anything else you\'d like to add?';
+
+  @override
+  String get evalNoteHint => 'Your notes (optional)';
+
+  @override
+  String get evalTellUs => 'Tell us more';
+
+  @override
+  String get evalSubmit => 'Submit evaluation';
+
+  @override
+  String get evalMissingAnswers => 'Please answer all required questions.';
+
+  @override
+  String get evalThanksTitle => 'Thank you!';
+
+  @override
+  String get evalThanksBody =>
+      'Your evaluation has been recorded. We value your feedback.';
+
+  @override
+  String get evalUnavailable => 'Evaluation unavailable';
+
+  @override
+  String get evalUnavailableBody => 'This evaluation link is no longer valid.';
 
   @override
   String get mbuyType => 'Purchase type';

@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/router/routes.dart';
 import '../../core/utils/responsive.dart';
 import '../../features/cart/bloc/cart_cubit.dart';
+import '../widgets/brand_logo.dart';
 
 /// Instagram-style floating pill nav: a wide stadium bar hugging the bottom,
 /// active tab in a soft circular highlight, live cart badge — and dynamic
@@ -20,9 +21,12 @@ final class AppBottomNav extends StatelessWidget {
   /// True while the user is scrolling down — the bar scales down compactly.
   final bool collapsed;
 
-  static const tabs = [
+  /// The store tab carries the BRAND EMBLEM (Toyota ovals / Lexus "L")
+  /// instead of a generic storefront glyph — a null icon means "draw the
+  /// brand mark here", see [_NavItem].
+  static const tabs = <(String, IconData?)>[
     (Routes.home, Icons.home_rounded),
-    (Routes.store, Icons.storefront_rounded),
+    (Routes.store, null),
     (Routes.cart, Icons.shopping_cart_outlined),
     (Routes.profile, Icons.person_outline_rounded),
   ];
@@ -108,7 +112,8 @@ final class _NavItem extends StatelessWidget {
     this.badge,
   });
 
-  final IconData icon;
+  /// Null → render the active brand's emblem instead of a Material glyph.
+  final IconData? icon;
   final bool active;
   final VoidCallback onTap;
   final Color activeColor;
@@ -140,11 +145,18 @@ final class _NavItem extends StatelessWidget {
               scale: active ? 1.1 : 1,
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOutBack,
-              child: Icon(
-                icon,
-                size: context.rs(24),
-                color: active ? activeColor : inactiveColor,
-              ),
+              child: icon == null
+                  // Tinted to the same active/inactive colours as its
+                  // siblings so the row still reads as one control strip.
+                  ? BrandMark(
+                      size: context.rs(24),
+                      color: active ? activeColor : inactiveColor,
+                    )
+                  : Icon(
+                      icon,
+                      size: context.rs(24),
+                      color: active ? activeColor : inactiveColor,
+                    ),
             ),
             if (badge != null)
               PositionedDirectional(

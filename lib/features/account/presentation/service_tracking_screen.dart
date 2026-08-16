@@ -20,10 +20,11 @@ import '../../settings/bloc/locale_cubit.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router/routes.dart';
+import '../../jobcard/presentation/jobcard_pay_sheet.dart';
 import '../data/account_repository.dart';
 import '../domain/account_models.dart';
+import 'service_evaluation_sheet.dart';
 import 'finance_requests_screen.dart' show FinanceRequest;
-import 'registered_home_view.dart' show WorkOrderCard;
 
 /// Live service tracking — the old app's cycle rebuilt: initial snapshot
 /// from /account/work-orders, then a live SSE stream (SQL trigger →
@@ -171,7 +172,6 @@ final class _View extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final state = context.watch<_TrackingCubit>().state;
-    final lang = context.watch<LocaleCubit>().state.languageCode;
     final scheme = Theme.of(context).colorScheme;
 
     return Column(
@@ -229,21 +229,12 @@ final class _View extends StatelessWidget {
                       ),
                     ]),
                     SizedBox(height: context.rs(14)),
-                    if (state.orders.isEmpty)
-                      AppEmptyState(
-                        icon: Icons.car_repair_rounded,
-                        title: t.trackTitle,
-                        message: t.trackEmpty,
-                        compact: true,
-                      ),
-                    for (final o in state.orders)
-                      Padding(
-                        padding: EdgeInsets.only(bottom: context.rs(14)),
-                        child: WorkOrderCard(order: o, lang: lang),
-                      ),
 
-                    // ── متابعة الطلبات: الصيانة / الحماية / طلباتي ──
-                    SizedBox(height: context.rs(10)),
+                    // The workshop job order is no longer listed separately
+                    // here: it is one stage of the merged service journey
+                    // below (App_ServiceJourney_View), so rendering it twice
+                    // would show the same visit as two unrelated cards.
+                    // WorkOrderCard still drives the home-screen hero card.
                     const _OrdersTrackingSection(),
                   ],
                 ),
@@ -534,11 +525,122 @@ final class _FinanceMiniList extends StatelessWidget {
   }
 }
 
+/// The seven stages of a service journey, in order. Index matches the
+/// StageIndex the backend computes in App_ServiceJourney_View.
+List<String> _journeyStages(AppLocalizations t) => [
+      t.trkStageBooked,
+      t.trkStageReceived,
+      t.trkStageAgreement,
+      t.trkStageInProgress,
+      t.trkStageQuality,
+      t.trkStageReady,
+      t.trkStageDelivered,
+    ];
+
+/// The stage rail: one dot per stage, filled up to the current one, with the
+/// reached stages joined by a solid connector. Canceled journeys render the
+/// whole rail muted — the car never got further than where it stopped.
+final class _StageRail extends StatelessWidget {
+  const _StageRail({required this.order});
+
+  final TrackedOrder order;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
+    final scheme = Theme.of(context).colorScheme;
+    final stages = _journeyStages(t);
+    final active = order.isCanceled
+        ? scheme.onSurface.withValues(alpha: 0.35)
+        : scheme.primary;
+    final idle = scheme.onSurface.withValues(alpha: 0.15);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (var i = 0; i < stages.length; i++) ...[
+              if (i > 0)
+                Expanded(
+                  child: Container(
+                    height: 2.5,
+                    color: i <= order.stageIndex ? active : idle,
+                  ),
+                ),
+              Container(
+                width: i == order.stageIndex ? 11 : 8,
+                height: i == order.stageIndex ? 11 : 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: i <= order.stageIndex ? active : idle,
+                  border: i == order.stageIndex
+                      ? Border.all(color: active.withValues(alpha: 0.25), width: 3)
+                      : null,
+                ),
+              ),
+            ],
+          ],
+        ),
+        SizedBox(height: context.rs(6)),
+        Text(
+          stages[order.stageIndex.clamp(0, stages.length - 1)],
+          style: TextStyle(
+            fontSize: context.rf(10),
+            fontWeight: FontWeight.w800,
+            color: order.isCanceled
+                ? scheme.onSurface.withValues(alpha: 0.5)
+                : scheme.primary,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 final class _TrackedOrderCard extends StatelessWidget {
   const _TrackedOrderCard({required this.order, required this.lang});
 
   final TrackedOrder order;
   final String lang;
+
+  /// Rsrv-… → Rec-… → JobOrd-… so the customer can quote whichever number
+  /// the branch asks for.
+  Widget _chain(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final refs = [order.reservationNo, order.receptionNo, order.jobOrderNo]
+        .where((r) => (r ?? '').isNotEmpty)
+        .cast<String>()
+        .toList();
+    if (refs.length < 2) return const SizedBox.shrink();
+    return Padding(
+      padding: EdgeInsets.only(top: context.rs(8)),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 4,
+        children: [
+          for (final r in refs)
+            Container(
+              padding: EdgeInsets.symmetric(
+                  horizontal: context.rs(7), vertical: context.rs(3)),
+              decoration: BoxDecoration(
+                color: scheme.onSurface.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(
+                r,
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                  fontSize: context.rf(8.5),
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -546,7 +648,7 @@ final class _TrackedOrderCard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final o = order;
     final icon = switch (o.kind) {
-      'maintenance' => Icons.event_available_rounded,
+      'maintenance' => Icons.car_repair_rounded,
       'protection' => Icons.shield_outlined,
       _ => Icons.local_shipping_outlined,
     };
@@ -557,7 +659,8 @@ final class _TrackedOrderCard extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(context.rs(14)),
       decoration: softCardDecoration(context,
-          radius: 18, tint: o.needsPayment ? scheme.primary : null),
+          radius: 18,
+          tint: (o.needsPayment || o.needsAgreement) ? scheme.primary : null),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -583,9 +686,11 @@ final class _TrackedOrderCard extends StatelessWidget {
                           fontSize: context.rf(12.5),
                           fontWeight: FontWeight.w800)),
                   Text(
-                    [if ((o.refNo ?? '').isNotEmpty) o.refNo!, date]
-                        .where((s) => s.isNotEmpty)
-                        .join(' • '),
+                    [
+                      if ((o.plateNo ?? '').isNotEmpty) o.plateNo!,
+                      if ((o.refNo ?? '').isNotEmpty) o.refNo!,
+                      date,
+                    ].where((s) => s.isNotEmpty).join(' • '),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     textDirection: TextDirection.ltr,
@@ -616,7 +721,13 @@ final class _TrackedOrderCard extends StatelessWidget {
               ),
             ),
           ]),
-          if (!o.isTerminal) ...[
+          // A maintenance journey gets the seven-stage rail (and keeps it when
+          // canceled, so the customer sees where it stopped); the simpler
+          // cycles keep the plain bar.
+          if (o.isJourney) ...[
+            SizedBox(height: context.rs(14)),
+            _StageRail(order: o),
+          ] else if (!o.isTerminal) ...[
             SizedBox(height: context.rs(12)),
             ClipRRect(
               borderRadius: BorderRadius.circular(99),
@@ -624,6 +735,70 @@ final class _TrackedOrderCard extends StatelessWidget {
                 value: progress,
                 minHeight: 6,
                 backgroundColor: scheme.onSurface.withValues(alpha: 0.08),
+              ),
+            ),
+          ],
+          if (o.isJourney) _chain(context),
+          if (o.etaDate != null && !o.isTerminal) ...[
+            SizedBox(height: context.rs(8)),
+            Row(children: [
+              Icon(Icons.schedule_rounded,
+                  size: 13, color: scheme.onSurface.withValues(alpha: 0.5)),
+              SizedBox(width: context.rs(5)),
+              Text(
+                '${t.trkEta}: ${o.etaDate!.toIso8601String().substring(0, 16).replaceFirst('T', ' ')}',
+                textDirection: TextDirection.ltr,
+                style: TextStyle(
+                    fontSize: context.rf(10),
+                    color: scheme.onSurface.withValues(alpha: 0.6)),
+              ),
+            ]),
+          ],
+          // The repair agreement is the one thing the workshop cannot proceed
+          // without — same short link the reception SMS carries.
+          if (o.needsAgreement && (o.agreementUrl ?? '').isNotEmpty) ...[
+            SizedBox(height: context.rs(12)),
+            Container(
+              padding: EdgeInsets.all(context.rs(11)),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.draw_outlined, size: 15, color: scheme.primary),
+                    SizedBox(width: context.rs(6)),
+                    Expanded(
+                      child: Text(t.trkAgreementTitle,
+                          style: TextStyle(
+                              fontSize: context.rf(11.5),
+                              fontWeight: FontWeight.w800,
+                              color: scheme.primary)),
+                    ),
+                  ]),
+                  SizedBox(height: context.rs(4)),
+                  Text(t.trkAgreementBody,
+                      style: TextStyle(
+                          fontSize: context.rf(10),
+                          color: scheme.onSurface.withValues(alpha: 0.7))),
+                  SizedBox(height: context.rs(9)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(40),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11)),
+                      textStyle: TextStyle(
+                          fontSize: context.rf(11.5),
+                          fontWeight: FontWeight.w800),
+                    ),
+                    onPressed: () => launchUrl(Uri.parse(o.agreementUrl!),
+                        mode: LaunchMode.externalApplication),
+                    icon: const Icon(Icons.open_in_new_rounded, size: 15),
+                    label: Text(t.trkAgreementCta),
+                  ),
+                ],
               ),
             ),
           ],
@@ -648,7 +823,97 @@ final class _TrackedOrderCard extends StatelessWidget {
                     fontSize: context.rf(13)),
             ]),
           ],
-          if (o.needsPayment && (o.paymentUrl ?? '').isNotEmpty) ...[
+          // Delivered and paid, but the ERP rating is still open — the last
+          // step of the journey. Same questionnaire the website serves at
+          // /ServiceEvaluation/{guid}, opened in-app so the customer never
+          // has to go hunting for the SMS link.
+          if (o.needsEvaluation && (o.evaluationGuid ?? '').isNotEmpty) ...[
+            SizedBox(height: context.rs(12)),
+            Container(
+              padding: EdgeInsets.all(context.rs(11)),
+              decoration: BoxDecoration(
+                color: scheme.primary.withValues(alpha: 0.07),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Icon(Icons.star_rounded, size: 16, color: scheme.primary),
+                    SizedBox(width: context.rs(6)),
+                    Expanded(
+                      child: Text(t.trkRateTitle,
+                          style: TextStyle(
+                              fontSize: context.rf(11.5),
+                              fontWeight: FontWeight.w800,
+                              color: scheme.primary)),
+                    ),
+                  ]),
+                  SizedBox(height: context.rs(4)),
+                  Text(t.trkRateBody,
+                      style: TextStyle(
+                          fontSize: context.rf(10),
+                          color: scheme.onSurface.withValues(alpha: 0.7))),
+                  SizedBox(height: context.rs(9)),
+                  FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(40),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(11)),
+                      textStyle: TextStyle(
+                          fontSize: context.rf(11.5),
+                          fontWeight: FontWeight.w800),
+                    ),
+                    onPressed: () async {
+                      await showServiceEvaluationSheet(
+                        context,
+                        guid: o.evaluationGuid!,
+                      );
+                      // The rating closes the PSFU row, so refetch to drop
+                      // the CTA once it is done.
+                      _hubRefresh.value++;
+                    },
+                    icon: const Icon(Icons.rate_review_outlined, size: 15),
+                    label: Text(t.trkRateCta),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          // Workshop cycle: the job card IS the invoice. Opening it by GUID
+          // gives the customer the itemised sheet and every gateway (full
+          // amount / Tabby / Tamara / Sadad). Shown for any journey that has
+          // reached a job order — reading the bill before it is payable is
+          // half the point — and it turns into "pay now" once the ERP marks
+          // it Ready to Release / SentForPayment.
+          if ((o.jobOrderGuid ?? '').isNotEmpty) ...[
+            SizedBox(height: context.rs(10)),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                minimumSize: const Size.fromHeight(42),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                textStyle: TextStyle(
+                    fontSize: context.rf(12), fontWeight: FontWeight.w800),
+                backgroundColor: o.needsPayment ? null : scheme.surface,
+                foregroundColor: o.needsPayment ? null : scheme.primary,
+                side: o.needsPayment
+                    ? null
+                    : BorderSide(
+                        color: scheme.primary.withValues(alpha: 0.35)),
+              ),
+              onPressed: () => showJobCardPaySheet(context, guid: o.jobOrderGuid!),
+              icon: Icon(
+                  o.needsPayment
+                      ? Icons.payments_rounded
+                      : Icons.receipt_long_rounded,
+                  size: 16),
+              label: Text(o.needsPayment ? t.jdPayNow : t.acJobCard),
+            ),
+          ]
+          // The other cycles (protection, parts) really are settled through a
+          // payment link, so those keep the external hand-off.
+          else if (o.needsPayment && (o.paymentUrl ?? '').isNotEmpty) ...[
             SizedBox(height: context.rs(10)),
             FilledButton.icon(
               style: FilledButton.styleFrom(

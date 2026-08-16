@@ -45,6 +45,7 @@ final class AppBrand extends Equatable {
     this.scaleDark,
     this.logoLight,
     this.logoDark,
+    this.mark,
   });
 
   final String key; // toyota | lexus | hj | custom keys from the dashboard
@@ -59,6 +60,11 @@ final class AppBrand extends Equatable {
   final Map<int, Color>? scaleDark;
   final String? logoLight; // asset path for light backgrounds
   final String? logoDark; // asset path for dark backgrounds
+
+  /// The bare emblem (Toyota ovals / Lexus "L"), no wordmark — a solid
+  /// silhouette on transparency, so callers tint it to whatever the surface
+  /// needs. Used for the nav bar, the swipe thumb and card watermarks.
+  final String? mark;
 
   Color colorFor(Brightness b) =>
       b == Brightness.dark ? (brandColorDark ?? brandColor) : brandColor;
@@ -96,6 +102,7 @@ final class AppBrand extends Equatable {
       scaleDark: _parseScale(json['scaleDark']) ?? fallback?.scaleDark,
       logoLight: fallback?.logoLight,
       logoDark: fallback?.logoDark,
+      mark: fallback?.mark,
     );
   }
 
@@ -139,6 +146,7 @@ final Map<String, AppBrand> kFallbackBrands = {
     },
     logoLight: 'assets/logos/toyota-logo-wide.png',
     logoDark: 'assets/logos/toyota-logo-wide.png',
+    mark: 'assets/logos/toyota-ico.png',
   ),
   'lexus': AppBrand(
     key: 'lexus',
@@ -176,6 +184,7 @@ final Map<String, AppBrand> kFallbackBrands = {
     },
     logoLight: 'assets/logos/lexus-Logo-wide.png',
     logoDark: 'assets/logos/lexus-Logo-wide-white.png',
+    mark: 'assets/logos/lexus-ico.png',
   ),
   'hj': AppBrand(
     key: 'hj',
@@ -198,5 +207,6 @@ final Map<String, AppBrand> kFallbackBrands = {
     },
     logoLight: 'assets/logos/hj-logo.png',
     logoDark: 'assets/logos/hj-logo.png',
+    mark: 'assets/logos/hj-logo.png',
   ),
 };

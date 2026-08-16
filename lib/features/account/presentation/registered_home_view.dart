@@ -15,6 +15,8 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/user_avatar.dart';
+import '../../../shared/widgets/brand_logo.dart';
 import '../../../shared/widgets/keep_alive_section.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/quick_links_panel.dart';
@@ -737,8 +739,7 @@ final class _HeroHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.select((AuthBloc b) => b.state.user);
-    final lang = context.watch<LocaleCubit>().state.languageCode;
+    // The user/name lookup moved into UserAvatar with the photo it renders.
     final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -750,14 +751,8 @@ final class _HeroHeader extends StatelessWidget {
     final chipBorder = solid
         ? scheme.outline.withValues(alpha: 0.6)
         : Colors.white.withValues(alpha: 0.4);
-    final name =
-        (lang == 'ar'
-                ? (user?.firstNameAr ?? user?.firstNameEn)
-                : (user?.firstNameEn ?? user?.firstNameAr))
-            ?.trim();
-    final initial = (name != null && name.isNotEmpty)
-        ? name.characters.first
-        : null;
+    // The initial-letter fallback now lives inside UserAvatar, alongside the
+    // photo it falls back from.
     final brandIcon = brandKey == 'lexus'
         ? 'assets/logos/lexus-ico.png'
         : 'assets/logos/toyota-ico.png';
@@ -801,25 +796,11 @@ final class _HeroHeader extends StatelessWidget {
                     child: InkWell(
                       customBorder: const CircleBorder(),
                       onTap: () => context.push(Routes.profile),
-                      child: Container(
-                        width: context.rs(34),
-                        height: context.rs(34),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: chipBg,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: chipBorder),
-                        ),
-                        child: initial == null
-                            ? Icon(Icons.person_rounded, size: 17, color: fg)
-                            : Text(
-                                initial,
-                                style: TextStyle(
-                                  fontSize: context.rf(13.5),
-                                  fontWeight: FontWeight.w800,
-                                  color: fg,
-                                ),
-                              ),
+                      child: UserAvatar(
+                        size: context.rs(34),
+                        background: chipBg,
+                        foreground: fg,
+                        border: chipBorder,
                       ),
                     ),
                   ),
@@ -1160,62 +1141,147 @@ final class _TrioLightCard extends StatelessWidget {
 
 /* ─────────────────────────── Greeting ─────────────────────────── */
 
-final class _Greeting extends StatelessWidget {
+/// Time-aware greeting on a LIVE brand panel: a primary-color gradient
+/// that slowly "breathes" (its focus drifts side to side), the customer's
+/// first name as the hero line, and a time-of-day icon roundel. The
+/// animation only repaints this panel (AnimatedBuilder + RepaintBoundary;
+/// the text/icon subtree is built once and passed as `child`), so it costs
+/// a small gradient fill per frame — nothing else in the page rebuilds.
+final class _Greeting extends StatefulWidget {
   const _Greeting({required this.lang});
 
   final String lang;
+
+  @override
+  State<_Greeting> createState() => _GreetingState();
+}
+
+final class _GreetingState extends State<_Greeting>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _glow = AnimationController(
+    vsync: this,
+    duration: const Duration(seconds: 5),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _glow.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final user = context.select((AuthBloc b) => b.state.user);
     final scheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final hour = DateTime.now().hour;
-    final greeting = hour < 12
-        ? t.acGoodMorning
+    final (greeting, timeIcon) = hour < 12
+        ? (t.acGoodMorning, Icons.light_mode_rounded)
         : hour < 17
-        ? t.acGoodAfternoon
-        : t.acGoodEvening;
-    final first = (user?.displayName(lang) ?? '').split(' ').firstOrNull ?? '';
+            ? (t.acGoodAfternoon, Icons.wb_sunny_rounded)
+            : (t.acGoodEvening, Icons.dark_mode_rounded);
+    final first =
+        (user?.displayName(widget.lang) ?? '').split(' ').firstOrNull ?? '';
 
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        context.rs(20),
-        context.rs(16),
-        context.rs(20),
-        context.rs(4),
-      ),
+    // Static subtree — built ONCE, animated gradient paints behind it.
+    final content = Padding(
+      padding: EdgeInsets.all(context.rs(16)),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  first.isEmpty ? greeting : '$greeting،\n$first',
+                  '$greeting 👋',
                   style: TextStyle(
-                    fontSize: context.rf(17.5),
-                    height: 1.2,
+                    fontSize: context.rf(12.5),
                     fontWeight: FontWeight.w800,
+                    color: scheme.primary,
                   ),
                 ),
+                if (first.isNotEmpty) ...[
+                  SizedBox(height: context.rs(2)),
+                  Text(
+                    first,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: context.rf(22),
+                      height: 1.15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                ],
                 SizedBox(height: context.rs(4)),
                 Text(
                   t.acGreetingSub,
                   style: TextStyle(
-                    fontSize: context.rf(12),
+                    fontSize: context.rf(11.5),
                     height: 1.4,
-                    color: scheme.onSurface.withValues(alpha: 0.55),
+                    color: scheme.onSurface.withValues(alpha: 0.6),
                   ),
                 ),
               ],
             ),
           ),
-          SizedBox(width: context.rs(10)),
+          SizedBox(width: context.rs(12)),
+          // Time-of-day roundel on solid brand color.
+          Container(
+            width: context.rs(46),
+            height: context.rs(46),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(timeIcon, size: 22, color: scheme.onPrimary),
+          ),
         ],
       ),
     );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        context.rs(16),
+        context.rs(14),
+        context.rs(16),
+        context.rs(4),
+      ),
+      child: RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _glow,
+          child: content,
+          builder: (context, child) {
+            // Breathing brand wash: the gradient origin drifts across the
+            // panel and back. Flat — no shadow, no border.
+            final v = _glow.value;
+            return DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: AlignmentDirectional(-1 + v * 1.2, -1),
+                  end: AlignmentDirectional(1, 1 - v * 0.6),
+                  colors: isDark
+                      ? [
+                          scheme.primary.withValues(alpha: 0.24),
+                          const Color(0xFF15171C),
+                        ]
+                      : [
+                          scheme.primary.withValues(alpha: 0.16),
+                          scheme.primary.withValues(alpha: 0.03),
+                        ],
+                ),
+              ),
+              child: child,
+            );
+          },
+        ),
+      ),
+    ).animate().fadeIn(duration: 320.ms, curve: Curves.easeOut).slideY(
+        begin: 0.05, end: 0, duration: 340.ms, curve: Curves.easeOutCubic);
   }
 }
 
@@ -3062,7 +3128,7 @@ final class _ProtectionForCar extends StatelessWidget {
               SizedBox(height: context.rs(14)),
               if (loading)
                 SkeletonRail(
-                  height: context.rs(268),
+                  height: context.rs(248),
                   itemWidth: context.rs(236),
                 )
               else if (packages.isEmpty)
@@ -3072,7 +3138,7 @@ final class _ProtectionForCar extends StatelessWidget {
                 )
               else
                 CardRail(
-                  height: context.rs(268),
+                  height: context.rs(248),
                   itemWidth: context.rs(236),
                   itemCount: packages.length,
                   itemBuilder: (context, i) {
@@ -3101,21 +3167,92 @@ final class _ProtectionForCar extends StatelessWidget {
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
                             padding: EdgeInsets.all(context.rs(15)),
+                            // Clipped to the rounded shape: the watermark
+                            // below is deliberately bled past the corner.
+                            clipBehavior: Clip.antiAlias,
                             // Tier-colored overlay wash over the card surface.
                             decoration: softCardDecoration(
                               context,
                               radius: 20,
                               tint: tier.color,
                             ),
-                            child: Column(
+                            child: Stack(
+                              // Tight constraints on the content column so it
+                              // fills the card exactly as it did before the
+                              // watermark layer was introduced.
+                              fit: StackFit.expand,
+                              children: [
+                                // Brand emblem bled into the TOP-start corner
+                                // at a whisper of opacity — signs the package
+                                // as ours without competing with the content.
+                                PositionedDirectional(
+                                  top: -context.rs(18),
+                                  start: -context.rs(20),
+                                  child: BrandMark(
+                                    size: context.rs(104),
+                                    color: tier.deep,
+                                    opacity: isDark ? 0.07 : 0.05,
+                                  ),
+                                ),
+                                Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Name leads the card and the shield moves to
+                                // the far side: the old layout burned a whole
+                                // band on an icon before the customer ever
+                                // read which package they were looking at.
                                 Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            p.name(lang),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: context.rf(13.5),
+                                              fontWeight: FontWeight.w800,
+                                              height: 1.25,
+                                            ),
+                                          ),
+                                          if (i == 0) ...[
+                                            SizedBox(height: context.rs(5)),
+                                            Container(
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: context.rs(8),
+                                                vertical: context.rs(3),
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: tier.color.withValues(
+                                                  alpha: isDark ? 0.3 : 0.18,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(999),
+                                              ),
+                                              child: Text(
+                                                t.protPopular,
+                                                style: TextStyle(
+                                                  fontSize: context.rf(8.5),
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.6,
+                                                  color: isDark
+                                                      ? tier.color
+                                                      : tier.deep,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    SizedBox(width: context.rs(8)),
                                     Container(
-                                      width: context.rs(42),
-                                      height: context.rs(42),
+                                      width: context.rs(34),
+                                      height: context.rs(34),
                                       decoration: BoxDecoration(
                                         color: tier.color.withValues(
                                           alpha: isDark ? 0.3 : 0.18,
@@ -3124,50 +3261,13 @@ final class _ProtectionForCar extends StatelessWidget {
                                       ),
                                       child: Icon(
                                         Icons.verified_user_rounded,
-                                        size: 19,
+                                        size: 17,
                                         color: isDark ? tier.color : tier.deep,
                                       ),
                                     ),
-                                    const Spacer(),
-                                    if (i == 0)
-                                      Container(
-                                        padding: EdgeInsets.symmetric(
-                                          horizontal: context.rs(9),
-                                          vertical: context.rs(4),
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: tier.color.withValues(
-                                            alpha: isDark ? 0.3 : 0.18,
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            999,
-                                          ),
-                                        ),
-                                        child: Text(
-                                          t.protPopular,
-                                          style: TextStyle(
-                                            fontSize: context.rf(8.5),
-                                            fontWeight: FontWeight.w800,
-                                            letterSpacing: 0.6,
-                                            color: isDark
-                                                ? tier.color
-                                                : tier.deep,
-                                          ),
-                                        ),
-                                      ),
                                   ],
                                 ),
-                                SizedBox(height: context.rs(13)),
-                                Text(
-                                  p.name(lang),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: context.rf(13.5),
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                ),
-                                SizedBox(height: context.rs(5)),
+                                SizedBox(height: context.rs(8)),
                                 Expanded(
                                   child: Text(
                                     p.description(lang).replaceAll('\n', ' '),
@@ -3209,6 +3309,8 @@ final class _ProtectionForCar extends StatelessWidget {
                                     onPressed: open,
                                     child: Text(t.protSelectPackage),
                                   ),
+                                ),
+                              ],
                                 ),
                               ],
                             ),
@@ -3350,7 +3452,10 @@ final class _OffersTabsBody extends StatelessWidget {
                 )
               else
                 CardRail(
-                  height: context.rs(392),
+                  // Trimmed with the reserved excerpt slot in OfferCard so
+                  // the countdown sits just under the text instead of after
+                  // a dead gap.
+                  height: context.rs(368),
                   itemWidth: context.rs(310),
                   itemCount: filtered.length,
                   itemBuilder: (context, i) => OfferCard(

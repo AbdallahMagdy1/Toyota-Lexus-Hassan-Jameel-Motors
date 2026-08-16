@@ -422,11 +422,19 @@ final class HomeState extends Equatable {
 
 /// One tracked order across the three cycles (maintenance reservation /
 /// protection & shading / parts orders) — App_Orders_TrackingSnapshot.
+/// One tracked order. For `kind == 'maintenance'` this is the MERGED SERVICE
+/// JOURNEY: the booking (Rsrv-…), the reception (Rec-…) and the workshop job
+/// order (JobOrd-…) as one row across seven stages, so a single visit reads
+/// as one progressing card instead of three unrelated ones.
 final class TrackedOrder extends Equatable {
   const TrackedOrder({
     required this.kind,
     this.refNo,
     this.guid,
+    this.reservationNo,
+    this.receptionNo,
+    this.jobOrderNo,
+    this.jobOrderGuid,
     this.titleAr,
     this.titleEn,
     this.statusAr,
@@ -434,16 +442,35 @@ final class TrackedOrder extends Equatable {
     this.stageIndex = 0,
     this.stageCount = 1,
     this.isTerminal = false,
+    this.isCanceled = false,
+    this.needsAgreement = false,
+    this.agreementUrl,
+    this.needsEvaluation = false,
+    this.evaluationGuid,
     this.needsPayment = false,
     this.total,
     this.sadadNumber,
     this.paymentUrl,
+    this.plateNo,
     this.orderDate,
+    this.etaDate,
+    this.dateOut,
   });
 
   final String kind; // maintenance | protection | order
   final String? refNo;
   final String? guid;
+
+  /// The document chain behind a maintenance journey (any may be null).
+  final String? reservationNo;
+  final String? receptionNo;
+  final String? jobOrderNo;
+
+  /// Key for the job-card payment sheet. The workshop cycle is paid there
+  /// (full amount / Tabby / Tamara / Sadad), not through a payment link —
+  /// the ERP never fills url_payment on a job order.
+  final String? jobOrderGuid;
+
   final String? titleAr;
   final String? titleEn;
   final String? statusAr;
@@ -451,11 +478,29 @@ final class TrackedOrder extends Equatable {
   final int stageIndex;
   final int stageCount;
   final bool isTerminal;
+  final bool isCanceled;
+
+  /// The repair agreement is waiting on the customer — [agreementUrl] is the
+  /// same short link the reception SMS carries.
+  final bool needsAgreement;
+  final String? agreementUrl;
+
+  /// The car is delivered but the post-service rating is still open. The
+  /// guid is the job card's — the same one the website's
+  /// /ServiceEvaluation/{guid} link uses.
+  final bool needsEvaluation;
+  final String? evaluationGuid;
+
   final bool needsPayment;
   final double? total;
   final String? sadadNumber;
   final String? paymentUrl;
+  final String? plateNo;
   final DateTime? orderDate;
+  final DateTime? etaDate;
+  final DateTime? dateOut;
+
+  bool get isJourney => kind == 'maintenance' && stageCount >= 7;
 
   String title(String lang) =>
       (lang == 'ar' ? titleAr : titleEn) ?? titleEn ?? titleAr ?? '';
@@ -466,6 +511,10 @@ final class TrackedOrder extends Equatable {
         kind: _s(j['kind']) ?? '',
         refNo: _s(j['refNo']),
         guid: _s(j['guid']),
+        reservationNo: _s(j['reservationNo']),
+        receptionNo: _s(j['receptionNo']),
+        jobOrderNo: _s(j['jobOrderNo']),
+        jobOrderGuid: _s(j['jobOrderGuid']),
         titleAr: _s(j['titleAr']),
         titleEn: _s(j['titleEn']),
         statusAr: _s(j['statusAr']),
@@ -473,13 +522,23 @@ final class TrackedOrder extends Equatable {
         stageIndex: _i(j['stageIndex']) ?? 0,
         stageCount: _i(j['stageCount']) ?? 1,
         isTerminal: j['isTerminal'] == true,
+        isCanceled: j['isCanceled'] == true,
+        needsAgreement: j['needsAgreement'] == true,
+        agreementUrl: _s(j['agreementUrl']),
+        needsEvaluation: j['needsEvaluation'] == true,
+        evaluationGuid: _s(j['evaluationGuid']),
         needsPayment: j['needsPayment'] == true,
         total: _d(j['total']),
         sadadNumber: _s(j['sadadNumber']),
         paymentUrl: _s(j['paymentUrl']),
+        plateNo: _s(j['plateNo']),
         orderDate: _dt(j['orderDate']),
+        etaDate: _dt(j['etaDate']),
+        dateOut: _dt(j['dateOut']),
       );
 
   @override
-  List<Object?> get props => [kind, refNo, statusAr, statusEn];
+  List<Object?> get props =>
+      [kind, refNo, statusAr, statusEn, stageIndex, needsAgreement,
+       needsEvaluation];
 }

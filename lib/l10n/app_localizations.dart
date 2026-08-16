@@ -2093,7 +2093,7 @@ abstract class AppLocalizations {
   /// No description provided for @protTitle.
   ///
   /// In en, this message translates to:
-  /// **'Protection & polishing'**
+  /// **'Protection & shading'**
   String get protTitle;
 
   /// No description provided for @protSubtitle.
@@ -3835,6 +3835,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Nothing to track yet.'**
   String get trkHubEmpty;
+
+  /// No description provided for @trkStageBooked.
+  ///
+  /// In en, this message translates to:
+  /// **'Booked'**
+  String get trkStageBooked;
+
+  /// No description provided for @trkStageReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Received'**
+  String get trkStageReceived;
+
+  /// No description provided for @trkStageAgreement.
+  ///
+  /// In en, this message translates to:
+  /// **'Agreement'**
+  String get trkStageAgreement;
+
+  /// No description provided for @trkStageInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'In progress'**
+  String get trkStageInProgress;
+
+  /// No description provided for @trkStageQuality.
+  ///
+  /// In en, this message translates to:
+  /// **'Quality check'**
+  String get trkStageQuality;
+
+  /// No description provided for @trkStageReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get trkStageReady;
+
+  /// No description provided for @trkStageDelivered.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered'**
+  String get trkStageDelivered;
+
+  /// No description provided for @trkAgreementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your approval is needed'**
+  String get trkAgreementTitle;
+
+  /// No description provided for @trkAgreementBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Review and sign the repair agreement so the workshop can start.'**
+  String get trkAgreementBody;
+
+  /// No description provided for @trkAgreementCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Review agreement'**
+  String get trkAgreementCta;
+
+  /// No description provided for @trkEta.
+  ///
+  /// In en, this message translates to:
+  /// **'Expected ready'**
+  String get trkEta;
+
+  /// No description provided for @trkCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get trkCanceled;
+
+  /// No description provided for @trkRateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'How did we do?'**
+  String get trkRateTitle;
+
+  /// No description provided for @trkRateBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your car is delivered. Rate the service — it takes a minute.'**
+  String get trkRateBody;
+
+  /// No description provided for @trkRateCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the service'**
+  String get trkRateCta;
+
+  /// No description provided for @evalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Service evaluation'**
+  String get evalTitle;
+
+  /// No description provided for @evalNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Anything else you\'d like to add?'**
+  String get evalNote;
+
+  /// No description provided for @evalNoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your notes (optional)'**
+  String get evalNoteHint;
+
+  /// No description provided for @evalTellUs.
+  ///
+  /// In en, this message translates to:
+  /// **'Tell us more'**
+  String get evalTellUs;
+
+  /// No description provided for @evalSubmit.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit evaluation'**
+  String get evalSubmit;
+
+  /// No description provided for @evalMissingAnswers.
+  ///
+  /// In en, this message translates to:
+  /// **'Please answer all required questions.'**
+  String get evalMissingAnswers;
+
+  /// No description provided for @evalThanksTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thank you!'**
+  String get evalThanksTitle;
+
+  /// No description provided for @evalThanksBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Your evaluation has been recorded. We value your feedback.'**
+  String get evalThanksBody;
+
+  /// No description provided for @evalUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Evaluation unavailable'**
+  String get evalUnavailable;
+
+  /// No description provided for @evalUnavailableBody.
+  ///
+  /// In en, this message translates to:
+  /// **'This evaluation link is no longer valid.'**
+  String get evalUnavailableBody;
 
   /// No description provided for @mbuyType.
   ///

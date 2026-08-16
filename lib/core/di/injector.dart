@@ -13,6 +13,7 @@ import '../../features/onboarding/data/onboarding_repository.dart';
 import '../../features/online_store/bloc/collections_cubits.dart';
 import '../../features/online_store/data/online_store_repository.dart';
 import '../../features/notifications/notifications.dart';
+import '../../features/profile/bloc/avatar_cubit.dart';
 import '../../features/settings/bloc/locale_cubit.dart';
 import '../../features/vehicles/data/vehicles_repository.dart';
 import '../../shared/navigation/side_menu.dart';
@@ -60,6 +61,9 @@ Future<void> setupInjector({String brand = 'toyota'}) async {
     ..registerLazySingleton<PartsCartCubit>(() => PartsCartCubit(sl()))
     ..registerLazySingleton<MenuCubit>(MenuCubit.new)
     ..registerLazySingleton<NotificationsCubit>(() => NotificationsCubit(prefs))
+    // App-wide profile photo: the side menu and the home app bar render long
+    // before the profile screen exists, so the blob is fetched once here.
+    ..registerLazySingleton<AvatarCubit>(() => AvatarCubit(sl()))
     ..registerLazySingleton<GoRouter>(
       () => buildRouter(authBloc: sl(), store: sl()),
     );

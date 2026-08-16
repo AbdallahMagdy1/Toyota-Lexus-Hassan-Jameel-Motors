@@ -346,16 +346,27 @@ final class _BookingCubit extends Cubit<_BookingState> {
   Future<void> _loadPackages(String? mainId) async {
     if (mainId == null) return;
     emit(state.copyWith(packagesLoading: true));
-    // The website's BookingCard loads the km schedule WITHOUT a model code —
-    // sending one can filter the list to nothing for unmapped models.
-    var packages = await _repo.periodicServices(mainId, null);
-    if (packages.isEmpty) {
-      final modelCode =
-          state.mine ? state.myCar?.modelCode : _anotherModel()?.modelCode;
-      if ((modelCode ?? '').isNotEmpty) {
-        packages = await _repo.periodicServices(mainId, modelCode);
-      }
+    // THIS car's schedule first, the full catalog only as a fallback. The
+    // website loads the km list without a model code, which is why the sheet
+    // used to show all 22 generic packages (1000…70000 km) instead of the 7
+    // that actually apply — e.g. model FG212 returns 7. An unmapped model
+    // still returns nothing, so the generic catalog remains the safety net.
+    final modelCode =
+        state.mine ? state.myCar?.modelCode : _anotherModel()?.modelCode;
+    var packages = const <Map<String, dynamic>>[];
+    if ((modelCode ?? '').isNotEmpty) {
+      packages = await _repo.periodicServices(mainId, modelCode);
     }
+    if (packages.isEmpty) {
+      packages = await _repo.periodicServices(mainId, null);
+    }
+    // The ERP returns them unordered (1000, 5000, 10000, 12000, 36000…);
+    // a service schedule only reads as a schedule when it climbs.
+    packages = [...packages]..sort((a, b) {
+        final ka = (a['km'] as num?)?.toInt() ?? 1 << 30;
+        final kb = (b['km'] as num?)?.toInt() ?? 1 << 30;
+        return ka.compareTo(kb);
+      });
     if (isClosed) return;
     emit(state.copyWith(packages: packages, packagesLoading: false));
   }
@@ -909,24 +920,11 @@ final class _Step1 extends StatelessWidget {
               style: TextStyle(
                   fontSize: context.rf(13), fontWeight: FontWeight.w800)),
           SizedBox(height: context.rs(8)),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final p in state.packages)
-                ChoiceChip(
-                  label: Text(
-                    p['km'] != null
-                        ? '${p['km']} KM'
-                        : svcName(p),
-                    style: TextStyle(fontSize: context.rf(11.5)),
-                  ),
-                  selected:
-                      state.packageId == p['serviceId']?.toString(),
-                  onSelected: (_) =>
-                      cubit.selectPackage(p['serviceId']?.toString()),
-                ),
-            ],
+          _KmScheduleTable(
+            packages: state.packages,
+            selectedId: state.packageId,
+            onSelect: cubit.selectPackage,
+            labelFor: svcName,
           ),
         ],
       ],
@@ -945,6 +943,165 @@ final class _Step1 extends StatelessWidget {
       return Icons.speed_rounded;
     }
     return Icons.build_outlined;
+  }
+}
+
+/// The km service schedule as an actual TABLE — a bordered card split by
+/// hairlines into three columns, rows climbing 1,000 → 70,000 km. It replaces
+/// a loose Wrap of chips that ran together into an unreadable block: with no
+/// grid, no order and no separators there was nothing to tell one service
+/// interval from the next.
+final class _KmScheduleTable extends StatelessWidget {
+  const _KmScheduleTable({
+    required this.packages,
+    required this.selectedId,
+    required this.onSelect,
+    required this.labelFor,
+  });
+
+  final List<Map<String, dynamic>> packages;
+  final String? selectedId;
+  final ValueChanged<String?> onSelect;
+  final String Function(Map<String, dynamic>) labelFor;
+
+  static const _perRow = 3;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final line = scheme.outline.withValues(alpha: 0.35);
+
+    // Chunk into rows of three, padding the tail so the grid stays square.
+    final rows = <List<Map<String, dynamic>?>>[];
+    for (var i = 0; i < packages.length; i += _perRow) {
+      final row = <Map<String, dynamic>?>[
+        for (var j = i; j < i + _perRow; j++)
+          j < packages.length ? packages[j] : null,
+      ];
+      rows.add(row);
+    }
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        border: Border.all(color: line),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          for (final (r, row) in rows.indexed) ...[
+            if (r > 0) Container(height: 1, color: line),
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final (c, p) in row.indexed) ...[
+                    if (c > 0) Container(width: 1, color: line),
+                    Expanded(
+                      child: p == null
+                          ? const SizedBox.shrink()
+                          : _KmCell(
+                              package: p,
+                              selected:
+                                  selectedId == p['serviceId']?.toString(),
+                              onTap: () =>
+                                  onSelect(p['serviceId']?.toString()),
+                              labelFor: labelFor,
+                            ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+final class _KmCell extends StatelessWidget {
+  const _KmCell({
+    required this.package,
+    required this.selected,
+    required this.onTap,
+    required this.labelFor,
+  });
+
+  final Map<String, dynamic> package;
+  final bool selected;
+  final VoidCallback onTap;
+  final String Function(Map<String, dynamic>) labelFor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final km = (package['km'] as num?)?.toInt();
+
+    return Material(
+      color: selected
+          ? scheme.primary.withValues(alpha: 0.12)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: context.rs(11)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (km != null) ...[
+                Text(
+                  // Grouped digits read as a distance, not an id.
+                  _grouped(km),
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                    fontSize: context.rf(14),
+                    fontWeight: FontWeight.w800,
+                    height: 1.1,
+                    color: selected ? scheme.primary : scheme.onSurface,
+                  ),
+                ),
+                SizedBox(height: context.rs(2)),
+                Text(
+                  'KM',
+                  style: TextStyle(
+                    fontSize: context.rf(9),
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.8,
+                    color: (selected ? scheme.primary : scheme.onSurface)
+                        .withValues(alpha: 0.55),
+                  ),
+                ),
+              ] else
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: context.rs(6)),
+                  child: Text(
+                    labelFor(package),
+                    maxLines: 2,
+                    textAlign: TextAlign.center,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: context.rf(11),
+                      fontWeight: FontWeight.w700,
+                      color: selected ? scheme.primary : scheme.onSurface,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _grouped(int v) {
+    final s = v.toString();
+    final b = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) b.write(',');
+      b.write(s[i]);
+    }
+    return b.toString();
   }
 }
 

@@ -1045,7 +1045,7 @@ class AppLocalizationsAr extends AppLocalizations {
       'قطعة أصلية بضمان الوكيل. الدفع الإلكتروني قادم مع وحدة المدفوعات — وحاليًا يمكنك شراء القطعة من أي فرع من فروع حسن جميل.';
 
   @override
-  String get protTitle => 'الحماية والتلميع';
+  String get protTitle => 'الحماية والتظليل';
 
   @override
   String get protSubtitle => 'اختر سيارتك لعرض الباقات المتاحة.';
@@ -1929,13 +1929,90 @@ class AppLocalizationsAr extends AppLocalizations {
   String get trkKindMaintenance => 'الصيانة';
 
   @override
-  String get trkKindProtection => 'الحماية والتلميع';
+  String get trkKindProtection => 'الحماية والتظليل';
 
   @override
   String get trkKindOrders => 'طلباتي';
 
   @override
   String get trkHubEmpty => 'لا توجد طلبات للمتابعة.';
+
+  @override
+  String get trkStageBooked => 'الحجز';
+
+  @override
+  String get trkStageReceived => 'الاستلام';
+
+  @override
+  String get trkStageAgreement => 'الاتفاقية';
+
+  @override
+  String get trkStageInProgress => 'التنفيذ';
+
+  @override
+  String get trkStageQuality => 'فحص الجودة';
+
+  @override
+  String get trkStageReady => 'جاهزة';
+
+  @override
+  String get trkStageDelivered => 'التسليم';
+
+  @override
+  String get trkAgreementTitle => 'بانتظار موافقتك';
+
+  @override
+  String get trkAgreementBody =>
+      'راجع عرض الإصلاح ووقّع الاتفاقية ليبدأ الورشة بالعمل.';
+
+  @override
+  String get trkAgreementCta => 'عرض الاتفاقية';
+
+  @override
+  String get trkEta => 'الجاهزية المتوقعة';
+
+  @override
+  String get trkCanceled => 'ملغي';
+
+  @override
+  String get trkRateTitle => 'كيف كانت خدمتنا؟';
+
+  @override
+  String get trkRateBody =>
+      'تم تسليم سيارتك. قيّم الخدمة — لن يستغرق الأمر دقيقة.';
+
+  @override
+  String get trkRateCta => 'قيّم الخدمة';
+
+  @override
+  String get evalTitle => 'تقييم الخدمة';
+
+  @override
+  String get evalNote => 'هل لديك ما تود إضافته؟';
+
+  @override
+  String get evalNoteHint => 'ملاحظاتك (اختياري)';
+
+  @override
+  String get evalTellUs => 'أخبرنا بالتفاصيل';
+
+  @override
+  String get evalSubmit => 'إرسال التقييم';
+
+  @override
+  String get evalMissingAnswers => 'من فضلك أجب على جميع الأسئلة المطلوبة.';
+
+  @override
+  String get evalThanksTitle => 'شكراً لك!';
+
+  @override
+  String get evalThanksBody => 'تم تسجيل تقييمك. رأيك يهمنا.';
+
+  @override
+  String get evalUnavailable => 'التقييم غير متاح';
+
+  @override
+  String get evalUnavailableBody => 'رابط التقييم هذا لم يعد صالحاً.';
 
   @override
   String get mbuyType => 'نوع الشراء';

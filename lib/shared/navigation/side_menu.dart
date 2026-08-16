@@ -8,6 +8,7 @@ import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/settings/bloc/locale_cubit.dart';
 import '../../features/settings/bloc/theme_cubit.dart';
 import '../../l10n/app_localizations.dart';
+import '../widgets/user_avatar.dart';
 
 /// Open/close state of the side menu.
 final class MenuCubit extends Cubit<bool> {
@@ -121,16 +122,10 @@ final class SideMenu extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: context.rs(4)),
                 child: Row(
                   children: [
-                    CircleAvatar(
-                      radius: context.rs(17),
-                      backgroundColor: scheme.primary.withValues(alpha: 0.16),
-                      child: Text(
-                        display.characters.first.toUpperCase(),
-                        style: TextStyle(
-                            color: scheme.primary,
-                            fontWeight: FontWeight.w800,
-                            fontSize: context.rf(14)),
-                      ),
+                    UserAvatar(
+                      size: context.rs(34),
+                      background: scheme.primary.withValues(alpha: 0.16),
+                      foreground: scheme.primary,
                     ),
                     SizedBox(width: context.rs(10)),
                     Expanded(

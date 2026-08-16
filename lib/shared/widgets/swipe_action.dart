@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'brand_logo.dart';
+
 /// The reference swipe control: dark rounded track, a white circular thumb
-/// carrying a CAR icon in the brand color, the label centered and animated
+/// carrying the BRAND EMBLEM in the brand color, the label centered and animated
 /// chevrons on the end. Dragging fills the track with the brand color;
 /// releasing early — or a failed [onConfirm] — springs the thumb back.
 final class SwipeAction extends StatefulWidget {
@@ -130,7 +132,7 @@ final class _SwipeActionState extends State<SwipeAction> {
                   ]),
                 ),
               ),
-              // White circular thumb with the brand car icon.
+              // White circular thumb carrying the brand emblem.
               AnimatedPositionedDirectional(
                 duration: _snapping
                     ? const Duration(milliseconds: 240)
@@ -145,8 +147,9 @@ final class _SwipeActionState extends State<SwipeAction> {
                     color: Colors.white,
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.directions_car_rounded,
-                      color: scheme.primary, size: 22),
+                  child: Center(
+                    child: BrandMark(size: 22, color: scheme.primary),
+                  ),
                 ),
               ),
             ]),

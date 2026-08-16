@@ -453,7 +453,7 @@ final class _HubOffers extends StatelessWidget {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       SectionHeader(title: t.mhOffers),
       CardRail(
-        height: context.rs(392),
+        height: context.rs(368),
         itemWidth: context.rs(310),
         itemCount: offers.length,
         itemBuilder: (context, i) => OfferCard(

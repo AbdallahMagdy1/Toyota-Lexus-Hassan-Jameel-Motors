@@ -335,7 +335,27 @@ final class OfferCard extends StatelessWidget {
             ),
           ],
         ),
-        if (offer.excerpt(lang).isNotEmpty) ...[
+        // In rail mode the excerpt slot is ALWAYS reserved at two lines, even
+        // when the offer has none. Without it, an excerpt-less offer left the
+        // Spacer below to swallow ~65px and tear a hole through the middle of
+        // the card; reserving it makes every card the same height, so the
+        // Spacer collapses to near-zero and the rail reads as one tidy strip.
+        if (expand) ...[
+          SizedBox(height: context.rs(6)),
+          SizedBox(
+            height: context.rf(11.5) * 1.5 * 2,
+            child: Text(
+              offer.excerpt(lang),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: context.rf(11.5),
+                color: scheme.onSurface.withValues(alpha: 0.6),
+                height: 1.5,
+              ),
+            ),
+          ),
+        ] else if (offer.excerpt(lang).isNotEmpty) ...[
           SizedBox(height: context.rs(6)),
           Text(
             offer.excerpt(lang),

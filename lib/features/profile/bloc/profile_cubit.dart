@@ -4,9 +4,11 @@ import 'dart:typed_data' show Uint8List;
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../core/di/injector.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../data/profile_repository.dart';
 import '../domain/profile_models.dart';
+import 'avatar_cubit.dart';
 
 enum ProfileStatus { loading, ready }
 
@@ -112,7 +114,10 @@ final class ProfileCubit extends Cubit<ProfileState> {
     final b64 = await _repo.fetchImage(guid);
     if (isClosed || b64 == null) return;
     try {
-      emit(state.copyWith(avatar: base64Decode(b64)));
+      final bytes = base64Decode(b64);
+      emit(state.copyWith(avatar: bytes));
+      // Share it with the app-wide copy the side menu and app bar read.
+      sl<AvatarCubit>().set(bytes);
     } on FormatException {
       // Corrupt/legacy value — keep the initial-letter avatar.
     }
@@ -126,11 +131,12 @@ final class ProfileCubit extends Cubit<ProfileState> {
     if (guid == null || state.avatarBusy) return false;
     emit(state.copyWith(avatarBusy: true));
     final result = await _repo.updateImage(guid: guid, logoBase64: base64);
+    final bytes = result.ok ? base64Decode(base64) : null;
+    // Push to the shared copy first so the side menu and app bar update even
+    // if this screen is popped before the emit lands.
+    if (bytes != null) sl<AvatarCubit>().set(bytes);
     if (isClosed) return result.ok;
-    emit(state.copyWith(
-      avatarBusy: false,
-      avatar: result.ok ? base64Decode(base64) : null,
-    ));
+    emit(state.copyWith(avatarBusy: false, avatar: bytes));
     return result.ok;
   }
 

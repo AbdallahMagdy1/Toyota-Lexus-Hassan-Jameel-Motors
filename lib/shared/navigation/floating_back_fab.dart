@@ -30,21 +30,49 @@ final class _FloatingBackFabState extends State<FloatingBackFab> {
 
   void _go() {
     HapticFeedback.selectionClick();
+    // Pushed pages (context.push — parts, tracking, offers…) pop off the
+    // router stack; go()-based navigation walks the manual history instead.
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
     final prev = NavHistory.back(widget.location);
     context.go(prev ?? Routes.home);
   }
 
+  /// The route ACTUALLY on top. For `context.push` the shell keeps building
+  /// with the base tab location (that's why the nav bar stays up), so the
+  /// pushed page's path is only visible on the router's current uri.
+  String _topLocation() {
+    try {
+      return GoRouter.of(context)
+          .routerDelegate
+          .currentConfiguration
+          .uri
+          .path;
+    } catch (_) {
+      return widget.location;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final location = widget.location;
-    final visible = NavHistory.participates(location) &&
-        !FloatingBackFab._roots.contains(location) &&
-        NavHistory.hasBack(location);
+    final top = _topLocation();
+    bool canPop = false;
+    try {
+      canPop = GoRouter.of(context).canPop();
+    } catch (_) {}
+    final visible = NavHistory.participates(top) &&
+        !FloatingBackFab._roots.contains(top) &&
+        (canPop || NavHistory.hasBack(widget.location));
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Sit above the floating nav pill on tab routes, hug the edge elsewhere.
-    final bottom =
-        AppBottomNav.showsOn(location) ? context.rs(96) : context.rs(24);
+    // Sit above the floating nav pill whenever it is on screen — the bar
+    // follows the BASE location, which stays a tab route under pushed pages.
+    final bottom = AppBottomNav.showsOn(widget.location)
+        ? context.rs(96)
+        : context.rs(24);
 
     return AnimatedPositionedDirectional(
       duration: const Duration(milliseconds: 260),
