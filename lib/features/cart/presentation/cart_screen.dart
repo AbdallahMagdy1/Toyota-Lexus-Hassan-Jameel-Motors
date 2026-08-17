@@ -265,9 +265,8 @@ final class _CartRow extends StatelessWidget {
                   icon: Icon(
                     highlighted
                         ? Icons.delete_outline_rounded
-                        : (Directionality.of(context) == TextDirection.rtl
-                            ? Icons.arrow_back_rounded
-                            : Icons.arrow_forward_rounded),
+                        // Auto-mirrors in RTL — no manual flip.
+                        : Icons.arrow_forward_rounded,
                     size: 20,
                     color: fg.withValues(alpha: highlighted ? 1 : 0.6),
                   ),

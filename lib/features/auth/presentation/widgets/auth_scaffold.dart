@@ -304,9 +304,8 @@ final class _AuthScaffoldView extends StatelessWidget {
                         width: context.rs(38),
                         height: context.rs(38),
                         child: Icon(
-                          Directionality.of(context) == TextDirection.rtl
-                              ? Icons.arrow_forward_rounded
-                              : Icons.arrow_back_rounded,
+                          // Auto-mirrors in RTL — no manual flip.
+                          Icons.arrow_back_rounded,
                           size: 18,
                           color: Colors.white,
                         ),

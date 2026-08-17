@@ -221,19 +221,26 @@ final class OfferCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
-    // Services-mock look: card-less — a big rounded photo with the text
-    // block and soft pill CTA below it. Press feedback via Pressable.
+    // One bordered container per offer — a hairline outline wrapping the
+    // photo, title, countdown and CTA together. Flat single layer.
     return Pressable(
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => showOfferDetailSheet(context, offer.slug),
-        child: Column(
+        child: Container(
+          padding: EdgeInsets.all(context.rs(8)),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+                color: scheme.outline.withValues(alpha: 0.55)),
+          ),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(14),
                   child: Stack(children: [
                     HomeImage(
                         url: offer.image(lang),
@@ -294,6 +301,7 @@ final class OfferCard extends StatelessWidget {
             ),
             _content(context, t, scheme),
           ],
+          ),
         ),
       ),
     );
@@ -335,40 +343,10 @@ final class OfferCard extends StatelessWidget {
             ),
           ],
         ),
-        // In rail mode the excerpt slot is ALWAYS reserved at two lines, even
-        // when the offer has none. Without it, an excerpt-less offer left the
-        // Spacer below to swallow ~65px and tear a hole through the middle of
-        // the card; reserving it makes every card the same height, so the
-        // Spacer collapses to near-zero and the rail reads as one tidy strip.
-        if (expand) ...[
-          SizedBox(height: context.rs(6)),
-          SizedBox(
-            height: context.rf(11.5) * 1.5 * 2,
-            child: Text(
-              offer.excerpt(lang),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: context.rf(11.5),
-                color: scheme.onSurface.withValues(alpha: 0.6),
-                height: 1.5,
-              ),
-            ),
-          ),
-        ] else if (offer.excerpt(lang).isNotEmpty) ...[
-          SizedBox(height: context.rs(6)),
-          Text(
-            offer.excerpt(lang),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: context.rf(11.5),
-              color: scheme.onSurface.withValues(alpha: 0.6),
-              height: 1.5,
-            ),
-          ),
-        ],
-        if (expand) const Spacer() else SizedBox(height: context.rs(12)),
+        // No excerpt — the countdown sits right under the title with one
+        // small breath of space (Spacer only absorbs rail-height slack).
+        SizedBox(height: context.rs(10)),
+        if (expand) const Spacer(),
         // Full-width countdown strip (mock's DAYS/HRS/MIN/SEC panel).
         OfferCountdown(endDate: offer.endDate, now: now),
         SizedBox(height: context.rs(10)),
@@ -394,9 +372,8 @@ final class OfferCard extends StatelessWidget {
                   ),
                   SizedBox(width: context.rs(7)),
                   Icon(
-                    Directionality.of(context) == TextDirection.rtl
-                        ? Icons.arrow_back_rounded
-                        : Icons.arrow_forward_rounded,
+                    // Auto-mirrors in RTL — no manual flip.
+                    Icons.arrow_forward_rounded,
                     size: 15,
                     color: scheme.primary,
                   ),
@@ -409,7 +386,7 @@ final class OfferCard extends StatelessWidget {
     );
     final padded = Padding(
       padding: EdgeInsets.fromLTRB(
-          context.rs(4), context.rs(12), context.rs(4), context.rs(4)),
+          context.rs(4), context.rs(10), context.rs(4), context.rs(2)),
       child: column,
     );
     return expand ? Expanded(child: padded) : padded;

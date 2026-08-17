@@ -97,9 +97,8 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
                     ),
                     onPressed: () => showSellCarWizard(context),
                     icon: Icon(
-                        Directionality.of(context) == TextDirection.rtl
-                            ? Icons.arrow_back_rounded
-                            : Icons.arrow_forward_rounded,
+                        // Auto-mirrors in RTL — no manual flip.
+                        Icons.arrow_forward_rounded,
                         size: 17),
                     label: Text(t.ucSellCta),
                   ),

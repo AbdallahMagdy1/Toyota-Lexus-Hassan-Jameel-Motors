@@ -130,9 +130,10 @@ final class _SwipeActionState extends State<SwipeAction> {
                       children: [
                         for (final o in [0.35, 0.6, 1.0])
                           Icon(
-                            isRtl
-                                ? Icons.chevron_left_rounded
-                                : Icons.chevron_right_rounded,
+                            // chevron_right AUTO-MIRRORS in RTL
+                            // (matchTextDirection) — a manual isRtl flip
+                            // here double-flips and points the wrong way.
+                            Icons.chevron_right_rounded,
                             size: 18,
                             color:
                                 (_drag > 0.5 ? Colors.white : scheme.primary)

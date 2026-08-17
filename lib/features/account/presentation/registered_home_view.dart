@@ -2397,9 +2397,8 @@ final class _JourneysList extends StatelessWidget {
                         borderRadius: BorderRadius.circular(11),
                       ),
                       child: Icon(
-                        Directionality.of(context) == TextDirection.rtl
-                            ? Icons.arrow_back_rounded
-                            : Icons.arrow_forward_rounded,
+                        // Auto-mirrors in RTL — no manual flip.
+                        Icons.arrow_forward_rounded,
                         size: 15,
                         color: Colors.white,
                       ),
@@ -3363,10 +3362,9 @@ final class _OffersTabsBody extends StatelessWidget {
                 )
               else
                 CardRail(
-                  // Trimmed with the reserved excerpt slot in OfferCard so
-                  // the countdown sits just under the text instead of after
-                  // a dead gap.
-                  height: context.rs(368),
+                  // Compact excerpt-less OfferCard: image + title + timer
+                  // + CTA inside one bordered panel.
+                  height: context.rs(330),
                   itemWidth: context.rs(310),
                   itemCount: filtered.length,
                   itemBuilder: (context, i) => OfferCard(

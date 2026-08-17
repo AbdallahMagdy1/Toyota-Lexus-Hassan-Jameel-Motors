@@ -136,9 +136,8 @@ final class SectionHeader extends StatelessWidget {
                   ),
                   SizedBox(width: context.rs(2)),
                   Icon(
-                    Directionality.of(context) == TextDirection.rtl
-                        ? Icons.chevron_left_rounded
-                        : Icons.chevron_right_rounded,
+                    // Auto-mirrors in RTL — no manual flip.
+                    Icons.chevron_right_rounded,
                     size: 16,
                     color: scheme.primary,
                   ),

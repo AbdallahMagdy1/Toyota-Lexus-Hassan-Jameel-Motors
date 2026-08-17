@@ -158,9 +158,8 @@ final class _Overview extends StatelessWidget {
                       context.rs(12), context.rs(8), context.rs(12), 0),
                   child: Row(children: [
                     SlopeBarButton(
-                      icon: Directionality.of(context) == TextDirection.rtl
-                          ? Icons.chevron_right_rounded
-                          : Icons.chevron_left_rounded,
+                      // Auto-mirrors in RTL — no manual flip.
+                      icon: Icons.chevron_left_rounded,
                       onTap: () => Navigator.of(context).maybePop(),
                     ),
                     const Spacer(),

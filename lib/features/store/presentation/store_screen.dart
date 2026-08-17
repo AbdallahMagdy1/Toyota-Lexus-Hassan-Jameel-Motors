@@ -880,7 +880,7 @@ final class _StoreOffersState extends State<_StoreOffers> {
           )
         else
           CardRail(
-            height: context.rs(368),
+            height: context.rs(330),
             itemWidth: context.rs(310),
             itemCount: offers.length,
             itemBuilder: (context, i) => OfferCard(

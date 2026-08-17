@@ -118,9 +118,9 @@ final class _FloatingBackFabState extends State<FloatingBackFab> {
                   width: context.rs(44),
                   height: context.rs(44),
                   child: Icon(
-                    Directionality.of(context) == TextDirection.rtl
-                        ? Icons.arrow_forward_rounded
-                        : Icons.arrow_back_rounded,
+                    // Auto-mirrors in RTL (matchTextDirection) — flipping
+                    // manually would double-flip.
+                    Icons.arrow_back_rounded,
                     size: 20,
                     color: scheme.primary,
                   ),

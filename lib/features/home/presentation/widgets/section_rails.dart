@@ -127,9 +127,8 @@ final class OnlineStoreRail extends StatelessWidget {
                       height: context.rs(40),
                       color: arrowBg,
                       child: Icon(
-                        Directionality.of(context) == TextDirection.rtl
-                            ? Icons.arrow_back_rounded
-                            : Icons.arrow_forward_rounded,
+                        // Auto-mirrors in RTL — no manual flip.
+                        Icons.arrow_forward_rounded,
                         size: 20,
                         color: arrowFg,
                       ),

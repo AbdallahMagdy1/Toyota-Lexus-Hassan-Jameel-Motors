@@ -331,10 +331,8 @@ final class _ContactView extends StatelessWidget {
                             Text(t.contactOpenMaps),
                             SizedBox(width: context.rs(8)),
                             Icon(
-                              Directionality.of(context) ==
-                                      TextDirection.rtl
-                                  ? Icons.arrow_back_rounded
-                                  : Icons.arrow_forward_rounded,
+                              // Auto-mirrors in RTL — no manual flip.
+                              Icons.arrow_forward_rounded,
                               size: 16,
                             ),
                           ],
