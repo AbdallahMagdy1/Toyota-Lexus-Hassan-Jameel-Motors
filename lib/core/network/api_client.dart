@@ -23,4 +23,7 @@ final class ApiClient {
 
   Future<Response<T>> post<T>(String path, {Object? body}) =>
       dio.post<T>(path, data: body);
+
+  Future<Response<T>> put<T>(String path, {Object? body}) =>
+      dio.put<T>(path, data: body);
 }

@@ -47,6 +47,7 @@ import '../data/account_repository.dart';
 import '../domain/account_models.dart';
 import 'garage_sheets.dart';
 import 'maintenance_booking_sheet.dart';
+import 'reschedule_booking_sheet.dart';
 
 /// The registered-user home — "Your Car, Your Journey": greeting →
 /// dynamic action card → my garage → quick actions (4 + all services) →
@@ -920,10 +921,10 @@ final class _CarQuickTrio extends StatelessWidget {
     if (active == null) return const SizedBox.shrink();
 
     // Same strip as the "All services" section: ONE white panel, the lead
-    // action as a filled brand tile, the rest as plain icon tiles. Centered
-    // inside the hero sheet's fixed-height band so it can never overflow.
+    // action as a filled brand tile, the rest as plain icon tiles — tiles
+    // wrapped around the center, panel hugging their height.
     return Center(
-      child: QuickLinksPanel(actions: [
+      child: QuickLinksPanel(centered: true, actions: [
         (
           Icons.build_rounded,
           t.ghBookMaintenance,
@@ -999,28 +1000,38 @@ final class _GreetingState extends State<_Greeting>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  greeting,
-                  style: TextStyle(
-                    fontSize: context.rf(12.5),
-                    fontWeight: FontWeight.w800,
-                    color: scheme.primary,
-                  ),
-                ),
-                if (first.isNotEmpty) ...[
-                  SizedBox(height: context.rs(2)),
-                  Text(
-                    first,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: context.rf(22),
-                      height: 1.15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
+                // Greeting + name on ONE line ("صباح الخير محمد"), baselines
+                // aligned so the small greeting sits on the name's baseline.
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      greeting,
+                      style: TextStyle(
+                        fontSize: context.rf(13),
+                        fontWeight: FontWeight.w800,
+                        color: scheme.primary,
+                      ),
                     ),
-                  ),
-                ],
+                    if (first.isNotEmpty) ...[
+                      SizedBox(width: context.rs(6)),
+                      Flexible(
+                        child: Text(
+                          first,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: context.rf(21),
+                            height: 1.15,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 SizedBox(height: context.rs(4)),
                 Text(
                   t.acGreetingSub,
@@ -1420,6 +1431,57 @@ final class _BookingCard extends StatelessWidget {
   final UpcomingBooking booking;
   final String lang;
 
+  /// Website myBookings cancel cycle: confirm → App_ServiceRequestDelete
+  /// (ownership + status gated in SQL, soft-delete kept for audit, ops
+  /// notified) → refresh so the card disappears.
+  Future<void> _cancelBooking(BuildContext context, String lang) async {
+    final isAr = lang == 'ar';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(
+          isAr
+              ? 'هل أنت متأكد من إلغاء الحجز؟'
+              : 'Are you sure you want to cancel this booking?',
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(isAr ? 'تراجع' : 'Keep booking'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(isAr ? 'إلغاء الحجز' : 'Cancel booking'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    final user = sl<AuthBloc>().state.user;
+    final err = await AccountRepository(sl<ApiClient>()).cancelBooking(
+      guid: booking.guid ?? '',
+      custId: user?.custId ?? '',
+      reason: isAr
+          ? 'تم الإلغاء من قِبل العميل عبر التطبيق'
+          : 'Cancelled by customer via app',
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(
+        content: Text(err == null
+            ? (isAr ? 'تم إلغاء الحجز' : 'Booking cancelled')
+            : (err.isNotEmpty
+                ? err
+                : (isAr ? 'تعذّر إلغاء الحجز' : 'Could not cancel booking'))),
+      ));
+    if (err == null) {
+      context.read<RegisteredHomeCubit>().refresh();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
@@ -1538,33 +1600,67 @@ final class _BookingCard extends StatelessWidget {
           SizedBox(height: context.rs(18)),
           SizedBox(
             width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: onBrand,
-                foregroundColor: scheme.primary,
-                minimumSize: const Size.fromHeight(44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+            child: Builder(builder: (context) {
+              // Reschedule / cancel — the authoritative gate lives in the
+              // SQL procs (ownership + status='Created'); the app only
+              // needs a GUID. The upcoming feed's status strings vary, so
+              // gating on them here would wrongly disable editable bookings.
+              final canEdit = (booking.guid ?? '').isNotEmpty;
+              return Row(children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: onBrand,
+                      foregroundColor: scheme.primary,
+                      disabledBackgroundColor:
+                          onBrand.withValues(alpha: 0.35),
+                      disabledForegroundColor:
+                          onBrand.withValues(alpha: 0.8),
+                      minimumSize: const Size.fromHeight(44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: context.rf(13),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    onPressed: canEdit
+                        ? () async {
+                            final changed = await showRescheduleBookingSheet(
+                                context, booking);
+                            if (changed == true && context.mounted) {
+                              context.read<RegisteredHomeCubit>().refresh();
+                            }
+                          }
+                        : null,
+                    icon: const Icon(Icons.edit_calendar_rounded, size: 16),
+                    label:
+                        Text(lang == 'ar' ? 'تعديل الموعد' : 'Reschedule'),
+                  ),
                 ),
-                textStyle: TextStyle(
-                  fontSize: context.rf(13.5),
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              onPressed: () {
-                final car =
-                    resolveActiveCar(
-                      garage,
-                      sl<settings.ThemeCubit>().state.brandKey,
-                      sl<ActiveCarCubit>().state,
-                    ) ??
-                    garage.firstOrNull;
-                if (car != null) {
-                  showMaintenanceBookingSheet(context, car: car);
-                }
-              },
-              child: Text(t.ghBookMaintenance),
-            ),
+                if (canEdit) ...[
+                  SizedBox(width: context.rs(8)),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: Size(context.rs(44), 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      side: BorderSide(
+                          color: onBrand.withValues(alpha: 0.6)),
+                      foregroundColor: onBrand,
+                      textStyle: TextStyle(
+                        fontSize: context.rf(12.5),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    onPressed: () => _cancelBooking(context, lang),
+                    child: Text(lang == 'ar' ? 'إلغاء الحجز' : 'Cancel'),
+                  ),
+                ],
+              ]);
+            }),
           ),
         ],
       ),

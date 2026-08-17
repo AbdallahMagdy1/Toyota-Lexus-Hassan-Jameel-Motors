@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import 'brand_logo.dart';
 
@@ -120,15 +121,34 @@ final class _SwipeActionState extends State<SwipeAction> {
                         ),
                       ),
                     ),
-                    for (final o in [0.35, 0.6, 1.0])
-                      Icon(
-                        isRtl
-                            ? Icons.chevron_left_rounded
-                            : Icons.chevron_right_rounded,
-                        size: 18,
-                        color: (_drag > 0.5 ? Colors.white : scheme.primary)
-                            .withValues(alpha: o),
-                      ),
+                    // The chevrons ALWAYS point where the thumb travels
+                    // (toward the row end — left in Arabic, right in
+                    // English) and drift that way in a repeating wave so
+                    // the user reads "swipe me".
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        for (final o in [0.35, 0.6, 1.0])
+                          Icon(
+                            isRtl
+                                ? Icons.chevron_left_rounded
+                                : Icons.chevron_right_rounded,
+                            size: 18,
+                            color:
+                                (_drag > 0.5 ? Colors.white : scheme.primary)
+                                    .withValues(alpha: o),
+                          ),
+                      ],
+                    )
+                        .animate(
+                            onPlay: (c) => c.repeat(),
+                            autoPlay: widget.enabled)
+                        .slideX(
+                            begin: 0,
+                            end: isRtl ? -0.35 : 0.35,
+                            duration: 850.ms,
+                            curve: Curves.easeInOut)
+                        .fade(begin: 1, end: 0.25, duration: 850.ms),
                   ]),
                 ),
               ),

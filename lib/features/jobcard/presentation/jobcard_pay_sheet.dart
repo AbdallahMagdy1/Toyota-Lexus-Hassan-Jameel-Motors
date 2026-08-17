@@ -460,7 +460,9 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
     final engineer = isAr
         ? jcStr(_info, const ['Reception Engineer Ar', 'Reception Engineer'])
         : jcStr(_info, const ['Reception Engineer']);
-    final phone = jcStr(_info, const ['mobileNo', 'Reception Mobile']);
+    // The ERP writes a literal "0" when there is no mobile on file.
+    var phone = jcStr(_info, const ['mobileNo', 'Reception Mobile']);
+    if (phone == '0') phone = '';
 
     Widget row(IconData icon, String label, String value, {bool ltr = false}) =>
         Padding(
@@ -960,9 +962,15 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
               [
                 (
                   tr('مزوّد الخدمة', 'Service provider'),
-                  jcStr(_center, const [
-                    'Company', 'ServiceProvidorEn', 'ServiceProvidorAr',
-                  ])
+                  // Language-aware like the original agreements page (the
+                  // Next.js port lost this and mixed languages).
+                  isAr
+                      ? jcStr(_center, const [
+                          'ServiceProvidorAr', 'Company', 'ServiceProvidorEn',
+                        ])
+                      : jcStr(_center, const [
+                          'ServiceProvidorEn', 'Company', 'ServiceProvidorAr',
+                        ])
                 ),
                 (
                   tr('الرقم الضريبي', 'Tax number'),
@@ -974,10 +982,16 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
                 ),
                 (
                   tr('العنوان', 'Address'),
-                  // The misspelled BrnachAddressAr ships first — verbatim.
-                  jcStr(_center, const [
-                    'BranchAddressEn', 'BrnachAddressAr', 'BranchAddressAr',
-                  ])
+                  // The ERP's misspelled BrnachAddressAr — verbatim.
+                  isAr
+                      ? jcStr(_center, const [
+                          'BrnachAddressAr', 'BranchAddressAr',
+                          'BranchAddressEn',
+                        ])
+                      : jcStr(_center, const [
+                          'BranchAddressEn', 'BrnachAddressAr',
+                          'BranchAddressAr',
+                        ])
                 ),
                 (
                   tr('أرقام التواصل', 'Contact'),

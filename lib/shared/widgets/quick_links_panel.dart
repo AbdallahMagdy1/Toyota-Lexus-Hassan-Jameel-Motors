@@ -14,9 +14,17 @@ typedef QuickLinkAction = (IconData, String, VoidCallback);
 /// Progress updates through a ValueNotifier, so scrolling repaints only the
 /// 4px indicator — never the panel or the tiles.
 final class QuickLinksPanel extends StatefulWidget {
-  const QuickLinksPanel({super.key, required this.actions});
+  const QuickLinksPanel({
+    super.key,
+    required this.actions,
+    this.centered = false,
+  });
 
   final List<QuickLinkAction> actions;
+
+  /// Center the tiles instead of leading them (for short fixed sets) —
+  /// also hugs the tiles vertically (no scroll-indicator strip).
+  final bool centered;
 
   @override
   State<QuickLinksPanel> createState() => _QuickLinksPanelState();
@@ -41,10 +49,44 @@ final class _QuickLinksPanelState extends State<QuickLinksPanel> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    Widget tile(int i) {
+      final (icon, label, onTap) = widget.actions[i];
+      // First action = the mock's filled brand tile.
+      return i == 0
+          ? _PrimaryTile(icon: icon, label: label, onTap: onTap)
+          : _PlainTile(icon: icon, label: label, onTap: onTap);
+    }
+
+    // Centered mode hugs its children: tight symmetric padding, no
+    // scroll-progress strip, and the row is exactly the tiles' height.
+    if (widget.centered) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: context.rs(16)),
+        child: Container(
+          decoration: softCardDecoration(context, radius: 22),
+          clipBehavior: Clip.antiAlias,
+          padding: EdgeInsets.all(context.rs(8)),
+          child: SizedBox(
+            height: context.rs(78),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (var i = 0; i < widget.actions.length; i++) ...[
+                  if (i > 0) SizedBox(width: context.rs(14)),
+                  tile(i),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: context.rs(16)),
       child: Container(
         decoration: softCardDecoration(context, radius: 22),
+        clipBehavior: Clip.antiAlias,
         padding: EdgeInsets.fromLTRB(
             context.rs(8), context.rs(12), context.rs(8), context.rs(8)),
         child: Column(children: [
@@ -61,13 +103,7 @@ final class _QuickLinksPanelState extends State<QuickLinksPanel> {
                   padding: EdgeInsets.symmetric(horizontal: context.rs(4)),
                   itemCount: widget.actions.length,
                   separatorBuilder: (_, _) => SizedBox(width: context.rs(6)),
-                  itemBuilder: (context, i) {
-                    final (icon, label, onTap) = widget.actions[i];
-                    // First action = the mock's filled brand tile.
-                    return i == 0
-                        ? _PrimaryTile(icon: icon, label: label, onTap: onTap)
-                        : _PlainTile(icon: icon, label: label, onTap: onTap);
-                  },
+                  itemBuilder: (context, i) => tile(i),
                 ),
               ),
             ),

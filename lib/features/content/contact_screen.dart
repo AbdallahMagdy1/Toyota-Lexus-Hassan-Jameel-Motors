@@ -92,10 +92,22 @@ final class _ContactCubit extends Cubit<_ContactState> {
   Future<void> load() async {
     final page = await _repo.contact();
     if (isClosed) return;
+    // "شكوى" is dropped from the message subjects — complaints have their
+    // own dedicated flow (ComplaintsSection) on this same screen.
+    final subjects = page.subjects
+        .where((s) =>
+            !(s.descriptionAr ?? '').contains('شكوى') &&
+            !(s.descriptionEn ?? '').toLowerCase().contains('complaint'))
+        .toList();
+    final filtered = ContactPage(
+      branches: page.branches,
+      info: page.info,
+      subjects: subjects,
+    );
     emit(state.copyWith(
       loading: false,
-      page: page,
-      subjectId: () => page.subjects.firstOrNull?.id,
+      page: filtered,
+      subjectId: () => subjects.firstOrNull?.id,
     ));
   }
 

@@ -69,6 +69,54 @@ final class AccountRepository {
     }
   }
 
+  /// Reschedule a maintenance booking — the website profile tab's cycle
+  /// (App_ServiceRequestUpdate: ownership + status='Created' gated in SQL,
+  /// ops notified). Returns null on success, else the error to show.
+  Future<String?> updateBooking({
+    required String guid,
+    required String custId,
+    required String orderdate, // yyyy-MM-dd
+    required String orderTime, // HH:mm:ss
+  }) async {
+    try {
+      final res = await _api.put<Map<String, dynamic>>(
+        '/api/app/maintenance/bookings',
+        body: {
+          'guid': guid,
+          'custId': custId,
+          'orderdate': orderdate,
+          'orderTime': orderTime,
+        },
+      );
+      if (res.data?['ok'] == true) return null;
+      final err = '${res.data?['error'] ?? ''}';
+      return err.isEmpty || err == 'null' ? '' : err;
+    } on DioException {
+      return '';
+    }
+  }
+
+  /// Cancel (soft-delete) a maintenance booking — the website myBookings
+  /// cycle (App_ServiceRequestDelete: ownership + status='Created' gated in
+  /// SQL, row kept for audit, ops notified). Null on success, else error.
+  Future<String?> cancelBooking({
+    required String guid,
+    required String custId,
+    required String reason,
+  }) async {
+    try {
+      final res = await _api.post<Map<String, dynamic>>(
+        '/api/app/maintenance/bookings/cancel',
+        body: {'guid': guid, 'custId': custId, 'reason': reason},
+      );
+      if (res.data?['ok'] == true) return null;
+      final err = '${res.data?['error'] ?? ''}';
+      return err.isEmpty || err == 'null' ? '' : err;
+    } on DioException {
+      return '';
+    }
+  }
+
   /// Unified tracking over the three cycles (maintenance reservations /
   /// protection & shading / parts orders) — App_Orders_TrackingSnapshot.
   Future<List<TrackedOrder>> ordersTracking(

@@ -269,6 +269,24 @@ void _showPaySheet(BuildContext context, ProtectionPackage package,
 
 enum _PayPhase { form, busy, sadad, success, failed }
 
+/// Website GLASS_OPTIONS — per-glass tinting rows (id, ar, en).
+const List<(String, String, String)> _kGlassOptions = [
+  ('windshield', 'زجاج أمامي', 'Windshield'),
+  ('rear', 'زجاج خلفي', 'Rear glass'),
+  ('frontSide', 'زجاج جانبي أمامي', 'Front side'),
+  ('rearSide', 'زجاج جانبي خلفي', 'Rear side'),
+];
+
+/// Website defaults: windshield 0 (no tint), everything else 0.2.
+const Map<String, String> _kDefaultGlassGrades = {
+  'windshield': '0',
+  'rear': '0.2',
+  'frontSide': '0.2',
+  'rearSide': '0.2',
+};
+
+const List<String> _kGradeChoices = ['0', '0.1', '0.2'];
+
 final class _PayState extends Equatable {
   const _PayState({
     this.phase = _PayPhase.form,
@@ -281,6 +299,7 @@ final class _PayState extends Equatable {
     this.provider = 'myfatoorah',
     this.fullCar = true,
     this.fullGrade = '0.2',
+    this.glassGrades = _kDefaultGlassGrades,
     this.sadadNumber,
     this.error = false,
     this.couponCode,
@@ -298,6 +317,7 @@ final class _PayState extends Equatable {
   final String provider; // myfatoorah | tabby | tamara
   final bool fullCar;
   final String fullGrade; // 0 | 0.1 | 0.2
+  final Map<String, String> glassGrades; // per-glass mode grades
   final String? sadadNumber;
   final bool error;
 
@@ -318,6 +338,7 @@ final class _PayState extends Equatable {
     String? provider,
     bool? fullCar,
     String? fullGrade,
+    Map<String, String>? glassGrades,
     String? Function()? sadadNumber,
     bool? error,
     String? Function()? couponCode,
@@ -335,6 +356,7 @@ final class _PayState extends Equatable {
         provider: provider ?? this.provider,
         fullCar: fullCar ?? this.fullCar,
         fullGrade: fullGrade ?? this.fullGrade,
+        glassGrades: glassGrades ?? this.glassGrades,
         sadadNumber: sadadNumber == null ? this.sadadNumber : sadadNumber(),
         error: error ?? this.error,
         couponCode: couponCode == null ? this.couponCode : couponCode(),
@@ -346,7 +368,7 @@ final class _PayState extends Equatable {
   @override
   List<Object?> get props => [
         phase, branches, branchId, date, hours, hoursLoading, hour,
-        provider, fullCar, fullGrade, sadadNumber, error,
+        provider, fullCar, fullGrade, glassGrades, sadadNumber, error,
         couponCode, couponResult, couponBusy,
       ];
 }
@@ -384,6 +406,8 @@ final class _PayCubit extends Cubit<_PayState> {
   void selectProvider(String p) => emit(state.copyWith(provider: p));
   void setFullCar(bool v) => emit(state.copyWith(fullCar: v));
   void setGrade(String g) => emit(state.copyWith(fullGrade: g));
+  void setGlassGrade(String id, String g) =>
+      emit(state.copyWith(glassGrades: {...state.glassGrades, id: g}));
 
   Future<void> selectDate(DateTime d) async {
     emit(state.copyWith(date: () => d, hour: () => null, hoursLoading: true));
@@ -437,7 +461,13 @@ final class _PayCubit extends Cubit<_PayState> {
         .firstOrNull
         ?.name(lang);
     final lines = <String>[
-      if (isTinting) 'Full car shading degree: ${state.fullGrade}',
+      // Website buildNote parity: one full-car line, or one line per glass.
+      if (isTinting && state.fullCar)
+        'Full car shading degree: ${state.fullGrade}'
+      else if (isTinting)
+        for (final (id, ar, en) in _kGlassOptions)
+          '${lang == 'ar' ? ar : en}: '
+              '${state.glassGrades[id] ?? _kDefaultGlassGrades[id]}',
       if ((vin ?? '').isNotEmpty) 'VIN: $vin',
       if (state.date != null)
         'Date: ${state.date!.toIso8601String().substring(0, 10)} ${state.hour ?? ''}',
@@ -625,23 +655,99 @@ final class _PayView extends StatelessWidget {
                       fontSize: context.rf(12.5),
                       fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
-              Wrap(spacing: 8, children: [
-                for (final g in ['0', '0.1', '0.2'])
-                  ChoiceChip(
-                    label: Text(g, textDirection: TextDirection.ltr),
-                    selected: state.fullGrade == g,
-                    onSelected: (_) => cubit.setGrade(g),
-                  ),
-              ]),
+              // Website toggle: full-car grade OR one grade per glass.
+              Builder(builder: (context) {
+                final isAr =
+                    sl<LocaleCubit>().state.languageCode == 'ar';
+                String tr(String ar, String en) => isAr ? ar : en;
+                Widget gradeRow(String label, String current,
+                        void Function(String) onPick) =>
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(children: [
+                        Expanded(
+                          child: Text(label,
+                              style: TextStyle(
+                                  fontSize: context.rf(11.5),
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                        for (final g in _kGradeChoices)
+                          Padding(
+                            padding:
+                                const EdgeInsetsDirectional.only(start: 6),
+                            child: ChoiceChip(
+                              label: Text(g,
+                                  textDirection: TextDirection.ltr,
+                                  style: TextStyle(
+                                      fontSize: context.rf(11))),
+                              selected: current == g,
+                              onSelected: (_) => onPick(g),
+                            ),
+                          ),
+                      ]),
+                    );
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(spacing: 8, children: [
+                      ChoiceChip(
+                        label: Text(tr('كامل السيارة', 'Full car')),
+                        selected: state.fullCar,
+                        onSelected: (_) => cubit.setFullCar(true),
+                      ),
+                      ChoiceChip(
+                        label:
+                            Text(tr('كل زجاج على حدة', 'Per glass')),
+                        selected: !state.fullCar,
+                        onSelected: (_) => cubit.setFullCar(false),
+                      ),
+                    ]),
+                    const SizedBox(height: 10),
+                    if (state.fullCar)
+                      gradeRow(
+                          tr('كامل زجاج السيارة', 'Full car glass'),
+                          state.fullGrade,
+                          cubit.setGrade)
+                    else
+                      for (final (id, ar, en) in _kGlassOptions)
+                        gradeRow(
+                            tr(ar, en),
+                            state.glassGrades[id] ??
+                                _kDefaultGlassGrades[id]!,
+                            (g) => cubit.setGlassGrade(id, g)),
+                    const SizedBox(height: 4),
+                    Text(
+                      tr(
+                          'يسمح بالتظليل على النوافذ الخلفية الجانبية حتى الدرجات (00 أو 01 أو 02). لا يُسمح بتظليل النوافذ الأمامية أو الزجاج الأمامي إلا بموافقة طبية.',
+                          'Tinting is allowed on the rear side windows up to grades (00, 01, 02). Front windows / windshield require medical approval.'),
+                      style: TextStyle(
+                          fontSize: context.rf(10),
+                          height: 1.5,
+                          color:
+                              scheme.onSurface.withValues(alpha: 0.5)),
+                    ),
+                  ],
+                );
+              }),
             ],
 
+            const SizedBox(height: 14),
+            // Coupon FIRST (above the payment methods) — server-validated;
+            // discount displayed only, forwarded at pay time when valid.
+            const _CouponBox(),
             const SizedBox(height: 14),
             Text(t.payMethodTitle,
                 style: TextStyle(
                     fontSize: context.rf(12.5), fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             for (final (id, name, tag) in [
-              ('myfatoorah', 'MyFatoorah', t.payMyfatoorahTag),
+              (
+                'myfatoorah',
+                sl<LocaleCubit>().state.languageCode == 'ar'
+                    ? 'كامل المبلغ'
+                    : 'Pay in full',
+                t.payMyfatoorahTag
+              ),
               ('tabby', 'Tabby', t.payTabbyTag),
               ('tamara', 'Tamara', t.payTamaraTag),
             ])
@@ -699,10 +805,6 @@ final class _PayView extends StatelessWidget {
                 ),
               ),
 
-            const SizedBox(height: 12),
-            // Coupon — server-validated; discount displayed only, forwarded
-            // at pay time when valid.
-            const _CouponBox(),
             const SizedBox(height: 12),
             if (state.error)
               Padding(
