@@ -1,12 +1,16 @@
+import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../app/router/routes.dart';
 import '../../core/utils/responsive.dart';
 import '../../features/auth/bloc/auth_bloc.dart';
 import '../../features/settings/bloc/locale_cubit.dart';
+import '../../features/settings/bloc/store_links_cubit.dart';
 import '../../features/settings/bloc/theme_cubit.dart';
+import '../../features/settings/data/store_links_repository.dart';
 import '../../l10n/app_localizations.dart';
 import '../widgets/user_avatar.dart';
 
@@ -104,6 +108,71 @@ final class SideMenu extends StatelessWidget {
         ),
       );
     }
+
+    // Cross-promo: the Toyota app shows "Download Lexus" and vice-versa. The URL
+    // comes from the dashboard "App Settings" screen; the device decides App
+    // Store (iOS) vs Google Play (Android). Hidden when the URL isn't set.
+    final otherKey = theme.brandKey == 'lexus' ? 'toyota' : 'lexus';
+    final isIos = defaultTargetPlatform == TargetPlatform.iOS;
+    final StoreLinks? storeLinks = context.watch<StoreLinksCubit>().state;
+    final String? otherAppUrl = storeLinks?.urlFor(otherKey, isIos: isIos);
+    final otherBrand = theme.themes[otherKey];
+    final otherName = otherBrand != null
+        ? (lang == 'ar' ? otherBrand.nameAr : otherBrand.nameEn)
+        : (otherKey == 'lexus' ? 'Lexus' : 'Toyota');
+    final otherColor =
+        otherBrand?.colorFor(Theme.of(context).brightness) ?? scheme.primary;
+
+    Widget downloadOtherApp(String url) => Padding(
+          padding: EdgeInsets.only(bottom: context.rs(2)),
+          child: Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: () async {
+                context.read<MenuCubit>().dismiss();
+                final uri = Uri.tryParse(url);
+                if (uri != null) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                    horizontal: context.rs(14), vertical: context.rs(10)),
+                child: Row(
+                  children: [
+                    Container(
+                      width: context.rs(30),
+                      height: context.rs(30),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: otherColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(Icons.download_rounded,
+                          size: 17, color: otherColor),
+                    ),
+                    SizedBox(width: context.rs(12)),
+                    Expanded(
+                      child: Text(
+                        lang == 'ar'
+                            ? 'حمّل تطبيق $otherName'
+                            : 'Download $otherName app',
+                        style: TextStyle(
+                          color: fg.withValues(alpha: 0.9),
+                          fontSize: context.rf(13.5),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Icon(Icons.open_in_new_rounded, size: 15, color: muted),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
 
     return Material(
       color: panel,
@@ -210,6 +279,17 @@ final class SideMenu extends StatelessWidget {
                           Routes.favorites),
                       item(Icons.person_outline_rounded, t.pfTitle,
                           Routes.profile),
+                      if (otherAppUrl != null) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: context.rs(14),
+                              vertical: context.rs(10)),
+                          child: Divider(
+                              height: 1, color: fg.withValues(alpha: 0.1)),
+                        ),
+                        groupLabel(lang == 'ar' ? 'تطبيقاتنا' : 'Our Apps'),
+                        downloadOtherApp(otherAppUrl),
+                      ],
                     ],
                   ),
                 ),

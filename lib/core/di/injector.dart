@@ -18,7 +18,9 @@ import '../../features/settings/bloc/locale_cubit.dart';
 import '../../features/vehicles/data/vehicles_repository.dart';
 import '../../shared/navigation/side_menu.dart';
 import '../../features/settings/bloc/theme_cubit.dart';
+import '../../features/settings/bloc/store_links_cubit.dart';
 import '../../features/settings/data/branding_repository.dart';
+import '../../features/settings/data/store_links_repository.dart';
 import '../network/api_client.dart';
 import '../network/swr_cache.dart';
 import '../storage/local_store.dart';
@@ -40,6 +42,9 @@ Future<void> setupInjector({String brand = 'toyota'}) async {
     ..registerLazySingleton<BrandingRepository>(
       () => BrandingRepository(sl(), sl()),
     )
+    ..registerLazySingleton<StoreLinksRepository>(
+      () => StoreLinksRepository(sl()),
+    )
     ..registerLazySingleton<OnboardingRepository>(
       () => OnboardingRepository(sl()),
     )
@@ -53,6 +58,7 @@ Future<void> setupInjector({String brand = 'toyota'}) async {
     // website's instant language toggle.
     ..registerLazySingleton<ThemeCubit>(
         () => ThemeCubit(sl(), sl(), fixedBrand: brand))
+    ..registerLazySingleton<StoreLinksCubit>(() => StoreLinksCubit(sl()))
     ..registerLazySingleton<LocaleCubit>(() => LocaleCubit(sl()))
     ..registerLazySingleton<AuthBloc>(() => AuthBloc(sl(), sl()))
     ..registerLazySingleton<ActiveCarCubit>(() => ActiveCarCubit(prefs))

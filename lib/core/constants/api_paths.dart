@@ -12,6 +12,8 @@ abstract final class ApiPaths {
   static const String themes = '/api/app/themes';
   static const String onboarding = '/api/app/onboarding';
   static const String homeServices = '/api/app/home/services';
+  // Cross-brand "download the other app" store links (dashboard App Settings).
+  static const String storeLinks = '/api/app/store-links';
 
   // Home feed (aggregated) + interactive sections.
   static const String home = '/api/app/home';

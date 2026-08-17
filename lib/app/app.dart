@@ -15,6 +15,7 @@ import '../features/parts/bloc/parts_cart_cubit.dart';
 import '../features/online_store/bloc/collections_cubits.dart';
 import '../features/settings/bloc/locale_cubit.dart';
 import '../features/settings/bloc/theme_cubit.dart';
+import '../features/settings/bloc/store_links_cubit.dart';
 import '../shared/navigation/side_menu.dart';
 import '../l10n/app_localizations.dart';
 
@@ -34,6 +35,7 @@ final class HjApp extends StatelessWidget {
         BlocProvider<CartCubit>.value(value: sl<CartCubit>()),
         BlocProvider<PartsCartCubit>.value(value: sl<PartsCartCubit>()),
         BlocProvider<MenuCubit>.value(value: sl<MenuCubit>()),
+        BlocProvider<StoreLinksCubit>.value(value: sl<StoreLinksCubit>()),
       ],
       child: const _AppView(),
     );
