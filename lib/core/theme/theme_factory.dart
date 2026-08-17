@@ -19,7 +19,10 @@ abstract final class ThemeFactory {
     final onSurface = isDark
         ? const Color(0xFFF2F3F5)
         : const Color(0xFF13161B);
-    final muted = isDark ? const Color(0xFF8B8F98) : Colors.white;
+    // Muted label/hint gray — MUST contrast the surface in both modes
+    // (this once shipped as white-in-light, making every field label and
+    // hint invisible on light backgrounds).
+    final muted = isDark ? const Color(0xFF8B8F98) : const Color(0xFF6B7280);
     final border = isDark ? const Color(0xFF23252B) : const Color(0xFFE8ECF2);
 
     final colorScheme = ColorScheme(
