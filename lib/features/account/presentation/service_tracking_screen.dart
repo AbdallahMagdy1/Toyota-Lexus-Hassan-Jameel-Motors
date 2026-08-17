@@ -331,21 +331,28 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
                   style: TextStyle(
                       fontSize: context.rf(17), fontWeight: FontWeight.w800)),
             ),
-            Wrap(spacing: 8, children: [
-              for (final (i, label) in [
-                t.trkAll,
-                t.trkKindMaintenance,
-                t.trkKindProtection,
-                t.trkKindOrders,
-                t.trkKindFinance,
-              ].indexed)
-                ChoiceChip(
-                  label: Text(label,
-                      style: TextStyle(fontSize: context.rf(11))),
-                  selected: i == _tab,
-                  onSelected: (_) => setState(() => _tab = i),
-                ),
-            ]),
+            // One sliding row — never wraps to a second line.
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(children: [
+                for (final (i, label) in [
+                  t.trkAll,
+                  t.trkKindMaintenance,
+                  t.trkKindProtection,
+                  t.trkKindOrders,
+                  t.trkKindFinance,
+                ].indexed)
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(end: context.rs(8)),
+                    child: ChoiceChip(
+                      label: Text(label,
+                          style: TextStyle(fontSize: context.rf(11))),
+                      selected: i == _tab,
+                      onSelected: (_) => setState(() => _tab = i),
+                    ),
+                  ),
+              ]),
+            ),
             SizedBox(height: context.rs(12)),
             if (_tab == 4)
               _FinanceMiniList(future: _finFuture)
@@ -555,44 +562,78 @@ final class _StageRail extends StatelessWidget {
         : scheme.primary;
     final idle = scheme.onSurface.withValues(alpha: 0.15);
 
-    return Column(
+    final idx = order.stageIndex.clamp(0, stages.length - 1);
+
+    // Equal-width cells: dot centered over its own label, connectors drawn
+    // as half-segments inside each cell so they always meet dot centers.
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            for (var i = 0; i < stages.length; i++) ...[
-              if (i > 0)
-                Expanded(
-                  child: Container(
-                    height: 2.5,
-                    color: i <= order.stageIndex ? active : idle,
+        for (var i = 0; i < stages.length; i++)
+          Expanded(
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 14,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Row(children: [
+                        Expanded(
+                          child: Container(
+                            height: 2.5,
+                            color: i == 0
+                                ? Colors.transparent
+                                : (i <= idx ? active : idle),
+                          ),
+                        ),
+                        Expanded(
+                          child: Container(
+                            height: 2.5,
+                            color: i == stages.length - 1
+                                ? Colors.transparent
+                                : (i < idx ? active : idle),
+                          ),
+                        ),
+                      ]),
+                      Container(
+                        width: i == idx ? 11 : 8,
+                        height: i == idx ? 11 : 8,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: i <= idx ? active : idle,
+                          border: i == idx
+                              ? Border.all(
+                                  color: active.withValues(alpha: 0.25),
+                                  width: 3)
+                              : null,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              Container(
-                width: i == order.stageIndex ? 11 : 8,
-                height: i == order.stageIndex ? 11 : 8,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: i <= order.stageIndex ? active : idle,
-                  border: i == order.stageIndex
-                      ? Border.all(color: active.withValues(alpha: 0.25), width: 3)
-                      : null,
+                SizedBox(height: context.rs(4)),
+                // Every dot carries its stage name; the current one pops.
+                Text(
+                  stages[i],
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: context.rf(7.5),
+                    height: 1.15,
+                    fontWeight:
+                        i == idx ? FontWeight.w800 : FontWeight.w600,
+                    color: i == idx
+                        ? (order.isCanceled
+                            ? scheme.onSurface.withValues(alpha: 0.5)
+                            : scheme.primary)
+                        : scheme.onSurface.withValues(alpha: 0.45),
+                  ),
                 ),
-              ),
-            ],
-          ],
-        ),
-        SizedBox(height: context.rs(6)),
-        Text(
-          stages[order.stageIndex.clamp(0, stages.length - 1)],
-          style: TextStyle(
-            fontSize: context.rf(10),
-            fontWeight: FontWeight.w800,
-            color: order.isCanceled
-                ? scheme.onSurface.withValues(alpha: 0.5)
-                : scheme.primary,
+              ],
+            ),
           ),
-        ),
       ],
     );
   }

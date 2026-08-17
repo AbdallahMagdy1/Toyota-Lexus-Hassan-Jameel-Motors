@@ -82,6 +82,17 @@ final class JobCardRepository {
   Future<Map<String, dynamic>?> paymentStatus(String guid) =>
       _one('payment-status', {'guid': guid});
 
+  /// Mntc_GetJobCardInfo — the full detail row the website's /jobCard page
+  /// renders: header dates + engineer, guest/service/vehicle information,
+  /// the visual-inspection checklist and TermsConditionsAr/En.
+  Future<Map<String, dynamic>?> info(String guid) =>
+      _one('info', {'guid': guid});
+
+  /// SP_Web_GetCenterInfoJobCard — website quirk: the "guid" sent here is
+  /// the RECEPTION NUMBER read off the info row (route guid as fallback).
+  Future<List<Map<String, dynamic>>> centerInfo(String receptionOrGuid) =>
+      _many('center-info', {'guid': receptionOrGuid});
+
   /// { netTotal: {numberNet, numberTotalBefore, numberDiscount, numberTax},
   ///   groupList, jobCardRespons: [raw rows] }
   Future<Map<String, dynamic>?> summary(String guid) =>

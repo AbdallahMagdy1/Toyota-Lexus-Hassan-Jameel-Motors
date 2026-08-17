@@ -911,7 +911,6 @@ final class _CarQuickTrio extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
-    final scheme = Theme.of(context).colorScheme;
     final brandKey = context.watch<settings.ThemeCubit>().state.brandKey;
     final active = resolveActiveCar(
       home.garage,
@@ -920,221 +919,27 @@ final class _CarQuickTrio extends StatelessWidget {
     );
     if (active == null) return const SizedBox.shrink();
 
-    return SizedBox(
-      height: context.rs(108),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.fromLTRB(
-          context.rs(16),
-          context.rs(12),
-          context.rs(16),
-          0,
+    // Same strip as the "All services" section: ONE white panel, the lead
+    // action as a filled brand tile, the rest as plain icon tiles. Centered
+    // inside the hero sheet's fixed-height band so it can never overflow.
+    return Center(
+      child: QuickLinksPanel(actions: [
+        (
+          Icons.build_rounded,
+          t.ghBookMaintenance,
+          () => showMaintenanceBookingSheet(context, car: active),
         ),
-        children: [
-          // 1) حجز صيانة للسيارة النشطة — brand-filled hero card.
-          SizedBox(
-            width: context.rs(168),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(18),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () => showMaintenanceBookingSheet(context, car: active),
-                child: Ink(
-                  padding: EdgeInsets.all(context.rs(12)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    gradient: LinearGradient(
-                      begin: AlignmentDirectional.topStart,
-                      end: AlignmentDirectional.bottomEnd,
-                      colors: [
-                        scheme.primary,
-                        Color.lerp(scheme.primary, Colors.black, 0.25)!,
-                      ],
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: context.rs(24),
-                            height: context.rs(24),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.18),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.build_rounded,
-                              size: 14,
-                              color: scheme.onPrimary,
-                            ),
-                          ),
-                          SizedBox(width: context.rs(7)),
-                          Expanded(
-                            child: Text(
-                              t.ghBookMaintenance,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: context.rf(12),
-                                fontWeight: FontWeight.w800,
-                                color: scheme.onPrimary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const Spacer(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              active.displayName(lang),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: context.rf(9.5),
-                                height: 1.3,
-                                color: scheme.onPrimary.withValues(alpha: 0.8),
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.rs(10),
-                              vertical: context.rs(5),
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: Text(
-                              t.homeViewAll,
-                              style: TextStyle(
-                                fontSize: context.rf(9.5),
-                                fontWeight: FontWeight.w800,
-                                color: scheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          SizedBox(width: context.rs(10)),
-          // 2) تتبع الصيانة — light card.
-          _TrioLightCard(
-            icon: Icons.car_repair_rounded,
-            title: t.trackTitle,
-            subtitle: active.displayName(lang),
-            onTap: () => context.push(Routes.tracking),
-          ),
-          SizedBox(width: context.rs(10)),
-          // 3) طلباتي — light card, the orders hub.
-          _TrioLightCard(
-            icon: Icons.assignment_outlined,
-            title: t.acMyOrders,
-            subtitle: active.displayName(lang),
-            onTap: () => context.push(Routes.tracking),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-final class _TrioLightCard extends StatelessWidget {
-  const _TrioLightCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return SizedBox(
-      width: context.rs(158),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(18),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(18),
-          onTap: onTap,
-          child: Container(
-            padding: EdgeInsets.all(context.rs(12)),
-            decoration: softCardDecoration(context, radius: 18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: context.rs(24),
-                      height: context.rs(24),
-                      decoration: BoxDecoration(
-                        color: scheme.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(icon, size: 14, color: scheme.primary),
-                    ),
-                    SizedBox(width: context.rs(7)),
-                    Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: context.rf(12),
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: context.rf(9.5),
-                          height: 1.3,
-                          color: scheme.onSurface.withValues(alpha: 0.55),
-                        ),
-                      ),
-                    ),
-                    Icon(
-                      Directionality.of(context) == TextDirection.rtl
-                          ? Icons.chevron_left_rounded
-                          : Icons.chevron_right_rounded,
-                      size: 18,
-                      color: scheme.primary,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
+        (
+          Icons.car_repair_rounded,
+          t.trackTitle,
+          () => context.push(Routes.tracking),
         ),
-      ),
+        (
+          Icons.assignment_outlined,
+          t.acMyOrders,
+          () => context.push(Routes.tracking),
+        ),
+      ]),
     );
   }
 }
@@ -1496,6 +1301,11 @@ final class WorkOrderCard extends StatelessWidget {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white,
                   foregroundColor: scheme.primary,
+                  // Disabled = frosted on the brand panel, clearly waiting.
+                  disabledBackgroundColor:
+                      Colors.white.withValues(alpha: 0.35),
+                  disabledForegroundColor:
+                      Colors.white.withValues(alpha: 0.8),
                   minimumSize: const Size.fromHeight(44),
                   shape: const StadiumBorder(),
                   textStyle: TextStyle(
@@ -1503,15 +1313,17 @@ final class WorkOrderCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                onPressed: () =>
-                    showJobCardPaySheet(context, guid: order.guid!),
+                // Locked until the ERP reaches SentForPayment.
+                onPressed: order.payable
+                    ? () => showJobCardPaySheet(context, guid: order.guid!)
+                    : null,
                 icon: Icon(
-                  order.readyToPay
+                  order.payable
                       ? Icons.payments_rounded
-                      : Icons.receipt_long_rounded,
+                      : Icons.lock_clock_rounded,
                   size: 17,
                 ),
-                label: Text(order.readyToPay ? t.jdPayNow : t.acJobCard),
+                label: Text(order.payable ? t.jdPayNow : t.acJobCard),
               ),
             ),
           ],

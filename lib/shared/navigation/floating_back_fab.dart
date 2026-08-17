@@ -43,17 +43,14 @@ final class _FloatingBackFabState extends State<FloatingBackFab> {
 
   /// The route ACTUALLY on top. For `context.push` the shell keeps building
   /// with the base tab location (that's why the nav bar stays up), so the
-  /// pushed page's path is only visible on the router's current uri.
+  /// pushed page's path only shows on the router's last route match.
   String _topLocation() {
     try {
-      return GoRouter.of(context)
-          .routerDelegate
-          .currentConfiguration
-          .uri
-          .path;
-    } catch (_) {
-      return widget.location;
-    }
+      final matches =
+          GoRouter.of(context).routerDelegate.currentConfiguration.matches;
+      if (matches.isNotEmpty) return matches.last.matchedLocation;
+    } catch (_) {}
+    return widget.location;
   }
 
   @override
@@ -63,9 +60,15 @@ final class _FloatingBackFabState extends State<FloatingBackFab> {
     try {
       canPop = GoRouter.of(context).canPop();
     } catch (_) {}
-    final visible = NavHistory.participates(top) &&
-        !FloatingBackFab._roots.contains(top) &&
-        (canPop || NavHistory.hasBack(widget.location));
+    // A poppable pushed page ALWAYS gets the back button (even when the
+    // resolved top path still reads as a tab root — pushes from sheets can
+    // leave the reported location at the base route). Auth screens never
+    // show it. Without a pushed stack, fall back to the manual history.
+    final visible = canPop
+        ? NavHistory.participates(top)
+        : NavHistory.participates(top) &&
+            !FloatingBackFab._roots.contains(top) &&
+            NavHistory.hasBack(widget.location);
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     // Sit above the floating nav pill whenever it is on screen — the bar

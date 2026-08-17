@@ -13,6 +13,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/brand_logo.dart';
 import '../../../shared/widgets/keep_alive_section.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../../shared/widgets/pressable.dart';
@@ -693,95 +694,126 @@ final class _StorePackagesView extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: EdgeInsets.all(context.rs(15)),
+                      clipBehavior: Clip.antiAlias,
                       decoration: softCardDecoration(context,
                           radius: 20, tint: tier.color),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      // Mirrors the home-screen protection card exactly:
+                      // watermark + name leading + tier roundel at the end.
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Row(
+                          PositionedDirectional(
+                            end: -context.rs(30),
+                            top: 0,
+                            bottom: 0,
+                            child: Center(
+                              child: BrandMark(
+                                size: context.rs(150),
+                                color: tier.deep,
+                                opacity: isDark ? 0.08 : 0.06,
+                              ),
+                            ),
+                          ),
+                          Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: context.rs(42),
-                                height: context.rs(42),
-                                decoration: BoxDecoration(
-                                    color: tier.color.withValues(
-                                        alpha: isDark ? 0.3 : 0.18),
-                                    shape: BoxShape.circle),
-                                child: Icon(Icons.verified_user_rounded,
-                                    size: 19,
-                                    color:
-                                        isDark ? tier.color : tier.deep),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(p.name(lang),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                                fontSize: context.rf(13.5),
+                                                height: 1.25,
+                                                fontWeight: FontWeight.w800)),
+                                        if (i == 0) ...[
+                                          SizedBox(height: context.rs(5)),
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                                horizontal: context.rs(8),
+                                                vertical: context.rs(3)),
+                                            decoration: BoxDecoration(
+                                              color: tier.color.withValues(
+                                                  alpha:
+                                                      isDark ? 0.3 : 0.18),
+                                              borderRadius:
+                                                  BorderRadius.circular(999),
+                                            ),
+                                            child: Text(
+                                              t.protPopular,
+                                              style: TextStyle(
+                                                  fontSize: context.rf(8.5),
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: 0.6,
+                                                  color: isDark
+                                                      ? tier.color
+                                                      : tier.deep),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(width: context.rs(8)),
+                                  Container(
+                                    width: context.rs(34),
+                                    height: context.rs(34),
+                                    decoration: BoxDecoration(
+                                        color: tier.color.withValues(
+                                            alpha: isDark ? 0.3 : 0.18),
+                                        shape: BoxShape.circle),
+                                    child: Icon(packageTierIcon(p.name(lang)),
+                                        size: 17,
+                                        color:
+                                            isDark ? tier.color : tier.deep),
+                                  ),
+                                ],
                               ),
-                              const Spacer(),
-                              if (i == 0)
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: context.rs(9),
-                                      vertical: context.rs(4)),
-                                  decoration: BoxDecoration(
-                                    color: tier.color.withValues(
-                                        alpha: isDark ? 0.3 : 0.18),
-                                    borderRadius:
-                                        BorderRadius.circular(999),
-                                  ),
-                                  child: Text(
-                                    t.protPopular,
-                                    style: TextStyle(
-                                        fontSize: context.rf(8.5),
-                                        fontWeight: FontWeight.w800,
-                                        letterSpacing: 0.6,
-                                        color: isDark
-                                            ? tier.color
-                                            : tier.deep),
-                                  ),
+                              SizedBox(height: context.rs(8)),
+                              Expanded(
+                                child: Text(
+                                  p.description(lang).replaceAll('\n', ' '),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                      fontSize: context.rf(11),
+                                      height: 1.45,
+                                      color: scheme.onSurface
+                                          .withValues(alpha: 0.55)),
                                 ),
-                            ],
-                          ),
-                          SizedBox(height: context.rs(13)),
-                          Text(p.name(lang),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontSize: context.rf(13.5),
-                                  fontWeight: FontWeight.w800)),
-                          SizedBox(height: context.rs(5)),
-                          Expanded(
-                            child: Text(
-                              p.description(lang).replaceAll('\n', ' '),
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  fontSize: context.rf(11),
-                                  height: 1.45,
-                                  color: scheme.onSurface
-                                      .withValues(alpha: 0.55)),
-                            ),
-                          ),
-                          PriceText(
-                              price: p.price,
-                              currency: t.currency,
-                              contactForPrice: t.homeContactForPrice,
-                              fontSize: context.rf(15),
-                              color: isDark ? tier.color : tier.deep),
-                          SizedBox(height: context.rs(10)),
-                          SizedBox(
-                            width: double.infinity,
-                            child: FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: tier.color,
-                                foregroundColor: Colors.white,
-                                minimumSize: const Size(64, 42),
-                                shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(12)),
-                                textStyle: TextStyle(
-                                    fontSize: context.rf(12),
-                                    fontWeight: FontWeight.w800),
                               ),
-                              onPressed: open,
-                              child: Text(t.protSelectPackage),
-                            ),
+                              PriceText(
+                                  price: p.price,
+                                  currency: t.currency,
+                                  contactForPrice: t.homeContactForPrice,
+                                  fontSize: context.rf(15),
+                                  color: isDark ? tier.color : tier.deep),
+                              SizedBox(height: context.rs(10)),
+                              SizedBox(
+                                width: double.infinity,
+                                child: FilledButton(
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: tier.color,
+                                    foregroundColor: Colors.white,
+                                    minimumSize: const Size(64, 42),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(12)),
+                                    textStyle: TextStyle(
+                                        fontSize: context.rf(12),
+                                        fontWeight: FontWeight.w800),
+                                  ),
+                                  onPressed: open,
+                                  child: Text(t.protSelectPackage),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),

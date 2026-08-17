@@ -1,4 +1,7 @@
-﻿import 'package:flutter/foundation.dart' show defaultTargetPlatform;
+﻿import 'dart:convert' show base64Decode;
+
+import 'package:flutter/foundation.dart'
+    show Uint8List, defaultTargetPlatform;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -132,6 +135,8 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
   List<Map<String, dynamic>> _rows = const [];
   List<Map<String, dynamic>> _addLines = const [];
   Map<String, dynamic>? _addHeader;
+  Map<String, dynamic>? _info; // Mntc_GetJobCardInfo — details row
+  Map<String, dynamic>? _center; // center-info[0] — service provider
   bool _checkCustomer = false;
   bool _tamaraClose = false;
 
@@ -211,13 +216,22 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
       _repo.tamaraStatus(widget.guid),
       _repo.additionalsLines(widget.guid),
       _repo.checkCustomer(widget.guid),
+      _repo.info(widget.guid),
     ]);
     if (!mounted) return;
     final sum = results[1] as Map<String, dynamic>?;
     final lines = results[3] as List<Map<String, dynamic>>;
+    final info = results[5] as Map<String, dynamic>?;
     final header = lines.isEmpty
         ? null
         : (await _repo.additionalsHeader(widget.guid)).firstOrNull;
+    if (!mounted) return;
+    // Website quirk: center-info wants the RECEPTION NUMBER off the info
+    // row, not the job-card guid (guid only as fallback).
+    final recId = jcStr(info, const ['Reception Number']);
+    final center = (await _repo
+            .centerInfo(recId.isEmpty ? widget.guid : recId))
+        .firstOrNull;
     if (!mounted) return;
     setState(() {
       _pay = results[0] as Map<String, dynamic>?;
@@ -228,6 +242,8 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
           const ['TamarClose']);
       _addLines = lines;
       _addHeader = header;
+      _info = info;
+      _center = center;
       _checkCustomer = jcTruthy(
           (results[4] as List<Map<String, dynamic>>).firstOrNull,
           const ['CheckCustomer']);
@@ -425,6 +441,256 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
     }
   }
 
+  /* ── job-card details (website /jobCard page parity) ── */
+
+  static String _fmtDT(String raw, {bool dateOnly = false}) {
+    final d = DateTime.tryParse(raw);
+    if (d == null) return '—';
+    String two(int n) => n.toString().padLeft(2, '0');
+    final date = '${two(d.day)}/${two(d.month)}/${d.year}';
+    return dateOnly ? date : '$date ${two(d.hour)}:${two(d.minute)}';
+  }
+
+  /// Header card: order number + receipt/delivery dates + engineer + phone.
+  Widget _headerCard(BuildContext context, String Function(String, String) tr,
+      bool isAr, ColorScheme scheme) {
+    final orderNo = jcStr(_info, const ['MaintenanceOrderID']);
+    final receipt = jcStr(_info, const ['Receipt Date']);
+    final delivery = jcStr(_info, const ['Date and time of delivery']);
+    final engineer = isAr
+        ? jcStr(_info, const ['Reception Engineer Ar', 'Reception Engineer'])
+        : jcStr(_info, const ['Reception Engineer']);
+    final phone = jcStr(_info, const ['mobileNo', 'Reception Mobile']);
+
+    Widget row(IconData icon, String label, String value, {bool ltr = false}) =>
+        Padding(
+          padding: EdgeInsets.only(top: context.rs(8)),
+          child: Row(children: [
+            Icon(icon, size: 14, color: scheme.primary),
+            SizedBox(width: context.rs(7)),
+            Text(label,
+                style: TextStyle(
+                    fontSize: context.rf(11),
+                    color: scheme.onSurface.withValues(alpha: 0.55))),
+            const Spacer(),
+            Expanded(
+              child: Text(
+                value.isEmpty ? '—' : value,
+                textAlign: TextAlign.end,
+                textDirection: ltr ? TextDirection.ltr : null,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                    fontSize: context.rf(11.5), fontWeight: FontWeight.w800),
+              ),
+            ),
+          ]),
+        );
+
+    return Container(
+      margin: EdgeInsets.only(bottom: context.rs(10)),
+      padding: EdgeInsets.all(context.rs(14)),
+      decoration: softCardDecoration(context, radius: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            tr('بطاقة العمل', 'Job card').toUpperCase(),
+            style: TextStyle(
+              fontSize: context.rf(9.5),
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.2,
+              color: scheme.primary,
+            ),
+          ),
+          if (orderNo.isNotEmpty) ...[
+            SizedBox(height: context.rs(3)),
+            Text(orderNo,
+                textDirection: TextDirection.ltr,
+                textAlign: TextAlign.start,
+                style: TextStyle(
+                    fontSize: context.rf(16), fontWeight: FontWeight.w800)),
+          ],
+          if (receipt.isNotEmpty)
+            row(Icons.schedule_rounded, tr('تاريخ الاستلام', 'Receipt date'),
+                _fmtDT(receipt), ltr: true),
+          if (delivery.isNotEmpty)
+            row(Icons.schedule_rounded, tr('موعد التسليم', 'Delivery date'),
+                _fmtDT(delivery), ltr: true),
+          if (engineer.isNotEmpty)
+            row(Icons.verified_user_outlined,
+                tr('مهندس الاستقبال', 'Reception engineer'), engineer),
+          if (phone.isNotEmpty)
+            row(Icons.call_rounded, tr('الجوال', 'Mobile'), phone, ltr: true),
+        ],
+      ),
+    );
+  }
+
+  /// One collapsible details panel (collapsed by default, like the website).
+  Widget _detailsPanel(BuildContext context, String title,
+      List<(String, String)> rows, ColorScheme scheme,
+      {Widget? extra}) {
+    return Container(
+      margin: EdgeInsets.only(bottom: context.rs(8)),
+      decoration: softCardDecoration(context, radius: 18),
+      clipBehavior: Clip.antiAlias,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: EdgeInsets.symmetric(horizontal: context.rs(14)),
+          childrenPadding: EdgeInsets.fromLTRB(
+              context.rs(14), 0, context.rs(14), context.rs(12)),
+          title: Text(title,
+              style: TextStyle(
+                  fontSize: context.rf(12.5), fontWeight: FontWeight.w800)),
+          children: [
+            for (final (label, value) in rows)
+              Padding(
+                padding: EdgeInsets.only(bottom: context.rs(7)),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: context.rf(11),
+                            color:
+                                scheme.onSurface.withValues(alpha: 0.55))),
+                    SizedBox(width: context.rs(10)),
+                    Expanded(
+                      child: Text(
+                        value.isEmpty || value == 'null' ? '—' : value,
+                        textAlign: TextAlign.end,
+                        style: TextStyle(
+                            fontSize: context.rf(11.5),
+                            fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ?extra,
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// The 15 visual-inspection checkboxes (ERP field codes verbatim).
+  static const List<(String, String, String)> _inspectionItems = [
+    ('FloorMat', 'دواسات الأرضية', 'Floor mats'),
+    ('AshTry', 'المنفضة', 'Ashtray'),
+    ('Lighter', 'الولاعة', 'Lighter'),
+    ('SpareTire', 'الإطار الاحتياطي', 'Spare tire'),
+    ('WhealJack', 'رافعة السيارة', 'Car jack'),
+    ('WheelCaps', 'أغطية العجلات', 'Wheel covers'),
+    ('ToolBox', 'صندوق العدة', 'Toolbox'),
+    ('AllyWheel', 'الجنوط', 'Alloy wheels'),
+    ('AllyWheelLock', 'قفل الجنوط', 'Alloy wheel lock'),
+    ('FirstAidKit', 'حقيبة الإسعافات', 'First aid kit'),
+    ('SmartKeyRemote', 'ريموت المفتاح', 'Smart key remote'),
+    ('USBDevice', 'منفذ USB', 'USB device'),
+    ('DVDnavScreen', 'شاشة الملاحة', 'Navigation screen'),
+    ('NavMemoryCard', 'بطاقة ذاكرة الملاحة', 'Nav memory card'),
+    ('AirComprissor', 'ضاغط الهواء', 'Air compressor'),
+  ];
+
+  Widget _inspectionPanel(BuildContext context,
+      String Function(String, String) tr, bool isAr, ColorScheme scheme) {
+    final img = jcStr(_info, const ['CarImage', 'carImage']);
+    Uint8List? bytes;
+    if (img.isNotEmpty && img != 'null') {
+      try {
+        bytes = base64Decode(img);
+      } catch (_) {}
+    }
+    return _detailsPanel(
+      context,
+      tr('الفحص الظاهري', 'Visual inspection'),
+      const [],
+      scheme,
+      extra: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (bytes != null) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child:
+                  Image.memory(bytes, width: double.infinity, fit: BoxFit.cover),
+            ),
+            SizedBox(height: context.rs(10)),
+          ],
+          Wrap(
+            spacing: context.rs(10),
+            runSpacing: context.rs(8),
+            children: [
+              for (final (code, ar, en) in _inspectionItems)
+                SizedBox(
+                  width: (MediaQuery.sizeOf(context).width - context.rs(80)) / 2,
+                  child: Row(children: [
+                    Icon(
+                      jcTruthy(_info, [code])
+                          ? Icons.check_circle_rounded
+                          : Icons.radio_button_off_rounded,
+                      size: 15,
+                      color: jcTruthy(_info, [code])
+                          ? const Color(0xFF2E9E5B)
+                          : scheme.onSurface.withValues(alpha: 0.3),
+                    ),
+                    SizedBox(width: context.rs(6)),
+                    Expanded(
+                      child: Text(tr(ar, en),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: context.rf(10.5))),
+                    ),
+                  ]),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Terms & conditions — numbered lines from the info row, '<>' → ' — '.
+  void _showTerms(BuildContext context, String Function(String, String) tr,
+      bool isAr) {
+    final raw = isAr
+        ? jcStr(_info, const ['TermsConditionsAr'])
+        : jcStr(_info, const ['TermsConditionsEn']);
+    final lines = raw
+        .split('\n')
+        .where((l) => l.trim().isNotEmpty)
+        .map((l) => l.replaceAll('<>', ' — '))
+        .toList();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(tr('الشروط والأحكام', 'Terms & conditions'),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: lines.length,
+            itemBuilder: (_, i) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text('${i + 1}. ${lines[i]}',
+                  style: const TextStyle(fontSize: 12, height: 1.5)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(tr('إغلاق', 'Close')),
+          ),
+        ],
+      ),
+    );
+  }
+
   /* ── build ── */
 
   @override
@@ -491,6 +757,8 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
       padding: EdgeInsets.fromLTRB(
           context.rs(16), context.rs(6), context.rs(16), context.rs(28)),
       children: [
+        // ── Header details (website /jobCard page header card) ──
+        if (_info != null) _headerCard(context, tr, isAr, scheme),
         if (_isPaid && _sadadNumber.isEmpty) _paidBanner(context, tr),
         if (_sadadNumber.isNotEmpty) _sadadPanel(context, tr, _sadadNumber),
 
@@ -588,6 +856,157 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
               ],
             ]),
           ),
+        ],
+
+        // ── تفاصيل البطاقة — the website's five collapsible panels ──
+        if (_info != null) ...[
+          _SectionLabel(tr('تفاصيل بطاقة العمل', 'Job card details')),
+          _detailsPanel(
+            context,
+            tr('معلومات الضيف', 'Guest information'),
+            [
+              (
+                tr('مالك المركبة', 'Vehicle owner'),
+                isAr
+                    ? jcStr(_info,
+                        const ['Vehicle Owner Ar', 'Vehicle Owner'])
+                    : jcStr(_info, const ['Vehicle Owner'])
+              ),
+              (tr('الجوال', 'Mobile'), jcStr(_info, const ['mobileNo'])),
+              (
+                tr('الهوية / الإقامة', 'ID / Iqama'),
+                jcStr(_info, const ['Personal Identification'])
+              ),
+              (
+                tr('من أحضر المركبة', 'Brought by'),
+                jcStr(_info, const ['Who brought the vehicle'])
+              ),
+              (
+                tr('جوال مُحضِر المركبة', 'Carrier mobile'),
+                jcStr(_info, const ['Who brought the vehicle Mobile'])
+              ),
+            ],
+            scheme,
+          ),
+          _detailsPanel(
+            context,
+            tr('معلومات الخدمة', 'Service information'),
+            [
+              for (final (ar, en, f) in const [
+                ('طريقة الدفع', 'Payment method', 'Payment Method'),
+                ('نوع الخدمة', 'Service type', 'Service Type'),
+                ('نوع الإصلاح', 'Repair type', 'Repair Type'),
+                ('نوع الضيف', 'Guest type', 'Guest type'),
+                // ERP's own 'Retrun' typo — matched verbatim.
+                ('تسليم القطع القديمة', 'Return old parts',
+                    'Retrun Old Parts'),
+                ('خدمة نقل المركبة', 'Vehicle transport',
+                    'Vehicle Transportation Service'),
+              ])
+                (
+                  tr(ar, en),
+                  isAr ? jcStr(_info, ['$f Ar', f]) : jcStr(_info, [f])
+                ),
+            ],
+            scheme,
+          ),
+          _detailsPanel(
+            context,
+            tr('معلومات المركبة', 'Vehicle information'),
+            [
+              (
+                tr('الماركة والموديل', 'Brand & model'),
+                ('${isAr ? jcStr(_info, const ['Brand Ar', 'Brand']) : jcStr(_info, const ['Brand'])} ${jcStr(_info, const ['Model'])}')
+                    .trim()
+              ),
+              (
+                tr('رقم الهيكل', 'Chassis no.'),
+                jcStr(_info, const ['Chassis number'])
+              ),
+              (
+                tr('رقم اللوحة', 'Plate number'),
+                jcStr(_info, const ['Plate Number'])
+              ),
+              (
+                tr('تاريخ الشراء', 'Purchase date'),
+                jcStr(_info, const ['The date of purchase']).isEmpty
+                    ? ''
+                    : _fmtDT(jcStr(_info, const ['The date of purchase']),
+                        dateOnly: true)
+              ),
+              (
+                tr('قراءة العداد', 'Meter reading'),
+                jcStr(_info, const ['meter reading'])
+              ),
+              (
+                tr('مؤشر الوقود', 'Fuel indicator'),
+                jcStr(_info, const ['fuel indicator'])
+              ),
+              (
+                tr('لمبات التحذير', 'Warning lights'),
+                isAr
+                    ? jcStr(_info,
+                        const ['Warning bulbs Ar', 'Warning bulbs'])
+                    : jcStr(_info, const ['Warning bulbs'])
+              ),
+            ],
+            scheme,
+          ),
+          _inspectionPanel(context, tr, isAr, scheme),
+          if (_center != null)
+            _detailsPanel(
+              context,
+              tr('معلومات المركز', 'Center information'),
+              [
+                (
+                  tr('مزوّد الخدمة', 'Service provider'),
+                  jcStr(_center, const [
+                    'Company', 'ServiceProvidorEn', 'ServiceProvidorAr',
+                  ])
+                ),
+                (
+                  tr('الرقم الضريبي', 'Tax number'),
+                  jcStr(_center, const ['TaxIDNum', 'TaxIDNumber'])
+                ),
+                (
+                  tr('السجل التجاري', 'Commercial record'),
+                  jcStr(_center, const ['CRNumber'])
+                ),
+                (
+                  tr('العنوان', 'Address'),
+                  // The misspelled BrnachAddressAr ships first — verbatim.
+                  jcStr(_center, const [
+                    'BranchAddressEn', 'BrnachAddressAr', 'BranchAddressAr',
+                  ])
+                ),
+                (
+                  tr('أرقام التواصل', 'Contact'),
+                  jcStr(_center, const ['BranchTel', 'CompanyTel'])
+                ),
+              ],
+              scheme,
+            ),
+          if (jcStr(_info, const ['TermsConditionsAr']).isNotEmpty ||
+              jcStr(_info, const ['TermsConditionsEn']).isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(bottom: context.rs(8)),
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(44),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                  side: BorderSide(
+                      color: scheme.primary.withValues(alpha: 0.5)),
+                  foregroundColor: scheme.primary,
+                  textStyle: TextStyle(
+                      fontSize: context.rf(12.5),
+                      fontWeight: FontWeight.w800),
+                ),
+                onPressed: () => _showTerms(context, tr, isAr),
+                icon: const Icon(Icons.description_outlined, size: 17),
+                label: Text(tr('الشروط والأحكام', 'Terms & conditions')),
+              ),
+            ),
         ],
 
         // ── كود الكوبون ── (website parity: input + Apply → emerald pill

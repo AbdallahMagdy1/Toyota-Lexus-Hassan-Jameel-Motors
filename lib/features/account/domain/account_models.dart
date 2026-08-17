@@ -201,6 +201,10 @@ final class WorkOrder extends Equatable {
 
   bool get readyToPay => status == 'SentForPayment' || status == 'Ready to Release';
 
+  /// Payment is allowed ONLY once the ERP moves the order to
+  /// SentForPayment — before that the pay button renders disabled.
+  bool get payable => status == 'SentForPayment';
+
   String description(String lang) =>
       (lang == 'ar' ? descriptionAr : descriptionEn) ??
       descriptionEn ??
