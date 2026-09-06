@@ -27,7 +27,13 @@ import '../storage/local_store.dart';
 
 final sl = GetIt.instance;
 
+/// The running store app's brand ('toyota' | 'lexus'), set once at bootstrap.
+/// The ERP's SMS gateway keys sender names off this: 1 = Toyota, 2 = Lexus.
+String appBrand = 'toyota';
+int get appBrandId => appBrand == 'lexus' ? 2 : 1;
+
 Future<void> setupInjector({String brand = 'toyota'}) async {
+  appBrand = brand;
   final prefs = await SharedPreferences.getInstance();
 
   sl

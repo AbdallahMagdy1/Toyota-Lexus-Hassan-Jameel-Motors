@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../../core/constants/api_paths.dart';
+import '../../../core/di/injector.dart' show appBrandId;
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/local_store.dart';
 import '../../../core/utils/crypto.dart';
@@ -94,7 +95,8 @@ final class AuthRepository {
     try {
       final res = await _api.post<Map<String, dynamic>>(
         ApiPaths.otpRequest,
-        body: {'accessType': accessType, 'access': access},
+        // brand picks the SMS sender name server-side (1 Toyota, 2 Lexus).
+        body: {'accessType': accessType, 'access': access, 'brand': appBrandId},
       );
       final data = res.data;
       if (res.statusCode == 200 && data != null) {
