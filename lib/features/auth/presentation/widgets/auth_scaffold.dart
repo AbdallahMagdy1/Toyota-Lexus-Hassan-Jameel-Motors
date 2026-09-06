@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../../core/di/injector.dart';
+import '../../../../core/theme/theme_factory.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../onboarding/data/onboarding_repository.dart';
@@ -159,6 +160,10 @@ final class _AuthScaffoldView extends StatelessWidget {
     final dark = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      // This local theme replaces the app one for the whole auth flow, so
+      // it has to re-declare the brand typeface or login/register would be
+      // the only screens left in the system font.
+      fontFamily: kAppFontFamily,
       colorScheme: ColorScheme.dark(
         primary: scheme.primary,
         onPrimary: scheme.onPrimary,

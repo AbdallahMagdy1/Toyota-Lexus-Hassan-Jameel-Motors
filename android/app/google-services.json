@@ -34,6 +34,64 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172504827635:android:d09f3a9e0190f6d226d986",
+        "android_client_info": {
+          "package_name": "com.hassanjameel.lexus"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo8e-_ldopnlh1ntjfHdkkD89oQJTLk0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:172504827635:android:fc7495cb4283cbc426d986",
+        "android_client_info": {
+          "package_name": "com.hassanjameel.toyota"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAo8e-_ldopnlh1ntjfHdkkD89oQJTLk0M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "172504827635-80862di58ilfkfcmelo8t9n454clot17.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

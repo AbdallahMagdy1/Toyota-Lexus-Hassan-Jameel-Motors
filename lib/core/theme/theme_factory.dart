@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 import 'app_brand.dart';
 
+/// The website's brand typeface (public/fonts/nextFont), bundled as
+/// assets/fonts/UniversNextArabic-*.ttf. One family covers Latin AND
+/// Arabic, so en/ar render in the same voice without a per-locale swap.
+const kAppFontFamily = 'UniversNextArabic';
+
 /// Builds the app-wide ThemeData from an [AppBrand] + brightness — the
 /// mobile equivalent of globals.css mapping --color-brand-* per mode.
 abstract final class ThemeFactory {
@@ -62,9 +67,19 @@ abstract final class ThemeFactory {
         elevation: 0,
         centerTitle: true,
       ),
-      textTheme: Typography.material2021(
-        platform: TargetPlatform.iOS,
-      ).englishLike.apply(bodyColor: onSurface, displayColor: onSurface),
+      // NOTE: the family MUST be applied here, not only via
+      // ThemeData(fontFamily:). The material2021 geometry styles are
+      // `inherit: false`, and TextStyle.merge returns a non-inheriting
+      // `other` wholesale — so a bare ThemeData.fontFamily is silently
+      // dropped for every style in this text theme.
+      fontFamily: kAppFontFamily,
+      textTheme: Typography.material2021(platform: TargetPlatform.iOS)
+          .englishLike
+          .apply(
+            fontFamily: kAppFontFamily,
+            bodyColor: onSurface,
+            displayColor: onSurface,
+          ),
       // NOTE: minimumSize must have a BOUNDED width here. Size.fromHeight
       // sets minWidth = ∞, which explodes ("BoxConstraints forces an
       // infinite width") for any themed button placed in a Row/unbounded

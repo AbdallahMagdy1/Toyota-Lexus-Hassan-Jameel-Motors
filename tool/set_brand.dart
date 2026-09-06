@@ -41,6 +41,25 @@ Future<void> main(List<String> args) async {
     RegExp(r'android:label="[^"]*"'): 'android:label="${brand.name}"',
   });
 
+  // Android applicationId — same id as iOS, so ONE android/ folder serves
+  // both store apps (Play package flips per brand before building).
+  _rewrite('android/app/build.gradle.kts', {
+    RegExp(r'applicationId = "[^"]*"'):
+        'applicationId = "${brand.bundleId}"',
+  });
+
+  // iOS Firebase config — download each brand's GoogleService-Info.plist
+  // from the Firebase console into ios/firebase/ (named per brand); the
+  // active one is copied over ios/Runner/GoogleService-Info.plist. Push
+  // notifications on iOS need the plist registered for the brand's bundle id.
+  final plist = File('ios/firebase/GoogleService-Info-${args.first}.plist');
+  if (plist.existsSync()) {
+    plist.copySync('ios/Runner/GoogleService-Info.plist');
+    stdout.writeln('Copied ${plist.path} -> ios/Runner/GoogleService-Info.plist');
+  } else {
+    stdout.writeln('NOTE: ${plist.path} not found - iOS Firebase config unchanged.');
+  }
+
   stdout.writeln('Regenerating launcher icons (${brand.icons})…');
   final icons = await Process.run(
     'dart', ['run', 'flutter_launcher_icons', '-f', brand.icons],

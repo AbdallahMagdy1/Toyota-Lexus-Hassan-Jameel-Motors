@@ -151,6 +151,13 @@ final class PushService {
 
       await FirebaseMessaging.instance.requestPermission();
 
+      // "TargetAll" broadcasts publish to the 'all' topic (WebSiteMobileBackEnd
+      // FCMServices.SendToTopicAsync) — the OLD app never subscribed, so
+      // broadcasts reached nobody. Subscribing fixes send-to-all.
+      try {
+        await FirebaseMessaging.instance.subscribeToTopic('all');
+      } catch (_) {}
+
       FirebaseMessaging.onMessage.listen(_onMessage);
       FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
       _ready = true;
@@ -209,17 +216,134 @@ Future<void> _backgroundHandler(RemoteMessage message) async {
 
 /* ───────────────────────── Inbox sheet ───────────────────────── */
 
+/// One row of the SERVER inbox (dbo.siteUserNotifications): broadcast rows
+/// (ToAll=1) + rows addressed to this Web_UserID, served paged by
+/// /api/app/account/notifications-feed.
+final class ServerNotification {
+  const ServerNotification({
+    required this.id,
+    this.titleAr,
+    this.titleEn,
+    this.contentAr,
+    this.contentEn,
+    this.type,
+    this.date,
+  });
+
+  final int id;
+  final String? titleAr;
+  final String? titleEn;
+  final String? contentAr;
+  final String? contentEn;
+  final String? type;
+  final DateTime? date;
+
+  String title(String lang) =>
+      (lang == 'ar' ? titleAr : titleEn) ?? titleEn ?? titleAr ?? '';
+  String body(String lang) =>
+      (lang == 'ar' ? contentAr : contentEn) ?? contentEn ?? contentAr ?? '';
+
+  factory ServerNotification.fromJson(Map<String, dynamic> j) =>
+      ServerNotification(
+        id: int.tryParse('${j['notifyId'] ?? 0}') ?? 0,
+        titleAr: j['titleAr']?.toString(),
+        titleEn: j['titleEn']?.toString(),
+        contentAr: j['contentAr']?.toString(),
+        contentEn: j['contentEn']?.toString(),
+        type: j['alertType']?.toString(),
+        date: DateTime.tryParse('${j['createdDate'] ?? ''}'),
+      );
+
+  /// Icon by the ops NotificationType (service update / appointment /
+  /// agreement / offer …) — keyword-matched so new types degrade gracefully.
+  IconData get icon {
+    final t = '${type ?? ''} $titleEn'.toLowerCase();
+    if (t.contains('offer')) return Icons.local_offer_outlined;
+    if (t.contains('agreement') || t.contains('repair')) {
+      return Icons.description_outlined;
+    }
+    if (t.contains('today') || t.contains('appointment')) {
+      return Icons.event_available_rounded;
+    }
+    if (t.contains('service')) return Icons.car_repair_rounded;
+    return Icons.notifications_active_outlined;
+  }
+}
+
 void showNotificationsSheet(BuildContext context) {
   sl<NotificationsCubit>().markAllRead();
   showHeroBottomSheet<void>(
     context,
-    heightFactor: 0.8,
+    heightFactor: 0.85,
     builder: (_) => const _NotificationsView(),
   );
 }
 
-final class _NotificationsView extends StatelessWidget {
+final class _NotificationsView extends StatefulWidget {
   const _NotificationsView();
+
+  @override
+  State<_NotificationsView> createState() => _NotificationsViewState();
+}
+
+final class _NotificationsViewState extends State<_NotificationsView> {
+  static const _pageSize = 20;
+
+  final _scroll = ScrollController();
+  final List<ServerNotification> _items = [];
+  int _page = 0;
+  bool _loading = false;
+  bool _exhausted = false;
+  bool _firstLoadDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMore();
+    // Infinite scroll: fetch the next page as the user nears the bottom —
+    // history can be long, so it is never loaded in one shot.
+    _scroll.addListener(() {
+      if (_scroll.position.extentAfter < 400) _loadMore();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadMore() async {
+    if (_loading || _exhausted) return;
+    setState(() => _loading = true);
+    final userId = sl<AuthBloc>().state.user?.userId ?? 0;
+    try {
+      final res = await sl<ApiClient>().get<List<dynamic>>(
+        '/api/app/account/notifications-feed',
+        query: {'userId': userId, 'page': _page, 'pageSize': _pageSize},
+      );
+      final rows = (res.data ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(ServerNotification.fromJson)
+          .where((n) => n.title('ar').isNotEmpty || n.body('ar').isNotEmpty)
+          .toList();
+      if (!mounted) return;
+      setState(() {
+        _items.addAll(rows);
+        _page += 1;
+        _exhausted = rows.length < _pageSize;
+        _loading = false;
+        _firstLoadDone = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _exhausted = true;
+        _firstLoadDone = true;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -231,117 +355,147 @@ final class _NotificationsView extends StatelessWidget {
       color: scheme.surface,
       child: SafeArea(
         top: false,
-        child: BlocBuilder<NotificationsCubit, (List<AppNotification>, int)>(
-          bloc: sl<NotificationsCubit>(),
-          builder: (context, state) {
-            final list = state.$1;
-            return Column(
-              children: [
-                Padding(
-                  padding: EdgeInsets.fromLTRB(
-                      context.rs(20), context.rs(10), context.rs(20), 0),
-                  child: Column(children: [
-                    const SheetHandle(),
-                    SizedBox(height: context.rs(12)),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(t.notifTitle,
-                              style: TextStyle(
-                                  fontSize: context.rf(18),
-                                  fontWeight: FontWeight.w800)),
-                        ),
-                        if (list.isNotEmpty)
-                          TextButton(
-                            onPressed: sl<NotificationsCubit>().clear,
-                            child: Text(t.notifClear,
-                                style: TextStyle(fontSize: context.rf(11.5))),
-                          ),
-                      ],
-                    ),
-                  ]),
+        child: Column(
+          children: [
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                  context.rs(20), context.rs(10), context.rs(20), 0),
+              child: Column(children: [
+                const SheetHandle(),
+                SizedBox(height: context.rs(12)),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(t.notifTitle,
+                      style: TextStyle(
+                          fontSize: context.rf(18),
+                          fontWeight: FontWeight.w800)),
                 ),
-                Expanded(
-                  child: list.isEmpty
+              ]),
+            ),
+            Expanded(
+              child: !_firstLoadDone
+                  ? const Center(
+                      child: SizedBox(
+                          width: 26,
+                          height: 26,
+                          child: CircularProgressIndicator(strokeWidth: 2.6)))
+                  : _items.isEmpty
                       ? AppEmptyState(
                           icon: Icons.notifications_none_rounded,
                           title: t.notifEmpty,
                           compact: true,
                         )
                       : ListView.separated(
+                          controller: _scroll,
                           padding: EdgeInsets.all(context.rs(16)),
-                          itemCount: list.length,
+                          itemCount: _items.length + (_exhausted ? 0 : 1),
                           separatorBuilder: (_, _) =>
                               SizedBox(height: context.rs(8)),
                           itemBuilder: (context, i) {
-                            final n = list[i];
-                            return Container(
-                              padding: EdgeInsets.all(context.rs(12)),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                    color: scheme.outline
-                                        .withValues(alpha: 0.5)),
-                              ),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    width: context.rs(34),
-                                    height: context.rs(34),
-                                    decoration: BoxDecoration(
-                                      color: scheme.primary
-                                          .withValues(alpha: 0.1),
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                        Icons.notifications_active_outlined,
-                                        size: 16,
-                                        color: scheme.primary),
-                                  ),
-                                  SizedBox(width: context.rs(10)),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(n.title(lang),
-                                            style: TextStyle(
-                                                fontSize: context.rf(12.5),
-                                                fontWeight: FontWeight.w800)),
-                                        if (n.body(lang).isNotEmpty)
-                                          Text(n.body(lang),
-                                              style: TextStyle(
-                                                  fontSize: context.rf(11.5),
-                                                  height: 1.4,
-                                                  color: scheme.onSurface
-                                                      .withValues(
-                                                          alpha: 0.65))),
-                                        SizedBox(height: context.rs(3)),
-                                        Text(
-                                          n.date
-                                              .toIso8601String()
-                                              .substring(0, 16)
-                                              .replaceAll('T', ' '),
-                                          textDirection: TextDirection.ltr,
-                                          style: TextStyle(
-                                              fontSize: context.rf(9.5),
-                                              color: scheme.onSurface
-                                                  .withValues(alpha: 0.45)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
+                            if (i >= _items.length) {
+                              // Tail loader while the next page streams in.
+                              return Padding(
+                                padding: EdgeInsets.all(context.rs(14)),
+                                child: const Center(
+                                  child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2.2)),
+                                ),
+                              );
+                            }
+                            final n = _items[i];
+                            return _NotificationTile(
+                                n: n, lang: lang, scheme: scheme);
                           },
                         ),
-                ),
-              ],
-            );
-          },
+            ),
+          ],
         ),
+      ),
+    );
+  }
+}
+
+final class _NotificationTile extends StatelessWidget {
+  const _NotificationTile(
+      {required this.n, required this.lang, required this.scheme});
+
+  final ServerNotification n;
+  final String lang;
+  final ColorScheme scheme;
+
+  String _when(DateTime? d, String lang) {
+    if (d == null) return '';
+    final diff = DateTime.now().difference(d);
+    if (diff.inMinutes < 60) {
+      return lang == 'ar' ? 'منذ ${diff.inMinutes} دقيقة' : '${diff.inMinutes}m ago';
+    }
+    if (diff.inHours < 24) {
+      return lang == 'ar' ? 'منذ ${diff.inHours} ساعة' : '${diff.inHours}h ago';
+    }
+    if (diff.inDays < 7) {
+      return lang == 'ar' ? 'منذ ${diff.inDays} يوم' : '${diff.inDays}d ago';
+    }
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(d.day)}/${two(d.month)}/${d.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: EdgeInsets.all(context.rs(12)),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF181B21) : const Color(0xFFF7F8FA),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: context.rs(36),
+            height: context.rs(36),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: isDark ? 0.18 : 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(n.icon, size: 17, color: scheme.primary),
+          ),
+          SizedBox(width: context.rs(10)),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(children: [
+                  Expanded(
+                    child: Text(n.title(lang),
+                        style: TextStyle(
+                            fontSize: context.rf(12.5),
+                            fontWeight: FontWeight.w800)),
+                  ),
+                  SizedBox(width: context.rs(8)),
+                  Text(
+                    _when(n.date, lang),
+                    style: TextStyle(
+                        fontSize: context.rf(9.5),
+                        color: scheme.onSurface.withValues(alpha: 0.45)),
+                  ),
+                ]),
+                if (n.body(lang).isNotEmpty) ...[
+                  SizedBox(height: context.rs(3)),
+                  Text(n.body(lang),
+                      style: TextStyle(
+                          fontSize: context.rf(11.5),
+                          height: 1.45,
+                          color:
+                              scheme.onSurface.withValues(alpha: 0.65))),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -68,14 +68,21 @@ final class _QuickLinksPanelState extends State<QuickLinksPanel> {
           padding: EdgeInsets.all(context.rs(8)),
           child: SizedBox(
             height: context.rs(78),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (var i = 0; i < widget.actions.length; i++) ...[
-                  if (i > 0) SizedBox(width: context.rs(14)),
-                  tile(i),
-                ],
-              ],
+            // Centered while the tiles fit; slides horizontally when the
+            // set outgrows the panel width.
+            child: Center(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    for (var i = 0; i < widget.actions.length; i++) ...[
+                      if (i > 0) SizedBox(width: context.rs(10)),
+                      tile(i),
+                    ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

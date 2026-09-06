@@ -216,7 +216,6 @@ final class _BodyState extends State<_Body> {
                         ).animate().fadeIn(duration: 280.ms),
                       ),
                       _GarageSection(home: state.home, lang: lang),
-                      _QuickActions(home: state.home, lang: lang),
                       if (state.home.journeys.isNotEmpty) ...[
                         SectionHeader(
                           title: t.acJourneys,
@@ -432,6 +431,15 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
           Positioned.fill(
             child: _slider(
               count: cars.length,
+              // Swiping the hero IS choosing the car: everything below that
+              // watches ActiveCarCubit (car card, trio, protection rail)
+              // follows instantly — no need to open the car sheet first.
+              onPage: (i) {
+                final vin = cars.elementAtOrNull(i)?.vin;
+                if ((vin ?? '').isNotEmpty) {
+                  sl<ActiveCarCubit>().select(vin);
+                }
+              },
               itemBuilder: (context, i) {
                 final car = cars[i];
                 final meter = car.meterReading;
@@ -517,6 +525,7 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
   Widget _slider({
     required int count,
     required IndexedWidgetBuilder itemBuilder,
+    void Function(int)? onPage,
   }) {
     if (_count != count) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -526,7 +535,10 @@ final class _HeroCarSliderState extends State<_HeroCarSlider> {
     return PageView.builder(
       controller: PageController(initialPage: _page),
       itemCount: count,
-      onPageChanged: (i) => setState(() => _page = i),
+      onPageChanged: (i) {
+        setState(() => _page = i);
+        onPage?.call(i);
+      },
       itemBuilder: itemBuilder,
     );
   }
@@ -920,9 +932,9 @@ final class _CarQuickTrio extends StatelessWidget {
     );
     if (active == null) return const SizedBox.shrink();
 
-    // Same strip as the "All services" section: ONE white panel, the lead
-    // action as a filled brand tile, the rest as plain icon tiles — tiles
-    // wrapped around the center, panel hugging their height.
+    // ONE quick-actions strip for the whole home (the old duplicate
+    // "خدمات سريعة" section below was removed): booking + tracking +
+    // buy-a-car + spare parts + my orders.
     return Center(
       child: QuickLinksPanel(centered: true, actions: [
         (
@@ -934,6 +946,16 @@ final class _CarQuickTrio extends StatelessWidget {
           Icons.car_repair_rounded,
           t.trackTitle,
           () => context.push(Routes.tracking),
+        ),
+        (
+          Icons.directions_car_rounded,
+          t.acBuyCar,
+          () => context.push(Routes.onlineStore),
+        ),
+        (
+          Icons.settings_rounded,
+          t.ghSpareParts,
+          () => context.push(Routes.parts),
         ),
         (
           Icons.assignment_outlined,
@@ -981,7 +1003,9 @@ final class _GreetingState extends State<_Greeting>
     final user = context.select((AuthBloc b) => b.state.user);
     final scheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final hour = DateTime.now().hour;
+    // Saudi time (UTC+3, no DST) — the app serves KSA, so a device set to
+    // another timezone must never flip the greeting.
+    final hour = DateTime.now().toUtc().add(const Duration(hours: 3)).hour;
     final (greeting, timeIcon) = hour < 12
         ? (t.acGoodMorning, Icons.light_mode_rounded)
         : hour < 17
@@ -1324,14 +1348,15 @@ final class WorkOrderCard extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                // Locked until the ERP reaches SentForPayment.
-                onPressed: order.payable
-                    ? () => showJobCardPaySheet(context, guid: order.guid!)
-                    : null,
+                // ALWAYS opens the job-card details sheet; the PAYMENT
+                // section inside gates itself on the ERP stage (website
+                // parity: pay only when Approved/SentForPayment).
+                onPressed: () =>
+                    showJobCardPaySheet(context, guid: order.guid!),
                 icon: Icon(
                   order.payable
                       ? Icons.payments_rounded
-                      : Icons.lock_clock_rounded,
+                      : Icons.receipt_long_rounded,
                   size: 17,
                 ),
                 label: Text(order.payable ? t.jdPayNow : t.acJobCard),
@@ -2184,59 +2209,6 @@ final class _GarageSection extends StatelessWidget {
 /// "Quick Links"-style strip — thin wrapper over the shared
 /// [QuickLinksPanel] (one white panel, filled primary tile, plain tiles,
 /// scroll-progress bar).
-final class _QuickActions extends StatelessWidget {
-  const _QuickActions({required this.home, required this.lang});
-
-  final HomeState home;
-  final String lang;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final cubit = context.read<RegisteredHomeCubit>();
-    final primaryCar =
-        resolveActiveCar(
-          home.garage,
-          sl<settings.ThemeCubit>().state.brandKey,
-          sl<ActiveCarCubit>().state,
-        ) ??
-        home.garage.firstOrNull;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title: t.acQuickTitle),
-        QuickLinksPanel(
-          actions: [
-            (
-              Icons.build_rounded,
-              t.ghBookMaintenance,
-              () => primaryCar != null
-                  ? showMaintenanceBookingSheet(context, car: primaryCar)
-                  : showAddCarSheet(context, onAdded: cubit.load),
-            ),
-            (
-              Icons.directions_car_rounded,
-              t.acBuyCar,
-              () => context.push(Routes.onlineStore),
-            ),
-            (
-              Icons.settings_rounded,
-              t.ghSpareParts,
-              () => context.push(Routes.parts),
-            ),
-            (
-              Icons.assignment_outlined,
-              t.acMyOrders,
-              () => context.push(Routes.tracking),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
 /* ─────────────────────── Active journeys ─────────────────────── */
 
 final class _JourneysList extends StatelessWidget {

@@ -1,7 +1,7 @@
 name: hj_mobile
-description: "Hassan Jameel mobile app — Toyota & Lexus, Saudi Arabia."
+description: "Hassan Jameel mobile app — Toyota, Saudi Arabia."
 publish_to: 'none'
-version: 0.1.0
+version: 1.0.0+14
 
 environment:
   sdk: ^3.10.8
@@ -66,9 +66,20 @@ flutter:
   assets:
     - assets/logos/
 
-  # The website's icomoon font — carries the Saudi Riyal symbol at U+E900
-  # (public/fonts/icomoon), rendered before every price like <CurrencyCode>.
   fonts:
+    # Univers Next Arabic — the website's brand typeface (public/fonts/
+    # nextFont), covering Latin + Arabic from one family so both locales
+    # render in the same voice. Only Regular/Bold ship, so Flutter snaps
+    # w500/w600 to 400 and w800/w900 to 700.
+    - family: UniversNextArabic
+      fonts:
+        - asset: assets/fonts/UniversNextArabic-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/UniversNextArabic-Bold.ttf
+          weight: 700
+
+    # The website's icomoon font — carries the Saudi Riyal symbol at U+E900
+    # (public/fonts/icomoon), rendered before every price like <CurrencyCode>.
     - family: icomoon
       fonts:
         - asset: assets/fonts/icomoon.ttf

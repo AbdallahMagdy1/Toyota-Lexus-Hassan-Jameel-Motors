@@ -187,12 +187,21 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
       (_checkCustomer ? 0 : jcNum(_netTotal, const ['numberNet'])) +
       (_includeAdd ? _remaining : 0);
 
+  /// Website gate: payment allowed only while the ERP order status is
+  /// Approved / SentForPayment (empty status tolerated, like the site).
+  bool get _stageAllowsPay {
+    final s = jcStr(_info, const ['Order Status', 'OrderStatus']);
+    return s.isEmpty ||
+        RegExp('approved|sentforpayment', caseSensitive: false).hasMatch(s);
+  }
+
   bool get _canPay =>
       !_checkCustomer &&
       _pay != null &&
       _status == 1 &&
       _sadadNumber.isEmpty &&
-      _total > 0;
+      _total > 0 &&
+      _stageAllowsPay;
 
   /// Display-only coupon discount, capped at the payable total.
   double get _couponDiscount {
@@ -1021,6 +1030,39 @@ final class _JobCardPaySheetState extends State<_JobCardPaySheet> {
                 label: Text(tr('الشروط والأحكام', 'Terms & conditions')),
               ),
             ),
+        ],
+
+        // Website notice: card exists but the ERP stage doesn't allow
+        // payment yet (e.g. still under service) — shown instead of the
+        // payment section.
+        if (!_canPay &&
+            !_checkCustomer &&
+            !_isPaid &&
+            _sadadNumber.isEmpty &&
+            _total > 0) ...[
+          Container(
+            margin: EdgeInsets.only(top: context.rs(4)),
+            padding: EdgeInsets.all(context.rs(13)),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(children: [
+              Icon(Icons.lock_clock_rounded,
+                  size: 18, color: scheme.primary),
+              SizedBox(width: context.rs(9)),
+              Expanded(
+                child: Text(
+                  tr('هذه البطاقة غير متاحة للدفع حاليًا — يتاح الدفع عند وصول الطلب لمرحلة الدفع.',
+                      'This job card is not available for payment yet — payment opens once the order reaches the payment stage.'),
+                  style: TextStyle(
+                      fontSize: context.rf(11.5),
+                      height: 1.45,
+                      fontWeight: FontWeight.w600),
+                ),
+              ),
+            ]),
+          ),
         ],
 
         // ── كود الكوبون ── (website parity: input + Apply → emerald pill

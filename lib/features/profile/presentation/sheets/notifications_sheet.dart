@@ -6,7 +6,7 @@ import '../../../../core/di/injector.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_states.dart';
-import '../../../notifications/notifications.dart';
+import '../../../notifications/notifications.dart' hide ServerNotification;
 import '../../../settings/bloc/locale_cubit.dart';
 import '../../bloc/profile_cubit.dart';
 import '../../domain/profile_models.dart';
