@@ -24,15 +24,10 @@ import 'maintenance_booking_sheet.dart';
 /// Two paths, per the spec: "I own a car" → pickers + VIN + name → register;
 /// "I don't" → the online store.
 void showAddCarSheet(BuildContext context, {VoidCallback? onAdded}) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (_) => BlocProvider(
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    builder:(_) => BlocProvider(
       create: (_) => _AddCarCubit(
         AccountRepository(sl<ApiClient>()),
         ProtectionRepository(sl<ApiClient>()),
@@ -422,15 +417,10 @@ final class _AddCarView extends StatelessWidget {
 /// reading wins at read time with its source shown.
 void showMeterSheet(BuildContext context,
     {required GarageCar car, VoidCallback? onSaved}) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (_) => BlocProvider(
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    builder:(_) => BlocProvider(
       create: (_) => _MeterCubit(
         AccountRepository(sl<ApiClient>()),
         car: car,
@@ -776,15 +766,10 @@ final class _VehicleHubState extends State<_VehicleHub> {
 /// with the saved nickname on success.
 void showRenameCarSheet(BuildContext context,
     {required GarageCar car, void Function(String alias)? onRenamed}) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-    builder: (_) => _RenameCarView(car: car, onRenamed: onRenamed),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    builder:(_) => _RenameCarView(car: car, onRenamed: onRenamed),
   );
 }
 

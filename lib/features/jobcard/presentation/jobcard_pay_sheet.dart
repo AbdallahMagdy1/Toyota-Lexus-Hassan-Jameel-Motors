@@ -27,15 +27,8 @@ const String _kCallback = 'https://hjapp.payment/jobcard';
 /// (MyFatoorah full / Tabby / Tamara / Sadad) and the in-app gateway WebView.
 Future<void> showJobCardPaySheet(BuildContext context,
     {required String guid}) {
-  return showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-    clipBehavior: Clip.antiAlias,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
+  return showAppModalSheet<void>(
+    context,
     builder: (_) => _JobCardPaySheet(guid: guid),
   );
 }

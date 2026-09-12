@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.hassanjameel.toyotamotors</string>
+	<string>com.hassanjameel.lexus</string>
 	<key>PROJECT_ID</key>
 	<string>hassan-jameel</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,7 +25,7 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:172504827635:ios:b5d82facb023242f26d986</string>
+	<string>1:172504827635:ios:bb25ce9533be0b5f26d986</string>
 	<key>DATABASE_URL</key>
 	<string>https://hassan-jameel.firebaseio.com</string>
 </dict>

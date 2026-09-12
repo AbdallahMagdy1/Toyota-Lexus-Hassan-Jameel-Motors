@@ -248,13 +248,9 @@ final class _DetailSheet extends StatelessWidget {
 
 void _showPaySheet(BuildContext context, ProtectionPackage package,
     {String? vehicleLabel, String? vin}) {
-  showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => BlocProvider(
       create: (_) => _PayCubit(
         ProtectionRepository(sl<ApiClient>()),

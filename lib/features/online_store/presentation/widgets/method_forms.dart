@@ -8,7 +8,8 @@ import 'package:go_router/go_router.dart';
 import '../../../../app/router/routes.dart';
 import '../../../../core/di/injector.dart';
 import '../../../../core/storage/local_store.dart';
-import '../../../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../../../shared/navigation/sheet_routes.dart'
+    show SheetHandle, showAppModalSheet;
 import '../../../../core/utils/responsive.dart';
 import '../../../../l10n/app_localizations.dart';
 import '../../../../shared/widgets/app_dropdown.dart';
@@ -979,13 +980,9 @@ final class FinanceForm extends StatelessWidget {
 /// Financing requirements & required documents — the website's
 /// FinanceRequirementsDialog (Saudi / Resident tabs) as a bottom sheet.
 void showFinanceRequirementsSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => const _FinanceRequirementsSheet(),
   );
 }

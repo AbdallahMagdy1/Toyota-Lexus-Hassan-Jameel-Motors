@@ -17,14 +17,9 @@ import 'complaints_repository.dart';
 /// Opens the "تقديم شكوى" sheet; when the success view's follow-up button
 /// is tapped the sheet pops with 'track' and the tracker opens in place.
 Future<void> showComplaintSubmitSheet(BuildContext context) async {
-  final result = await showModalBottomSheet<String>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+  final result = await showAppModalSheet<String>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => const FractionallySizedBox(
         heightFactor: 0.92, child: _SubmitSheetBody()),
   );

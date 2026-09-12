@@ -38,14 +38,9 @@ Future<DateTime?> showAvailabilityCalendarSheet(
   DateTime? selected,
   DateTime? minDate,
 }) {
-  return showModalBottomSheet<DateTime>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  return showAppModalSheet<DateTime>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => _AvailabilityCalendarSheet(
       initialMonth: initialMonth,
       selected: selected,

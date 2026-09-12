@@ -1,7 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../../../../core/utils/responsive.dart';
-import '../../../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../../../shared/navigation/sheet_routes.dart'
+    show SheetHandle, showAppModalSheet;
 
 /// Small building blocks shared by the profile-hub sheets.
 
@@ -130,14 +131,9 @@ Future<T?> showProfileSheet<T>(
   BuildContext context, {
   required WidgetBuilder builder,
 }) {
-  return showModalBottomSheet<T>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
+  return showAppModalSheet<T>(
+    context,
     backgroundColor: Theme.of(context).colorScheme.surface,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
     builder: builder,
   );
 }

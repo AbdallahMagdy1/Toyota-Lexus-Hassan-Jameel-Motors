@@ -10,7 +10,8 @@ import '../../core/di/injector.dart';
 import '../../core/network/api_client.dart';
 import '../../core/utils/responsive.dart';
 import '../../l10n/app_localizations.dart';
-import '../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../shared/navigation/sheet_routes.dart'
+    show SheetHandle, showAppModalSheet;
 import '../../shared/widgets/app_header.dart';
 import '../../shared/widgets/app_states.dart';
 import '../auth/bloc/auth_bloc.dart';
@@ -673,14 +674,9 @@ final class _UsedCarDetailBodyState extends State<_UsedCarDetailBody> {
 /* ─────────────────────── "اعرض سيارتك" wizard ─────────────────────── */
 
 void showSellCarWizard(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => const FractionallySizedBox(
         heightFactor: 0.92, child: _SellCarWizard()),
   );

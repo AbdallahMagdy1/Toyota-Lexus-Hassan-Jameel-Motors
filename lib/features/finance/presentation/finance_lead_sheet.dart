@@ -34,14 +34,9 @@ void showFinanceLeadSheet(
     return;
   }
   final lang = sl<LocaleCubit>().state.languageCode;
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => BlocProvider(
       create: (_) => FinanceLeadCubit(
         bank: bank,
@@ -434,13 +429,9 @@ final class AbsherAutofillButton extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(999),
       onTap: () async {
-        final data = await showModalBottomSheet<Map<String, String?>>(
-          context: context,
-          useRootNavigator: true,
-          isScrollControlled: true,
-          useSafeArea: true,
-          shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+        final data = await showAppModalSheet<Map<String, String?>>(
+          context,
+          backgroundColor: scheme.surface,
           builder: (_) => const _AbsherSheet(),
         );
         if (data != null) {

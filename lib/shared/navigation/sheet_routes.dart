@@ -79,10 +79,47 @@ final class _SheetPageRoute<T> extends PageRoute<T> {
   }
 }
 
-/// Finger-tracking drag-to-dismiss: the sheet follows the drag, dismisses
-/// past 22% of its height or on a fast downward fling, and springs back
-/// otherwise. The drag starts from the sheet chrome (handle/edges); inner
-/// scrollables keep their own gesture priority.
+/// Drop-in replacement for the app's showModalBottomSheet calls with the
+/// same Instagram-style drag as [showHeroBottomSheet]: the WHOLE sheet
+/// (its rounded surface included) tracks the finger from the chrome or by
+/// pulling the content past its top, and dismisses past the threshold or
+/// on a downward fling. Content keeps its own height (wrap-content sheets
+/// stay wrap-content); the modal barrier still dismisses on tap.
+Future<T?> showAppModalSheet<T>(
+  BuildContext context, {
+  required WidgetBuilder builder,
+  Color? backgroundColor,
+  bool useSafeArea = true,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    useRootNavigator: true,
+    isScrollControlled: true,
+    useSafeArea: useSafeArea,
+    // The surface lives INSIDE the drag wrapper so the whole sheet slides;
+    // the framework's own chrome-only drag is replaced by ours.
+    backgroundColor: Colors.transparent,
+    elevation: 0,
+    enableDrag: false,
+    builder: (ctx) => _DraggableDismiss(
+      onDismiss: () => Navigator.of(ctx).maybePop(),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        child: Material(
+          color: backgroundColor ?? Theme.of(ctx).scaffoldBackgroundColor,
+          child: builder(ctx),
+        ),
+      ),
+    ),
+  );
+}
+
+/// Finger-tracking drag-to-dismiss, Instagram-style: the sheet follows the
+/// finger from ANYWHERE — the chrome (handle/edges) via a GestureDetector,
+/// and the CONTENT via scroll-notification coordination: pulling an inner
+/// scrollable past its top displaces the whole sheet instead of rubber-
+/// banding, dragging back up re-seats it, and release dismisses past 22%
+/// of the height or on a fast downward fling (springs back otherwise).
 final class _DraggableDismiss extends StatefulWidget {
   const _DraggableDismiss({required this.child, required this.onDismiss});
 
@@ -102,6 +139,8 @@ final class _DraggableDismissState extends State<_DraggableDismiss>
   late final AnimationController _spring;
   late Tween<double> _offsetTween = Tween(begin: 0, end: 0);
 
+  double get _height => MediaQuery.sizeOf(context).height * 0.8;
+
   @override
   void initState() {
     super.initState();
@@ -119,9 +158,9 @@ final class _DraggableDismissState extends State<_DraggableDismiss>
     super.dispose();
   }
 
-  void _end(DragEndDetails d, double height) {
-    final fling = (d.primaryVelocity ?? 0) > 700;
-    if (fling || _offset > height * 0.22) {
+  void _settle(double velocity) {
+    final fling = velocity > 700;
+    if (fling || _offset > _height * 0.22) {
       widget.onDismiss();
       return;
     }
@@ -129,9 +168,38 @@ final class _DraggableDismissState extends State<_DraggableDismiss>
     _spring.forward(from: 0);
   }
 
+  void _end(DragEndDetails d, double height) =>
+      _settle(d.primaryVelocity ?? 0);
+
+  /// The content-drag half: vertical scrollables inside the sheet run on
+  /// clamping physics (see build), so a finger-drag past the top surfaces as
+  /// OverscrollNotification(overscroll < 0) — that displaces the sheet.
+  /// While displaced, upward finger scroll re-seats it before the list moves
+  /// visibly, and the drag's end settles exactly like a chrome drag.
+  bool _onScroll(ScrollNotification n) {
+    if (n.metrics.axis != Axis.vertical) return false;
+
+    if (n is OverscrollNotification &&
+        n.overscroll < 0 &&
+        n.dragDetails != null) {
+      _spring.stop();
+      setState(() => _offset = (_offset - n.overscroll).clamp(0.0, _height));
+    } else if (n is ScrollUpdateNotification &&
+        n.dragDetails != null &&
+        _offset > 0) {
+      final delta = n.scrollDelta ?? 0;
+      if (delta > 0) {
+        setState(() => _offset = (_offset - delta).clamp(0.0, _height));
+      }
+    } else if (n is ScrollEndNotification && _offset > 0) {
+      _settle(n.dragDetails?.primaryVelocity ?? 0);
+    }
+    return false;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final height = MediaQuery.sizeOf(context).height * 0.8;
+    final height = _height;
     return GestureDetector(
       onVerticalDragUpdate: (d) {
         _spring.stop();
@@ -140,7 +208,18 @@ final class _DraggableDismissState extends State<_DraggableDismiss>
       onVerticalDragEnd: (d) => _end(d, height),
       child: Transform.translate(
         offset: Offset(0, _offset),
-        child: widget.child,
+        child: NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          // Clamping physics inside sheets (also on iOS): the pull-past-top
+          // gesture must reach US as an overscroll, not bounce the list.
+          child: ScrollConfiguration(
+            behavior: ScrollConfiguration.of(context).copyWith(
+              physics: const ClampingScrollPhysics(),
+              overscroll: false,
+            ),
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }

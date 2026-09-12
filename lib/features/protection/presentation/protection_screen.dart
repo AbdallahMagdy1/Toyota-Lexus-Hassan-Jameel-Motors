@@ -6,7 +6,8 @@ import '../../../core/di/injector.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../../shared/navigation/sheet_routes.dart'
+    show SheetHandle, showAppModalSheet;
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/brand_logo.dart';
 import '../../../shared/widgets/app_header.dart';
@@ -425,13 +426,9 @@ final class _CarPickerState extends State<_CarPicker> {
       GarageCar selected, String lang) {
     final cubit = context.read<ProtectionCubit>();
     final scheme = Theme.of(context).colorScheme;
-    showModalBottomSheet<void>(
-      context: context,
-      // Root navigator so the sheet covers the shell's bottom-nav overlay.
-      useRootNavigator: true,
-      useSafeArea: true,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    showAppModalSheet<void>(
+      context,
+      backgroundColor: scheme.surface,
       builder: (_) => Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         child: Column(

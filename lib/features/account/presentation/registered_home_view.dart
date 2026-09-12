@@ -12,7 +12,8 @@ import '../../../shared/widgets/slide_media.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
-import '../../../shared/navigation/sheet_routes.dart' show SheetHandle;
+import '../../../shared/navigation/sheet_routes.dart'
+    show SheetHandle, showAppModalSheet;
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/user_avatar.dart';
@@ -2394,15 +2395,9 @@ final class _JourneysList extends StatelessWidget {
 /// store-order tracking timeline + pay-now, booking date/time, finance
 /// status) with a follow-up action where one exists.
 void _showJourneyDetailsSheet(BuildContext context, Journey j, String lang) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (sheetCtx) => _JourneyDetailsSheet(journey: j, lang: lang),
   );
 }
@@ -2822,14 +2817,9 @@ void _pickProtectionCar(
   void Function(int) onPick,
 ) {
   final scheme = Theme.of(context).colorScheme;
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-    ),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: scheme.surface,
     builder: (_) => Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       child: Column(

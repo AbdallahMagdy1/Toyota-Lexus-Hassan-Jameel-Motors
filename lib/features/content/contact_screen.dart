@@ -602,13 +602,9 @@ final class _ContactView extends StatelessWidget {
 /// The header's location pin: lists the branches (from the contact cycle) —
 /// tap one to open it in Google Maps.
 void showBranchesSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => FutureBuilder<ContactPage>(
       future: ContentRepository(sl<ApiClient>()).contact(),
       builder: (context, snap) {

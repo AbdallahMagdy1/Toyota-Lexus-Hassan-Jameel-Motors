@@ -26,14 +26,9 @@ void showProtectionBookingSheet(
 }) {
   final lang = sl<LocaleCubit>().state.languageCode;
   final brandKey = sl<ThemeCubit>().state.brandKey;
-  showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    isScrollControlled: true,
-    useSafeArea: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => BlocProvider(
       create: (_) => ProtectionBookingCubit(
         repo: ProtectionRepository(sl<ApiClient>()),

@@ -19,14 +19,9 @@ import 'complaints_repository.dart';
 /// Opens the "متابعة الشكاوى" sheet — the website's complaint tracker
 /// (status, stage timeline, conversation and customer replies) on mobile.
 Future<void> showComplaintTrackerSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    useSafeArea: true,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(26))),
+  return showAppModalSheet<void>(
+    context,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     builder: (_) => const FractionallySizedBox(
         heightFactor: 0.92, child: _TrackerSheetBody()),
   );

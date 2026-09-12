@@ -8,6 +8,7 @@ import '../../../core/di/injector.dart';
 import '../../../core/utils/media_url.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
+import '../../../shared/navigation/sheet_routes.dart' show showAppModalSheet;
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/keep_alive_section.dart';
@@ -43,12 +44,9 @@ final class GuestHomeView extends StatelessWidget {
 void showLoginPrompt(BuildContext context) {
   final t = AppLocalizations.of(context);
   final scheme = Theme.of(context).colorScheme;
-  showModalBottomSheet(
-    context: context,
-    // Root navigator so the sheet covers the shell's bottom-nav overlay.
-    useRootNavigator: true,
-    shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+  showAppModalSheet<void>(
+    context,
+    backgroundColor: scheme.surface,
     builder: (sheetContext) => Padding(
       padding: const EdgeInsets.fromLTRB(24, 18, 24, 28),
       child: Column(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/utils/responsive.dart';
+import '../navigation/sheet_routes.dart';
 
 /// One selectable option for [AppDropdown].
 final class AppDropdownItem<T> {
@@ -184,10 +185,8 @@ Future<T?> showAppPicker<T>(
   T? selected,
   bool searchable = false,
 }) {
-  return showModalBottomSheet<T>(
-    context: context,
-    useRootNavigator: true,
-    isScrollControlled: true,
+  return showAppModalSheet<T>(
+    context,
     backgroundColor: Colors.transparent,
     builder: (_) => _PickerSheet<T>(
       title: title,
