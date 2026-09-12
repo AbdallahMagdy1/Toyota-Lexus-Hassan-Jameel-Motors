@@ -4,8 +4,44 @@ import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/api_paths.dart';
+import '../../../core/di/injector.dart' show appBrand;
 import '../../../core/network/api_client.dart';
 import '../domain/account_models.dart';
+
+/// Brand pass over garage rows — mirrors the server's FilterGarageByBrand
+/// so pre-update caches and not-yet-redeployed servers can never surface a
+/// Toyota car inside the Lexus app (and vice versa). Cars with no brand
+/// info (user-added) stay visible in both apps rather than vanish.
+List<GarageCar> filterGarageByBrand(List<GarageCar> cars) {
+  bool hasBrand(GarageCar c) =>
+      (c.brandEn ?? '').trim().isNotEmpty || (c.brandAr ?? '').trim().isNotEmpty;
+  bool isLexus(GarageCar c) =>
+      (c.brandEn ?? '').toLowerCase().contains('lexus') ||
+      (c.brandAr ?? '').contains('لكزس');
+  return appBrand == 'lexus'
+      ? cars.where((c) => isLexus(c) || !hasBrand(c)).toList()
+      : cars.where((c) => !isLexus(c)).toList();
+}
+
+/// Same pass over the raw home-state JSON, applied BEFORE parsing so the
+/// dynamic card / cached cold-start paint are brand-scoped too.
+Map<String, dynamic> _filterHomeStateJson(Map<String, dynamic> j) {
+  final garage = j['garage'];
+  if (garage is List) {
+    bool hasBrand(Map m) =>
+        (m['brandEn']?.toString().trim().isNotEmpty ?? false) ||
+        (m['brandAr']?.toString().trim().isNotEmpty ?? false);
+    bool isLexus(Map m) =>
+        (m['brandEn']?.toString().toLowerCase() ?? '').contains('lexus') ||
+        (m['brandAr']?.toString() ?? '').contains('لكزس');
+    j['garage'] = garage
+        .whereType<Map<String, dynamic>>()
+        .where((m) =>
+            appBrand == 'lexus' ? (isLexus(m) || !hasBrand(m)) : !isLexus(m))
+        .toList();
+  }
+  return j;
+}
 
 /// Registered-user home cycle — backend owns state + priority; the app only
 /// renders what /home-state returns.
@@ -29,7 +65,8 @@ final class AccountRepository {
       final prefs = await SharedPreferences.getInstance();
       final raw = prefs.getString('home_state_$userId');
       if (raw == null) return null;
-      final state = HomeState.fromJson(jsonDecode(raw) as Map<String, dynamic>);
+      final state = HomeState.fromJson(
+          _filterHomeStateJson(jsonDecode(raw) as Map<String, dynamic>));
       _memo[userId] = state;
       return state;
     } catch (_) {
@@ -48,13 +85,16 @@ final class AccountRepository {
         ApiPaths.accountHomeState,
         query: {
           'userId': userId,
+          // Brand-scopes the garage/dynamic card: the Lexus app must never
+          // surface the customer's Toyota cars (and vice versa).
+          'brand': appBrand,
           if ((custId ?? '').isNotEmpty) 'custId': custId,
           if ((phone ?? '').isNotEmpty) 'phone': phone,
           if (fresh) 'fresh': true,
         },
       );
       if (res.statusCode == 200 && res.data != null) {
-        final state = HomeState.fromJson(res.data!);
+        final state = HomeState.fromJson(_filterHomeStateJson(res.data!));
         _memo[userId] = state;
         // Fire-and-forget disk copy for instant cold-start paint.
         final raw = jsonEncode(res.data);
@@ -140,12 +180,12 @@ final class AccountRepository {
 
   Future<List<GarageCar>> garage(int userId) async {
     try {
-      final res = await _api
-          .get<List<dynamic>>(ApiPaths.accountGarage, query: {'userId': userId});
-      return (res.data ?? [])
+      final res = await _api.get<List<dynamic>>(ApiPaths.accountGarage,
+          query: {'userId': userId, 'brand': appBrand});
+      return filterGarageByBrand((res.data ?? [])
           .whereType<Map<String, dynamic>>()
           .map(GarageCar.fromJson)
-          .toList();
+          .toList());
     } on DioException {
       return const [];
     }

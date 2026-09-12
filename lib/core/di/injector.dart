@@ -40,6 +40,9 @@ Future<void> setupInjector({String brand = 'toyota'}) async {
     ..registerSingleton<LocalStore>(LocalStore(prefs))
     ..registerLazySingleton<ApiClient>(() {
       final client = ApiClient();
+      // Every request identifies its store app — the backend brand-scopes
+      // person-level data (garage, notifications, …) off this header.
+      client.dio.options.headers['X-Brand'] = brand;
       // Stale-while-revalidate: catalog GETs paint instantly from disk and
       // refresh silently in the background (see SwrCacheInterceptor).
       client.dio.interceptors.add(SwrCacheInterceptor(client.dio, prefs));
