@@ -11,9 +11,22 @@ final class StoreLinksCubit extends Cubit<StoreLinks?> {
   }
 
   final StoreLinksRepository _repo;
+  bool _loading = false;
 
   Future<void> load() async {
-    final links = await _repo.fetch();
-    if (!isClosed && links != null) emit(links);
+    if (_loading) return;
+    _loading = true;
+    try {
+      final links = await _repo.fetch();
+      if (!isClosed && links != null) emit(links);
+    } finally {
+      _loading = false;
+    }
+  }
+
+  /// Retry hook for the side menu: if startup fetch failed (offline launch,
+  /// server updated later), try again when the menu is actually opened.
+  void ensureLoaded() {
+    if (state == null) load();
   }
 }

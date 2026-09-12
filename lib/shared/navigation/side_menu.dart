@@ -114,7 +114,11 @@ final class SideMenu extends StatelessWidget {
     // Store (iOS) vs Google Play (Android). Hidden when the URL isn't set.
     final otherKey = theme.brandKey == 'lexus' ? 'toyota' : 'lexus';
     final isIos = defaultTargetPlatform == TargetPlatform.iOS;
-    final StoreLinks? storeLinks = context.watch<StoreLinksCubit>().state;
+    final linksCubit = context.watch<StoreLinksCubit>();
+    // Startup fetch can miss (offline launch / server updated later) — retry
+    // whenever the menu is built while still empty.
+    linksCubit.ensureLoaded();
+    final StoreLinks? storeLinks = linksCubit.state;
     final String? otherAppUrl = storeLinks?.urlFor(otherKey, isIos: isIos);
     final otherBrand = theme.themes[otherKey];
     final otherName = otherBrand != null
