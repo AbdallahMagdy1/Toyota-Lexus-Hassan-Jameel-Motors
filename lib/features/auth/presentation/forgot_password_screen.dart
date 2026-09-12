@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
+import '../../../core/utils/phone_mask.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_text_field.dart';
@@ -71,7 +72,7 @@ final class _ForgotView extends StatelessWidget {
                           const SizedBox(height: 6),
                           Text(
                             state.step == ForgotStep.otp
-                                ? '${t.authOtpSentTo} ${state.maskedPhone ?? ''}'
+                                ? '${t.authOtpSentTo} ${formatMaskedPhone(state.maskedPhone)}'
                                 : t.forgotSubtitle,
                             textAlign: TextAlign.center,
                             style: TextStyle(

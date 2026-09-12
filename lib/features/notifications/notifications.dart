@@ -156,6 +156,8 @@ final class PushService {
       // broadcasts reached nobody. Subscribing fixes send-to-all.
       try {
         await FirebaseMessaging.instance.subscribeToTopic('all');
+        // Per-brand topic so broadcasts can target one store app only.
+        await FirebaseMessaging.instance.subscribeToTopic(appBrand);
       } catch (_) {}
 
       FirebaseMessaging.onMessage.listen(_onMessage);
@@ -200,7 +202,14 @@ final class PushService {
       if (token == null) return;
       await sl<ApiClient>().post<Map<String, dynamic>>(
         ApiPaths.fcmToken,
-        body: {'userId': user.userId, 'token': token},
+        // brand routes brand-specific pushes (a Toyota car's updates must
+        // reach the Toyota app, not Lexus) — App_UserDevices.Brand.
+        body: {
+          'userId': user.userId,
+          'token': token,
+          'brand': appBrand,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+        },
       );
     } catch (e) {
       debugPrint('FCM token sync failed: $e');

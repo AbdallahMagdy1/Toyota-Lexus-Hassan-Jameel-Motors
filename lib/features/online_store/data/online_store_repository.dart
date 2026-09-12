@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/di/injector.dart' show appBrand;
 import '../../../core/network/api_client.dart';
 import '../../home/domain/home_models.dart';
 import '../domain/online_store_models.dart';
@@ -12,11 +13,24 @@ final class OnlineStoreRepository {
 
   Future<List<OnlineVehicle>> vehicles() async {
     try {
-      final res = await _api.get<List<dynamic>>('/api/app/online/vehicles');
-      return (res.data ?? [])
+      // brand: the Lexus app must never list Toyota cars (and vice versa).
+      final res = await _api.get<List<dynamic>>(
+        '/api/app/online/vehicles',
+        query: {'brand': appBrand},
+      );
+      final list = (res.data ?? [])
           .whereType<Map<String, dynamic>>()
           .map(OnlineVehicle.fromJson)
           .toList();
+      // Defensive client-side pass for servers deployed before the brand
+      // filter existed: Lexus keeps only explicit Lexus rows, Toyota (the
+      // house brand) keeps everything that isn't Lexus.
+      bool isLexus(OnlineVehicle v) =>
+          (v.brandEn ?? '').toLowerCase().contains('lexus') ||
+          (v.brandAr ?? '').contains('لكزس');
+      return appBrand == 'lexus'
+          ? list.where(isLexus).toList()
+          : list.where((v) => !isLexus(v)).toList();
     } on DioException {
       return const [];
     }

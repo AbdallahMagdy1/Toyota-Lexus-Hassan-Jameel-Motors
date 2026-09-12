@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router/routes.dart';
 import '../../../core/di/injector.dart';
+import '../../../core/utils/phone_mask.dart';
 import '../../../core/utils/responsive.dart';
 import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/auth_text_field.dart';
@@ -86,7 +87,7 @@ final class _SignInView extends StatelessWidget {
                   ],
                   if (state.step == SignInStep.otp) ...[
                     Text(
-                      '${t.authOtpSentTo} ${state.maskedPhone ?? ''}',
+                      '${t.authOtpSentTo} ${formatMaskedPhone(state.maskedPhone)}',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: context.rf(12.5),

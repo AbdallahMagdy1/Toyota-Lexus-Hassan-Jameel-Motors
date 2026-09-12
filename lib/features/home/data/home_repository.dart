@@ -16,6 +16,19 @@ final class HomeRepository {
       );
       final data = res.data;
       if (res.statusCode != 200 || data == null) return null;
+      // Defensive brand pass on the buy-online rail for servers deployed
+      // before the backend filter existed: Lexus shows only Lexus rows,
+      // Toyota (the house brand) everything that isn't Lexus.
+      final online = data['onlineVehicles'];
+      if (online is List) {
+        bool isLexus(Map m) =>
+            (m['brandEn']?.toString().toLowerCase() ?? '').contains('lexus') ||
+            (m['brandAr']?.toString() ?? '').contains('لكزس');
+        data['onlineVehicles'] = online
+            .whereType<Map<String, dynamic>>()
+            .where((m) => brandKey == 'lexus' ? isLexus(m) : !isLexus(m))
+            .toList();
+      }
       return HomeFeed.fromJson(data);
     } catch (_) {
       return null;
