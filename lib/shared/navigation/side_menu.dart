@@ -121,11 +121,9 @@ final class SideMenu extends StatelessWidget {
     final StoreLinks? storeLinks = linksCubit.state;
     final String? otherAppUrl = storeLinks?.urlFor(otherKey, isIos: isIos);
     final otherBrand = theme.themes[otherKey];
-    // Fixed display names — the SiteThemes NameAr rows are stored with a
-    // broken encoding (mojibake), and a brand name never changes anyway.
-    final otherName = otherKey == 'lexus'
-        ? (lang == 'ar' ? 'لكزس' : 'Lexus')
-        : (lang == 'ar' ? 'تويوتا' : 'Toyota');
+    final otherName = otherBrand != null
+        ? (lang == 'ar' ? otherBrand.nameAr : otherBrand.nameEn)
+        : (otherKey == 'lexus' ? 'Lexus' : 'Toyota');
     final otherColor =
         otherBrand?.colorFor(Theme.of(context).brightness) ?? scheme.primary;
 
