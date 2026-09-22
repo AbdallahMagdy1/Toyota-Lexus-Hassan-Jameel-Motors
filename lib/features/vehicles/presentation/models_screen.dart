@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/back_header.dart';
 import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/tab_slide_switcher.dart';
 import '../../../shared/widgets/tab_swipe.dart';
 import '../../home/data/home_repository.dart';
 import '../../home/domain/home_models.dart';
@@ -247,7 +248,10 @@ final class _ModelsViewState extends State<_ModelsView> {
               ),
             ),
             Expanded(
-              child: state.filtered.isEmpty
+              // Directional push between category tabs, matching the swipe.
+              child: TabSlideSwitcher(
+                index: currentTab,
+                child: state.filtered.isEmpty
                   ? AppEmptyState(
                       icon: Icons.search_off_rounded,
                       title: t.storeNoResults,
@@ -273,6 +277,7 @@ final class _ModelsViewState extends State<_ModelsView> {
                             .fadeIn(duration: 220.ms),
                       ),
                     ),
+              ),
             ),
           ],
         ],

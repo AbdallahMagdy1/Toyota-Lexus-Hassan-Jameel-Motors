@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/tab_slide_switcher.dart';
 import '../../../shared/widgets/tab_swipe.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
@@ -115,30 +116,34 @@ final class _Body extends StatelessWidget {
     return TabSwipe(
       onNext: () => goTo(current + 1),
       onPrev: () => goTo(current - 1),
-      child: RefreshIndicator(
-      onRefresh: cubit.load,
-      child: CustomScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(
-                  context.rs(20), context.rs(18), context.rs(20), context.rs(10)),
-              child: Text(
-                t.offersTitle,
-                style: TextStyle(
-                    fontSize: context.rf(19), fontWeight: FontWeight.w800),
-              ),
+      // Title + chips stay pinned; only the offers content slides between
+      // tabs (directional push, matching the swipe/chip direction).
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(
+                context.rs(20), context.rs(18), context.rs(20), context.rs(10)),
+            child: Text(
+              t.offersTitle,
+              style: TextStyle(
+                  fontSize: context.rf(19), fontWeight: FontWeight.w800),
             ),
           ),
-          SliverToBoxAdapter(
-            child: FilterChipsRow(
-              labels: [t.homeAll, ...chipTypes.map((ty) => ty.name(lang))],
-              selectedIndex: selectedIndex < 0 ? 0 : selectedIndex,
-              onSelected: (i) =>
-                  cubit.selectType(i == 0 ? null : chipTypes[i - 1].id),
-            ),
+          FilterChipsRow(
+            labels: [t.homeAll, ...chipTypes.map((ty) => ty.name(lang))],
+            selectedIndex: current,
+            onSelected: (i) =>
+                cubit.selectType(i == 0 ? null : chipTypes[i - 1].id),
           ),
+          Expanded(
+            child: TabSlideSwitcher(
+              index: current,
+              child: RefreshIndicator(
+                onRefresh: cubit.load,
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  slivers: [
           if (sections.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
@@ -198,9 +203,14 @@ final class _Body extends StatelessWidget {
               ),
             ),
           ],
-          SliverToBoxAdapter(child: SizedBox(height: context.rs(140))),
+                    SliverToBoxAdapter(
+                        child: SizedBox(height: context.rs(140))),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ],
-        ),
       ),
     );
   }
