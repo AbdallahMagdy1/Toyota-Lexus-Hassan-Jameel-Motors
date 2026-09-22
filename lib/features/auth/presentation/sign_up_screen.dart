@@ -264,19 +264,15 @@ final class _SignUpView extends StatelessWidget {
       OtpField(
         controller: cubit.otp,
         focusColor: scheme.primary,
-        onSubmitted: (_) => cubit.confirm(),
-        // Result morph driven by the EXISTING cubit state — the invalid-OTP
-        // error fuses the boxes into the ✕ pill (tap to retry).
-        status: state.error == SignUpError.invalidOtp
-            ? OtpStatus.error
-            : OtpStatus.idle,
-        successLabel: t.otpVerifiedTitle,
-        errorLabel: t.otpIncorrectTitle,
-        errorHint: error ?? t.otpIncorrectHint,
+        // Auto-verifies on the 4th digit; the package's success/error
+        // choreography follows the EXISTING Absher confirm result.
+        onVerify: (_) async {
+          await cubit.confirm();
+          return cubit.state.error == null;
+        },
       ),
       SizedBox(height: context.rs(10)),
-      // Non-OTP errors keep the banner; the OTP error renders in the pill.
-      if (error != null && state.error != SignUpError.invalidOtp) ...[
+      if (error != null) ...[
         ErrorBanner(text: error),
         SizedBox(height: context.rs(10))
       ],

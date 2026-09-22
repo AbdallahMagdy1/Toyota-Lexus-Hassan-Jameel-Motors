@@ -1,7 +1,7 @@
 import 'dart:async' show Timer;
-import 'dart:math' show sin, pi;
 
 import 'package:flutter/material.dart';
+import 'package:otp_animated_fields/otp_animated_fields.dart';
 
 import '../../../../shared/widgets/slide_media.dart';
 
@@ -94,285 +94,71 @@ final class StepProgress extends StatelessWidget {
   }
 }
 
-/// Verification result rendered by [OtpField] — always derived from the
-/// EXISTING cubit/bloc state by the caller, never inferred from digit count.
-enum OtpStatus { idle, success, error }
-
-/// Big centered OTP entry — per-digit boxes over a hidden field (the
-/// controller/submit contract is unchanged, so all flows keep working) —
-/// with the premium result morph: on success/error the digit boxes slide
-/// together, their spacing collapses, and they fuse into ONE rounded status
-/// pill (✓ verified / ✕ incorrect + shake). Tapping the error pill clears
-/// the code and morphs smoothly back to empty boxes for a retry.
+/// Big centered OTP entry — `otp_animated_fields` under the hood (animated
+/// per-digit boxes, built-in verifying/success/error choreography + haptics).
+/// The typed code is mirrored into [controller] on every keystroke, so all
+/// the existing cubits keep reading `cubit.otp.text` unchanged; [onVerify]
+/// runs the flow's EXISTING verification and its bool drives the package's
+/// success / error animations (auto-fired when the last digit lands).
 final class OtpField extends StatefulWidget {
   const OtpField({
     super.key,
     required this.controller,
     required this.focusColor,
-    this.onSubmitted,
-    this.status = OtpStatus.idle,
-    this.successLabel,
-    this.errorLabel,
-    this.errorHint,
+    required this.onVerify,
+    this.onVerified,
+    this.length = 4,
   });
 
   final TextEditingController controller;
   final Color focusColor;
-  final ValueChanged<String>? onSubmitted;
 
-  /// Drives the morph — pass the existing verification state.
-  final OtpStatus status;
-  final String? successLabel;
-  final String? errorLabel;
-  final String? errorHint;
+  /// The flow's real verification (cubit call). true → success animation,
+  /// false → error animation (code kept for a quick correction).
+  final Future<bool> Function(String code) onVerify;
+
+  /// Fired after the success animation completes.
+  final VoidCallback? onVerified;
+
+  final int length;
 
   @override
   State<OtpField> createState() => _OtpFieldState();
 }
 
-final class _OtpFieldState extends State<OtpField>
-    with TickerProviderStateMixin {
-  static const _kSuccess = Color(0xFF1F9D55);
-
-  /// 0 → separate boxes … 1 → fused status pill.
-  late final AnimationController _merge = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 480),
-    reverseDuration: const Duration(milliseconds: 340),
-  );
-
-  /// Quick horizontal shake fired once the error pill has formed.
-  late final AnimationController _shake = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 380),
-  );
-
-  final FocusNode _focus = FocusNode();
-
-  /// User tapped the error pill — visually back to boxes for a retry while
-  /// the parent's error state stays untouched.
-  bool _dismissed = false;
-
-  OtpStatus get _shown =>
-      _dismissed ? OtpStatus.idle : widget.status;
-
-  void _play() {
-    _shake.reset();
-    _merge.forward().whenComplete(() {
-      if (mounted && widget.status == OtpStatus.error && !_dismissed) {
-        _shake.forward();
-      }
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    // If the element was (re)created with a result already set, still PLAY
-    // the morph rather than snapping — covers any parent rebuild pattern.
-    if (widget.status != OtpStatus.idle) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.status != OtpStatus.idle && !_dismissed) {
-          _play();
-        }
-      });
-    }
-  }
-
-  @override
-  void didUpdateWidget(OtpField oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.status == widget.status) return;
-    _dismissed = false;
-    if (widget.status == OtpStatus.idle) {
-      _merge.reverse();
-    } else {
-      _play();
-    }
-  }
-
-  void _retry() {
-    if (widget.status != OtpStatus.error || _dismissed) return;
-    setState(() => _dismissed = true);
-    _merge.reverse();
-    widget.controller.clear();
-    _focus.requestFocus();
-  }
+final class _OtpFieldState extends State<OtpField> {
+  final OtpAnimatedController _otp = OtpAnimatedController();
 
   @override
   void dispose() {
-    _merge.dispose();
-    _shake.dispose();
-    _focus.dispose();
+    _otp.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final error = _shown == OtpStatus.error;
-    final accent = error ? scheme.error : _kSuccess;
-
-    return AnimatedBuilder(
-      animation: Listenable.merge([widget.controller, _merge, _shake]),
-      builder: (context, _) {
-        final code = widget.controller.text;
-        final boxes = code.length > 4 ? 6 : 4;
-        final m = Curves.easeInOutCubic.transform(_merge.value);
-        // Boxes keep sliding until 0.65, then the pill crossfades in on top.
-        final boxOpacity = m < 0.55 ? 1.0 : (1 - (m - 0.55) / 0.3).clamp(0.0, 1.0);
-        final pillT = ((m - 0.6) / 0.4).clamp(0.0, 1.0);
-        // Quick decaying sine — subtle side-to-side, never the whole screen.
-        final shakeDx =
-            sin(_shake.value * pi * 4) * 7 * (1 - _shake.value);
-
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            // The hidden input that actually captures the code.
-            Opacity(
-              opacity: 0,
-              child: TextField(
-                controller: widget.controller,
-                focusNode: _focus,
-                keyboardType: TextInputType.number,
-                maxLength: 6,
-                autofocus: true,
-                onSubmitted: widget.onSubmitted,
-                textDirection: TextDirection.ltr,
-                decoration: const InputDecoration(counterText: ''),
-              ),
-            ),
-            // ── Digit boxes: spacing + circle-shape melt away as they merge ──
-            if (boxOpacity > 0)
-              IgnorePointer(
-                child: Opacity(
-                  opacity: boxOpacity,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    textDirection: TextDirection.ltr,
-                    children: [
-                      for (var i = 0; i < boxes; i++)
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 180),
-                          curve: Curves.easeOut,
-                          width: 50,
-                          height: 50,
-                          margin: EdgeInsets.symmetric(
-                              horizontal: 5 * (1 - m)),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            // Active (next-digit) box glows softly so the
-                            // field visibly tracks typing.
-                            color: i == code.length && m == 0
-                                ? widget.focusColor.withValues(alpha: 0.10)
-                                : scheme.onSurface.withValues(alpha: 0.04),
-                            borderRadius:
-                                BorderRadius.circular(25 - 11 * m),
-                            border: Border.all(
-                              color: i < code.length
-                                  ? widget.focusColor
-                                  : i == code.length && m == 0
-                                      ? widget.focusColor
-                                          .withValues(alpha: 0.7)
-                                      : scheme.onSurface
-                                          .withValues(alpha: 0.35),
-                              width: i <= code.length ? 1.8 : 1.2,
-                            ),
-                          ),
-                          child: Text(
-                            i < code.length ? code[i] : '',
-                            style: TextStyle(
-                              fontSize: 21,
-                              fontWeight: FontWeight.w800,
-                              color: scheme.onSurface,
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            // ── The fused status pill (✓ / ✕) ──
-            if (pillT > 0)
-              GestureDetector(
-                onTap: _retry,
-                child: Transform.translate(
-                  offset: Offset(shakeDx, 0),
-                  child: Transform.scale(
-                    scale: 0.9 + 0.1 * Curves.easeOutBack.transform(pillT),
-                    child: Opacity(
-                      opacity: pillT,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: boxes * 50.0,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: accent.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                  color: accent.withValues(alpha: 0.6),
-                                  width: 1.4),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                // Icon pops in slightly after the pill.
-                                Transform.scale(
-                                  scale: Curves.easeOutBack.transform(
-                                      ((pillT - 0.35) / 0.65)
-                                          .clamp(0.0, 1.0)),
-                                  child: Icon(
-                                    error
-                                        ? Icons.close_rounded
-                                        : Icons.check_rounded,
-                                    size: 22,
-                                    color: accent,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    (error
-                                            ? widget.errorLabel
-                                            : widget.successLabel) ??
-                                        '',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w800,
-                                      color: accent,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (error && (widget.errorHint ?? '').isNotEmpty)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                widget.errorHint!,
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: scheme.onSurface
-                                      .withValues(alpha: 0.6),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Digits always read left-to-right, also in the Arabic UI.
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: OtpAnimatedField(
+        length: widget.length,
+        autofocus: true,
+        controller: _otp,
+        keyboardType: TextInputType.number,
+        hapticFeedback: true,
+        theme: isDark
+            ? OtpAnimatedTheme.dark(accentColor: widget.focusColor)
+            : OtpAnimatedTheme.light(accentColor: widget.focusColor),
+        // Mirror every keystroke into the flow's controller so the cubits
+        // keep reading cubit.otp.text exactly as before.
+        onChanged: (code) => widget.controller.text = code,
+        onVerify: (code) {
+          widget.controller.text = code;
+          return widget.onVerify(code);
+        },
+        onVerified: (_) => widget.onVerified?.call(),
+      ),
     );
   }
 }

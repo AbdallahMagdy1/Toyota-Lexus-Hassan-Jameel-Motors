@@ -174,15 +174,12 @@ final class _ForgotView extends StatelessWidget {
           OtpField(
             controller: cubit.otp,
             focusColor: brandColor,
-            onSubmitted: (_) => cubit.submitOtp(),
-            // Result morph from the EXISTING flow state — invalid OTP fuses
-            // the boxes into the ✕ pill (tap to retry).
-            status: state.error == ForgotError.invalidOtp
-                ? OtpStatus.error
-                : OtpStatus.idle,
-            successLabel: t.otpVerifiedTitle,
-            errorLabel: t.otpIncorrectTitle,
-            errorHint: t.otpIncorrectHint,
+            // Advances to the new-password step; the server validates the
+            // code together with the new password, exactly as before.
+            onVerify: (_) async {
+              cubit.submitOtp();
+              return cubit.state.error != ForgotError.invalidOtp;
+            },
           ),
           if (state.devOtp != null) ...[
             const SizedBox(height: 8),
@@ -193,8 +190,7 @@ final class _ForgotView extends StatelessWidget {
             ),
           ],
           const SizedBox(height: 12),
-          // Non-OTP errors keep the banner; invalid OTP renders in the pill.
-          if (error != null && state.error != ForgotError.invalidOtp) ...[
+          if (error != null) ...[
             ErrorBanner(text: error),
             const SizedBox(height: 12)
           ],

@@ -251,18 +251,13 @@ final class _SignInView extends StatelessWidget {
           OtpField(
             controller: cubit.otp,
             focusColor: scheme.primary,
-            onSubmitted: (_) => cubit.submitOtp(),
-            // Result morph from the EXISTING flow state: signed-in fuses the
-            // boxes into the ✓ pill (router redirect follows), invalid OTP
-            // into the ✕ pill with shake + tap-to-retry.
-            status: state.signedIn
-                ? OtpStatus.success
-                : state.error == SignInError.invalidOtp
-                    ? OtpStatus.error
-                    : OtpStatus.idle,
-            successLabel: t.otpVerifiedTitle,
-            errorLabel: t.otpIncorrectTitle,
-            errorHint: t.otpIncorrectHint,
+            // The package auto-verifies when the last digit lands and plays
+            // its success/error choreography off this bool; the router
+            // redirect follows the signed-in state as before.
+            onVerify: (_) async {
+              await cubit.submitOtp();
+              return cubit.state.signedIn;
+            },
           ),
           if (state.devOtp != null) ...[
             SizedBox(height: context.rs(6)),
@@ -275,8 +270,7 @@ final class _SignInView extends StatelessWidget {
             ),
           ],
           SizedBox(height: context.rs(10)),
-          // Non-OTP errors keep the banner; invalid OTP renders in the pill.
-          if (error != null && state.error != SignInError.invalidOtp) ...[
+          if (error != null) ...[
             ErrorBanner(text: error),
             SizedBox(height: context.rs(10))
           ],

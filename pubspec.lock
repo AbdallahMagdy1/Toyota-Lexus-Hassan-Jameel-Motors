@@ -565,6 +565,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  otp_animated_fields:
+    dependency: "direct main"
+    description:
+      name: otp_animated_fields
+      sha256: a664d0d508b40f0b8ed2a286b4eb8ff54fc5b38260fffabc10940ef988231be2
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.1.1"
   path:
     dependency: transitive
     description:

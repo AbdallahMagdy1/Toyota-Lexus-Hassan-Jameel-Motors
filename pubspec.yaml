@@ -1,7 +1,7 @@
 name: hj_mobile
 description: "Hassan Jameel mobile app — Toyota, Saudi Arabia."
 publish_to: 'none'
-version: 1.0.0+16
+version: 1.0.0+18
 
 environment:
   sdk: ^3.10.8
@@ -49,6 +49,7 @@ dependencies:
   # Payment gateway pages (MyFatoorah/Tabby/Tamara) — same cycle as the
   # website: backend creates the session, the app only renders the URL.
   webview_flutter: ^4.10.0
+  otp_animated_fields: ^0.1.1
 
 dev_dependencies:
   flutter_test:
