@@ -18,6 +18,7 @@ import '../../../shared/widgets/keep_alive_section.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/quick_links_panel.dart';
+import '../../../shared/widgets/tab_swipe.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../offers/bloc/offers_cubit.dart';
@@ -45,7 +46,11 @@ final class StoreScreen extends StatelessWidget {
     final t = AppLocalizations.of(context);
     return BlocProvider(
       create: (_) => OffersCubit(OffersRepository(sl<ApiClient>())),
-      child: Column(children: [
+      // Brand tab ↔ home: flinging back (toward the home tab) returns home,
+      // mirroring the swipe that opened this tab from the home screen.
+      child: TabSwipe(
+        onPrev: () => context.go(Routes.home),
+        child: Column(children: [
         const AppHeader(),
         Expanded(
           child: ListView(
@@ -84,6 +89,7 @@ final class StoreScreen extends StatelessWidget {
           ),
         ),
       ]),
+      ),
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/tab_swipe.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
@@ -103,8 +104,18 @@ final class _Body extends StatelessWidget {
     final selectedIndex = state.selectedTypeId == null
         ? 0
         : chipTypes.indexWhere((ty) => ty.id == state.selectedTypeId) + 1;
+    final current = selectedIndex < 0 ? 0 : selectedIndex;
 
-    return RefreshIndicator(
+    // Horizontal fling moves across the type tabs (All → … ), RTL-aware.
+    void goTo(int i) {
+      if (i < 0 || i > chipTypes.length || i == current) return;
+      cubit.selectType(i == 0 ? null : chipTypes[i - 1].id);
+    }
+
+    return TabSwipe(
+      onNext: () => goTo(current + 1),
+      onPrev: () => goTo(current - 1),
+      child: RefreshIndicator(
       onRefresh: cubit.load,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -189,6 +200,7 @@ final class _Body extends StatelessWidget {
           ],
           SliverToBoxAdapter(child: SizedBox(height: context.rs(140))),
         ],
+        ),
       ),
     );
   }

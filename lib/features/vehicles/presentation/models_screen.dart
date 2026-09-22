@@ -9,6 +9,7 @@ import '../../../l10n/app_localizations.dart';
 import '../../../shared/widgets/app_states.dart';
 import '../../../shared/widgets/back_header.dart';
 import '../../../shared/widgets/pressable.dart';
+import '../../../shared/widgets/tab_swipe.dart';
 import '../../home/data/home_repository.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
@@ -157,9 +158,21 @@ final class _ModelsViewState extends State<_ModelsView> {
       }
     }
 
+    // Horizontal fling moves across the category tabs (…categories, All).
+    final currentTab = state.category == null
+        ? categories.length
+        : categories.indexOf(state.category!);
+    void goTab(int i) {
+      if (i < 0 || i > categories.length || i == currentTab) return;
+      cubit.setCategory(i == categories.length ? null : categories[i]);
+    }
+
     return SafeArea(
       bottom: false,
-      child: Column(
+      child: TabSwipe(
+        onNext: () => goTab(currentTab + 1),
+        onPrev: () => goTab(currentTab - 1),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           BackHeader(title: t.homeMeetTheModels),
@@ -263,6 +276,7 @@ final class _ModelsViewState extends State<_ModelsView> {
             ),
           ],
         ],
+        ),
       ),
     );
   }

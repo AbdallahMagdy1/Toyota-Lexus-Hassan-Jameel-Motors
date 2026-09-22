@@ -10,6 +10,7 @@ import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../../../shared/widgets/app_header.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/tab_swipe.dart';
 import '../../account/presentation/registered_home_view.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../coupons/presentation/coupon_banner_carousel.dart';
@@ -33,13 +34,21 @@ final class HomeScreen extends StatelessWidget {
     // Guests get the browse-first home; registered users get "Your Car,
     // Your Journey" — the backend's home-state resolves the dynamic card
     // for both with-car and without-car users.
-    if (status == AuthStatus.guest) return const GuestHomeView();
-    if (status == AuthStatus.authenticated) return const RegisteredHomeView();
-    return BlocProvider(
-      // New cubit (and fresh feed) whenever the brand switches.
-      key: ValueKey('home-$brandKey'),
-      create: (_) => HomeCubit(sl(), brandKey: brandKey),
-      child: const _HomeView(),
+    final Widget body = status == AuthStatus.guest
+        ? const GuestHomeView()
+        : status == AuthStatus.authenticated
+            ? const RegisteredHomeView()
+            : BlocProvider(
+                // New cubit (and fresh feed) whenever the brand switches.
+                key: ValueKey('home-$brandKey'),
+                create: (_) => HomeCubit(sl(), brandKey: brandKey),
+                child: const _HomeView(),
+              );
+    // Home ↔ brand tab: flinging toward the brand-logo tab (next in the
+    // bottom-nav order) opens the store, like paging between the two tabs.
+    return TabSwipe(
+      onNext: () => context.go(Routes.store),
+      child: body,
     );
   }
 }
