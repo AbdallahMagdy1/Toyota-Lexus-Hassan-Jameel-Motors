@@ -138,26 +138,46 @@ final class _OtpFieldState extends State<OtpField> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Digits always read left-to-right, also in the Arabic UI.
-    return Directionality(
-      textDirection: TextDirection.ltr,
-      child: OtpAnimatedField(
-        length: widget.length,
-        autofocus: true,
-        controller: _otp,
-        keyboardType: TextInputType.number,
-        hapticFeedback: true,
-        theme: isDark
-            ? OtpAnimatedTheme.dark(accentColor: widget.focusColor)
-            : OtpAnimatedTheme.light(accentColor: widget.focusColor),
-        // Mirror every keystroke into the flow's controller so the cubits
-        // keep reading cubit.otp.text exactly as before.
-        onChanged: (code) => widget.controller.text = code,
-        onVerify: (code) {
-          widget.controller.text = code;
-          return widget.onVerify(code);
-        },
-        onVerified: (_) => widget.onVerified?.call(),
+    final base = isDark
+        ? OtpAnimatedTheme.dark(accentColor: widget.focusColor)
+        : OtpAnimatedTheme.light(accentColor: widget.focusColor);
+    // Digits always read left-to-right, also in the Arabic UI. Centered:
+    // the field lives inside stretched auth columns, so it must not hug
+    // the start edge. The verifying orbit is tuned tight and quick — a
+    // small, fast whirl instead of the default big slow scatter — and no
+    // orbit height is reserved, so the idle row sits compact.
+    return Center(
+      child: Directionality(
+        textDirection: TextDirection.ltr,
+        child: OtpAnimatedField(
+          length: widget.length,
+          autofocus: true,
+          controller: _otp,
+          keyboardType: TextInputType.number,
+          hapticFeedback: true,
+          reserveOrbitSpace: false,
+          minimumVerifyingDuration: const Duration(milliseconds: 500),
+          theme: base.copyWith(
+            boxSize: 54,
+            gap: 10,
+            borderRadius: 16,
+            glowBlurRadius: 10,
+            orbitRadius: 40,
+            orbitBoxScale: 0.5,
+            morphDuration: const Duration(milliseconds: 340),
+            orbitPeriod: const Duration(milliseconds: 1100),
+            errorDuration: const Duration(milliseconds: 700),
+            successDuration: const Duration(milliseconds: 800),
+          ),
+          // Mirror every keystroke into the flow's controller so the cubits
+          // keep reading cubit.otp.text exactly as before.
+          onChanged: (code) => widget.controller.text = code,
+          onVerify: (code) {
+            widget.controller.text = code;
+            return widget.onVerify(code);
+          },
+          onVerified: (_) => widget.onVerified?.call(),
+        ),
       ),
     );
   }
