@@ -150,18 +150,37 @@ final class PushService {
           ?.createNotificationChannel(_channel);
 
       await FirebaseMessaging.instance.requestPermission();
+      // Android 13+ POST_NOTIFICATIONS also for the local (foreground)
+      // notifications path — without it .show() drops silently.
+      await _local
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
 
       // "TargetAll" broadcasts publish to the 'all' topic (WebSiteMobileBackEnd
       // FCMServices.SendToTopicAsync) — the OLD app never subscribed, so
       // broadcasts reached nobody. Subscribing fixes send-to-all.
       try {
         await FirebaseMessaging.instance.subscribeToTopic('all');
-        // Per-brand topic so broadcasts can target one store app only.
+        // Per-brand topic so broadcasts can target one store app only —
+        // and DROP the other brand's topic: dev/debug installs that once
+        // ran with the other brand's entry point subscribed to it, and FCM
+        // topic subscriptions persist forever unless unsubscribed. Without
+        // this cleanup a 'toyota' broadcast still lands in such a Lexus
+        // install (and vice versa).
         await FirebaseMessaging.instance.subscribeToTopic(appBrand);
+        await FirebaseMessaging.instance
+            .unsubscribeFromTopic(appBrand == 'lexus' ? 'toyota' : 'lexus');
       } catch (_) {}
 
       FirebaseMessaging.onMessage.listen(_onMessage);
       FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
+      // Background/terminated arrivals: the SYSTEM tray shows them, but they
+      // never passed through onMessage — store them into the in-app inbox
+      // when the user opens the app from the notification.
+      FirebaseMessaging.onMessageOpenedApp.listen(_storeOnly);
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) await _storeOnly(initial);
       _ready = true;
 
       // Register the token now (if signed in) and on every auth change.
@@ -172,6 +191,10 @@ final class PushService {
       debugPrint('FCM init skipped: $e');
     }
   }
+
+  /// Inbox-only: the tray already displayed this one (background arrival).
+  static Future<void> _storeOnly(RemoteMessage m) =>
+      sl<NotificationsCubit>().add(AppNotification.fromMessage(m));
 
   static Future<void> _onMessage(RemoteMessage m) async {
     final n = AppNotification.fromMessage(m);
