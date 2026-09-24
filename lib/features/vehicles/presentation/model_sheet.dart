@@ -552,12 +552,13 @@ final class _GalleryTabState extends State<_GalleryTab> {
   int _type = 0;
 
   /// Known gallery types get proper labels; anything else shows verbatim.
+  /// The live data uses 'inner' / 'outer'.
   String _typeLabel(String raw, bool isAr) {
     final k = raw.trim().toLowerCase();
-    if (k.contains('interior') || k.contains('داخل')) {
+    if (k.contains('inner') || k.contains('interior') || k.contains('داخل')) {
       return isAr ? 'الداخلية' : 'INTERIOR';
     }
-    if (k.contains('exterior') || k.contains('خارج')) {
+    if (k.contains('outer') || k.contains('exterior') || k.contains('خارج')) {
       return isAr ? 'الخارجية' : 'EXTERIOR';
     }
     return raw.trim();
@@ -983,27 +984,47 @@ final class _FeaturesTabState extends State<_FeaturesTab> {
       return SkeletonList(itemCount: 4, itemHeight: context.rs(72));
     }
 
-    // The website's categorized "اكتشف المزايا" cards drive sub-tabs
-    // (DESIGN / OWNERSHIP / …). Old servers return none → flat list.
-    final cards = state.featureCards;
+    // The website's categorized "اكتشف المزايا" cards drive sub-tabs —
+    // VehicleFeaturesSection parity: only cards WITH an image, tabs from
+    // the distinct non-empty categories in arrival order, localized via
+    // the same known-category label map. Old servers return none → flat.
+    final cards =
+        state.featureCards.where((c) => (c.image ?? '').isNotEmpty).toList();
     if (cards.isNotEmpty) {
+      final isAr = lang == 'ar';
       final cats = <String>[];
       for (final c in cards) {
         final cat = (c.category ?? '').trim();
-        final key = cat.isEmpty ? t.tabFeatures : cat;
-        if (!cats.any((e) => e.toLowerCase() == key.toLowerCase())) {
-          cats.add(key);
+        if (cat.isNotEmpty &&
+            !cats.any((e) => e.toLowerCase() == cat.toLowerCase())) {
+          cats.add(cat);
         }
       }
-      final hasTabs = cats.length >= 2;
+      final hasTabs = cats.isNotEmpty;
       final sel = hasTabs ? _cat.clamp(0, cats.length - 1) : 0;
       final shown = hasTabs
-          ? cards.where((c) {
-              final cat = (c.category ?? '').trim();
-              final key = cat.isEmpty ? t.tabFeatures : cat;
-              return key.toLowerCase() == cats[sel].toLowerCase();
-            }).toList()
+          ? cards
+              .where((c) =>
+                  (c.category ?? '').trim().toLowerCase() ==
+                  cats[sel].toLowerCase())
+              .toList()
           : cards;
+
+      // The website's CAT_LABELS map — known categories localized, unknown
+      // ones shown verbatim (VehicleFeaturesSection parity).
+      String catLabel(String key) {
+        const labels = <String, (String, String)>{
+          'exterior': ('Exterior', 'المزايا الخارجية'),
+          'interior': ('Interior', 'المزايا الداخلية'),
+          'performance': ('Performance', 'الأداء والقوة'),
+          'safety': ('Safety', 'الأمان'),
+          'technology': ('Technology', 'التكنولوجيا والتطور'),
+          'convenience': ('Convenience', 'الراحة'),
+          'hybrid': ('Hybrid', 'الهايبرد'),
+        };
+        final e = labels[key.toLowerCase()];
+        return e == null ? key : (isAr ? e.$2 : e.$1);
+      }
 
       final list = ListView.builder(
         key: ValueKey('feat-$sel'),
@@ -1021,7 +1042,7 @@ final class _FeaturesTabState extends State<_FeaturesTab> {
       return Column(children: [
         SizedBox(height: context.rs(4)),
         _SubTabs(
-          labels: cats,
+          labels: [for (final c in cats) catLabel(c)],
           index: sel,
           onChanged: (i) => setState(() => _cat = i),
         ),
