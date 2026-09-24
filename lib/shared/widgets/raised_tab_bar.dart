@@ -5,16 +5,16 @@ import '../../core/utils/responsive.dart';
 
 /// The reference "model year" tab strip (Ferrari-style):
 ///
-///   2017   2018   ┌────────┐   2020   2021
+///                 ┌────────┐
 ///                 │ MODEL  │
-///                 │  2019  │
+///   2017   2018   │  2019  │   2020   2021
 ///                 └────────┘
 ///
-/// Inactive tabs are small muted labels sitting on the strip's centerline;
-/// the ACTIVE tab is a TALL two-line brand card — a tiny uppercase caption
-/// (or a small accent line when no caption is given) above the big bold
-/// value — filling the strip's height so it visibly towers over the row.
-/// Flat by design (no shadows), animated with a 260ms ease-out morph.
+/// The ACTIVE tab is a tall gradient brand ribbon spanning the strip's FULL
+/// height — caption (or accent tick) above the big bold value — while the
+/// inactive labels are small muted words sitting LOW, at the ribbon's lower
+/// third, exactly like the reference. Flat (no shadows); the switch is a
+/// 280ms ease-out morph of position + size + color.
 final class RaisedTabBar extends StatelessWidget {
   const RaisedTabBar({
     super.key,
@@ -29,19 +29,34 @@ final class RaisedTabBar extends StatelessWidget {
   final int index;
   final ValueChanged<int> onChanged;
 
-  /// Tiny uppercase word inside the active card, above the label — the
+  /// Tiny uppercase word inside the active ribbon, above the label — the
   /// reference's "MODEL". Null shows a small accent tick line instead.
   final String? caption;
 
   /// Scrollable row for variable tab counts; false = equal-width fit.
   final bool scrollable;
 
+  static const _dur = Duration(milliseconds: 280);
+  static const _curve = Curves.easeOutCubic;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final stripHeight = context.rs(58);
+    final stripHeight = context.rs(78);
 
-    Widget item(int i, {bool expanded = false}) {
+    // The reference ribbon's subtle red gradient: a touch darker at the
+    // top, a touch brighter toward the bottom start corner.
+    final gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: AlignmentDirectional.bottomStart,
+      colors: [
+        Color.lerp(scheme.primary, Colors.black, 0.10)!,
+        scheme.primary,
+        Color.lerp(scheme.primary, Colors.white, 0.14)!,
+      ],
+    );
+
+    Widget item(int i) {
       final selected = i == index;
 
       final inner = selected
@@ -69,14 +84,14 @@ final class RaisedTabBar extends StatelessWidget {
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                SizedBox(height: context.rs(4)),
+                SizedBox(height: context.rs(5)),
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     tabs[i],
                     maxLines: 1,
                     style: TextStyle(
-                      fontSize: context.rf(13.5),
+                      fontSize: context.rf(14),
                       fontWeight: FontWeight.w800,
                       letterSpacing: 0.2,
                       color: scheme.onPrimary,
@@ -94,11 +109,13 @@ final class RaisedTabBar extends StatelessWidget {
                   fontSize: context.rf(11.5),
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.3,
-                  color: scheme.onSurface.withValues(alpha: 0.4),
+                  color: scheme.onSurface.withValues(alpha: 0.42),
                 ),
               ),
             );
 
+      // Inactive labels sit LOW (the ribbon's lower third), the active
+      // ribbon spans the whole strip — the reference geometry.
       return GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
@@ -106,20 +123,28 @@ final class RaisedTabBar extends StatelessWidget {
           HapticFeedback.selectionClick();
           onChanged(i);
         },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-          height: selected ? stripHeight : stripHeight * 0.62,
-          constraints: BoxConstraints(minWidth: context.rs(58)),
-          padding: EdgeInsets.symmetric(
-            horizontal: context.rs(selected ? 14 : (expanded ? 4 : 10)),
+        child: SizedBox(
+          height: stripHeight,
+          child: AnimatedAlign(
+            duration: _dur,
+            curve: _curve,
+            alignment:
+                selected ? Alignment.center : const Alignment(0, 0.58),
+            child: AnimatedContainer(
+              duration: _dur,
+              curve: _curve,
+              height: selected ? stripHeight : context.rs(26),
+              constraints: BoxConstraints(minWidth: context.rs(62)),
+              padding: EdgeInsets.symmetric(
+                  horizontal: context.rs(selected ? 15 : 8)),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                gradient: selected ? gradient : null,
+                borderRadius: BorderRadius.circular(context.rs(16)),
+              ),
+              child: inner,
+            ),
           ),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: selected ? scheme.primary : Colors.transparent,
-            borderRadius: BorderRadius.circular(context.rs(15)),
-          ),
-          child: inner,
         ),
       );
     }
@@ -133,7 +158,7 @@ final class RaisedTabBar extends StatelessWidget {
           clipBehavior: Clip.none,
           itemCount: tabs.length,
           separatorBuilder: (_, _) => SizedBox(width: context.rs(4)),
-          itemBuilder: (context, i) => Center(child: item(i)),
+          itemBuilder: (context, i) => item(i),
         ),
       );
     }
@@ -141,8 +166,7 @@ final class RaisedTabBar extends StatelessWidget {
       height: stripHeight,
       child: Row(
         children: [
-          for (var i = 0; i < tabs.length; i++)
-            Expanded(child: Center(child: item(i, expanded: true))),
+          for (var i = 0; i < tabs.length; i++) Expanded(child: item(i)),
         ],
       ),
     );
