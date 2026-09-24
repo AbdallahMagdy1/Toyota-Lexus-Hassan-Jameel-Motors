@@ -10,6 +10,8 @@ import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/tab_slide_switcher.dart';
+import '../../../shared/widgets/tab_swipe.dart';
 import '../../../shared/widgets/slope_hero.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../online_store/bloc/method_form_cubits.dart'
@@ -473,12 +475,98 @@ final class _OverviewTab extends StatelessWidget {
 
 /* ───────────────────────────── Gallery ───────────────────────────── */
 
-final class _GalleryTab extends StatelessWidget {
+/// Website-style underlined text sub-tabs (INTERIOR / EXTERIOR / DESIGN…).
+final class _SubTabs extends StatelessWidget {
+  const _SubTabs({
+    required this.labels,
+    required this.index,
+    required this.onChanged,
+  });
+
+  final List<String> labels;
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: context.rs(38),
+      child: Center(
+        child: ListView.separated(
+          shrinkWrap: true,
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+          itemCount: labels.length,
+          separatorBuilder: (_, _) => SizedBox(width: context.rs(22)),
+          itemBuilder: (context, i) {
+            final selected = i == index;
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => onChanged(i),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
+                    style: TextStyle(
+                      fontSize: context.rf(12),
+                      letterSpacing: 0.8,
+                      fontWeight:
+                          selected ? FontWeight.w800 : FontWeight.w600,
+                      color: selected
+                          ? scheme.onSurface
+                          : scheme.onSurface.withValues(alpha: 0.45),
+                    ),
+                    child: Text(labels[i].toUpperCase(), maxLines: 1),
+                  ),
+                  SizedBox(height: context.rs(4)),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    height: 2.2,
+                    width: selected ? context.rs(26) : 0,
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+final class _GalleryTab extends StatefulWidget {
   const _GalleryTab({super.key});
+
+  @override
+  State<_GalleryTab> createState() => _GalleryTabState();
+}
+
+final class _GalleryTabState extends State<_GalleryTab> {
+  int _type = 0;
+
+  /// Known gallery types get proper labels; anything else shows verbatim.
+  String _typeLabel(String raw, bool isAr) {
+    final k = raw.trim().toLowerCase();
+    if (k.contains('interior') || k.contains('داخل')) {
+      return isAr ? 'الداخلية' : 'INTERIOR';
+    }
+    if (k.contains('exterior') || k.contains('خارج')) {
+      return isAr ? 'الخارجية' : 'EXTERIOR';
+    }
+    return raw.trim();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = AppLocalizations.of(context);
+    final isAr = context.watch<LocaleCubit>().state.languageCode == 'ar';
     final state = context.watch<ModelSheetCubit>().state;
     if (state.loading) {
       return const SkeletonGrid(itemCount: 4, aspectRatio: 1.25);
@@ -487,7 +575,28 @@ final class _GalleryTab extends StatelessWidget {
         state.gallery.where((g) => (g.image ?? '').isNotEmpty).toList();
     if (items.isEmpty) return _Empty(text: t.modelsNoData);
 
-    return GridView.builder(
+    // Distinct types in arrival order → the website's INTERIOR/EXTERIOR
+    // sub-tabs. A single (or missing) type keeps the plain grid.
+    final types = <String>[];
+    for (final g in items) {
+      final ty = (g.type ?? '').trim();
+      if (ty.isNotEmpty &&
+          !types.any((e) => e.toLowerCase() == ty.toLowerCase())) {
+        types.add(ty);
+      }
+    }
+    final hasTabs = types.length >= 2;
+    final sel = hasTabs ? _type.clamp(0, types.length - 1) : 0;
+    final shown = hasTabs
+        ? items
+            .where((g) =>
+                (g.type ?? '').trim().toLowerCase() ==
+                types[sel].toLowerCase())
+            .toList()
+        : items;
+
+    final grid = GridView.builder(
+      key: ValueKey('gal-$sel'),
       padding: EdgeInsets.all(context.rs(16)),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
@@ -495,14 +604,33 @@ final class _GalleryTab extends StatelessWidget {
         crossAxisSpacing: context.rs(10),
         childAspectRatio: 1.25,
       ),
-      itemCount: items.length,
+      itemCount: shown.length,
       itemBuilder: (context, i) => RepaintBoundary(
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
-          child: HomeImage(url: items[i].image, logicalWidth: 300),
+          child: HomeImage(url: shown[i].image, logicalWidth: 300),
         ).animate(delay: (30 * (i % 8)).ms).fadeIn(duration: 250.ms),
       ),
     );
+
+    if (!hasTabs) return grid;
+    return Column(children: [
+      SizedBox(height: context.rs(4)),
+      _SubTabs(
+        labels: [for (final ty in types) _typeLabel(ty, isAr)],
+        index: sel,
+        onChanged: (i) => setState(() => _type = i),
+      ),
+      Expanded(
+        child: TabSwipe(
+          onNext: () => setState(
+              () => _type = (sel + 1).clamp(0, types.length - 1)),
+          onPrev: () => setState(
+              () => _type = (sel - 1).clamp(0, types.length - 1)),
+          child: TabSlideSwitcher(index: sel, child: grid),
+        ),
+      ),
+    ]);
   }
 }
 
@@ -787,8 +915,63 @@ final class _SpecValue extends StatelessWidget {
 
 /* ───────────────────────────── Features ───────────────────────────── */
 
-final class _FeaturesTab extends StatelessWidget {
+final class _FeaturesTab extends StatefulWidget {
   const _FeaturesTab({super.key});
+
+  @override
+  State<_FeaturesTab> createState() => _FeaturesTabState();
+}
+
+final class _FeaturesTabState extends State<_FeaturesTab> {
+  int _cat = 0;
+
+  Widget _card(BuildContext context, ColorScheme scheme, int i,
+      {required String? image,
+      required String title,
+      required String description}) {
+    return RepaintBoundary(
+      child: Container(
+        margin: EdgeInsets.only(bottom: context.rs(12)),
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: scheme.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: scheme.outline.withValues(alpha: 0.6)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if ((image ?? '').isNotEmpty)
+              HomeImage(url: image, aspectRatio: 16 / 8, logicalWidth: 400),
+            Padding(
+              padding: EdgeInsets.all(context.rs(14)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: TextStyle(
+                          fontSize: context.rf(14),
+                          fontWeight: FontWeight.w800)),
+                  if (description.isNotEmpty) ...[
+                    SizedBox(height: context.rs(4)),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: context.rf(12),
+                        height: 1.5,
+                        color: scheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ).animate(delay: (40 * (i % 6)).ms).fadeIn(duration: 260.ms).slideY(
+          begin: 0.04, end: 0, duration: 260.ms, curve: Curves.easeOut),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -799,56 +982,71 @@ final class _FeaturesTab extends StatelessWidget {
     if (state.loading) {
       return SkeletonList(itemCount: 4, itemHeight: context.rs(72));
     }
-    if (state.features.isEmpty) return _Empty(text: t.modelsNoData);
 
+    // The website's categorized "اكتشف المزايا" cards drive sub-tabs
+    // (DESIGN / OWNERSHIP / …). Old servers return none → flat list.
+    final cards = state.featureCards;
+    if (cards.isNotEmpty) {
+      final cats = <String>[];
+      for (final c in cards) {
+        final cat = (c.category ?? '').trim();
+        final key = cat.isEmpty ? t.tabFeatures : cat;
+        if (!cats.any((e) => e.toLowerCase() == key.toLowerCase())) {
+          cats.add(key);
+        }
+      }
+      final hasTabs = cats.length >= 2;
+      final sel = hasTabs ? _cat.clamp(0, cats.length - 1) : 0;
+      final shown = hasTabs
+          ? cards.where((c) {
+              final cat = (c.category ?? '').trim();
+              final key = cat.isEmpty ? t.tabFeatures : cat;
+              return key.toLowerCase() == cats[sel].toLowerCase();
+            }).toList()
+          : cards;
+
+      final list = ListView.builder(
+        key: ValueKey('feat-$sel'),
+        padding: EdgeInsets.all(context.rs(16)),
+        itemCount: shown.length,
+        itemBuilder: (context, i) => _card(
+          context, scheme, i,
+          image: shown[i].image,
+          title: shown[i].title(lang),
+          description: shown[i].description(lang),
+        ),
+      );
+
+      if (!hasTabs) return list;
+      return Column(children: [
+        SizedBox(height: context.rs(4)),
+        _SubTabs(
+          labels: cats,
+          index: sel,
+          onChanged: (i) => setState(() => _cat = i),
+        ),
+        Expanded(
+          child: TabSwipe(
+            onNext: () =>
+                setState(() => _cat = (sel + 1).clamp(0, cats.length - 1)),
+            onPrev: () =>
+                setState(() => _cat = (sel - 1).clamp(0, cats.length - 1)),
+            child: TabSlideSwitcher(index: sel, child: list),
+          ),
+        ),
+      ]);
+    }
+
+    if (state.features.isEmpty) return _Empty(text: t.modelsNoData);
     return ListView.builder(
       padding: EdgeInsets.all(context.rs(16)),
       itemCount: state.features.length,
-      itemBuilder: (context, i) {
-        final f = state.features[i];
-        return RepaintBoundary(
-          child: Container(
-            margin: EdgeInsets.only(bottom: context.rs(12)),
-            clipBehavior: Clip.antiAlias,
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: scheme.outline.withValues(alpha: 0.6)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if ((f.image ?? '').isNotEmpty)
-                  HomeImage(url: f.image, aspectRatio: 16 / 8, logicalWidth: 400),
-                Padding(
-                  padding: EdgeInsets.all(context.rs(14)),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(f.title(lang),
-                          style: TextStyle(
-                              fontSize: context.rf(14),
-                              fontWeight: FontWeight.w800)),
-                      if (f.description(lang).isNotEmpty) ...[
-                        SizedBox(height: context.rs(4)),
-                        Text(
-                          f.description(lang),
-                          style: TextStyle(
-                            fontSize: context.rf(12),
-                            height: 1.5,
-                            color: scheme.onSurface.withValues(alpha: 0.6),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ).animate(delay: (40 * (i % 6)).ms).fadeIn(duration: 260.ms).slideY(
-              begin: 0.04, end: 0, duration: 260.ms, curve: Curves.easeOut),
-        );
-      },
+      itemBuilder: (context, i) => _card(
+        context, scheme, i,
+        image: state.features[i].image,
+        title: state.features[i].title(lang),
+        description: state.features[i].description(lang),
+      ),
     );
   }
 }

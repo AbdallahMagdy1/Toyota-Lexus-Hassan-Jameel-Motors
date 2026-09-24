@@ -42,6 +42,12 @@ final class VehiclesRepository {
   Future<List<VehicleFeature>> features(String slug) =>
       _list('/api/app/vehicles/$slug/features', VehicleFeature.fromJson);
 
+  /// Website "اكتشف المزايا" cards — categorized (DESIGN / OWNERSHIP / …),
+  /// drives the Features sub-tabs. Empty on older servers → the tab falls
+  /// back to the flat features list.
+  Future<List<VehicleFeatureCard>> featureCards(String slug) =>
+      _list('/api/app/vehicles/$slug/feature-cards', VehicleFeatureCard.fromJson);
+
   Future<List<VehicleGalleryItem>> gallery(String slug) =>
       _list('/api/app/vehicles/$slug/gallery', VehicleGalleryItem.fromJson);
 

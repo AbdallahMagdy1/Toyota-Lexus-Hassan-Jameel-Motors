@@ -15,6 +15,7 @@ final class ModelSheetState extends Equatable {
     this.colors = const [],
     this.colorImages = const [],
     this.features = const [],
+    this.featureCards = const [],
     this.gallery = const [],
     this.equipments = const [],
     this.tab = 0,
@@ -30,6 +31,9 @@ final class ModelSheetState extends Equatable {
   final List<VehicleColor> colors;
   final List<VehicleColorImage> colorImages;
   final List<VehicleFeature> features;
+
+  /// Website "اكتشف المزايا" cards, categorized — the Features sub-tabs.
+  final List<VehicleFeatureCard> featureCards;
   final List<VehicleGalleryItem> gallery;
   final List<EquipmentRow> equipments;
   final int tab;
@@ -64,6 +68,7 @@ final class ModelSheetState extends Equatable {
     List<VehicleColor>? colors,
     List<VehicleColorImage>? colorImages,
     List<VehicleFeature>? features,
+    List<VehicleFeatureCard>? featureCards,
     List<VehicleGalleryItem>? gallery,
     List<EquipmentRow>? equipments,
     int? tab,
@@ -79,6 +84,7 @@ final class ModelSheetState extends Equatable {
         colors: colors ?? this.colors,
         colorImages: colorImages ?? this.colorImages,
         features: features ?? this.features,
+        featureCards: featureCards ?? this.featureCards,
         gallery: gallery ?? this.gallery,
         equipments: equipments ?? this.equipments,
         tab: tab ?? this.tab,
@@ -90,8 +96,8 @@ final class ModelSheetState extends Equatable {
 
   @override
   List<Object?> get props => [
-        loading, detail, trims, colors, colorImages, features, gallery,
-        equipments, tab, colorIndex, trimIndex, trimA, trimB,
+        loading, detail, trims, colors, colorImages, features, featureCards,
+        gallery, equipments, tab, colorIndex, trimIndex, trimA, trimB,
       ];
 }
 
@@ -117,6 +123,7 @@ final class ModelSheetCubit extends Cubit<ModelSheetState> {
       _repo.features(slug),
       _repo.gallery(slug),
       _repo.equipments(slug),
+      _repo.featureCards(slug),
     ]);
     if (isClosed) return;
     final images = results[3] as List<VehicleColorImage>;
@@ -129,6 +136,7 @@ final class ModelSheetCubit extends Cubit<ModelSheetState> {
       features: results[4] as List<VehicleFeature>,
       gallery: results[5] as List<VehicleGalleryItem>,
       equipments: results[6] as List<EquipmentRow>,
+      featureCards: results[7] as List<VehicleFeatureCard>,
     ));
   }
 

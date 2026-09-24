@@ -126,6 +126,47 @@ final class VehicleFeature extends Equatable {
   List<Object?> get props => [titleEn, image];
 }
 
+/// Website "اكتشف المزايا" card — carries the CATEGORY (DESIGN / OWNERSHIP /
+/// المزايا الداخلية / …) that becomes the Features sub-tab it lives under.
+final class VehicleFeatureCard extends Equatable {
+  const VehicleFeatureCard({
+    this.category,
+    this.titleEn,
+    this.titleAr,
+    this.descriptionEn,
+    this.descriptionAr,
+    this.image,
+  });
+
+  final String? category;
+  final String? titleEn;
+  final String? titleAr;
+  final String? descriptionEn;
+  final String? descriptionAr;
+  final String? image;
+
+  String title(String lang) =>
+      (lang == 'ar' ? titleAr : titleEn) ?? titleEn ?? titleAr ?? '';
+  String description(String lang) =>
+      (lang == 'ar' ? descriptionAr : descriptionEn) ??
+      descriptionEn ??
+      descriptionAr ??
+      '';
+
+  factory VehicleFeatureCard.fromJson(Map<String, dynamic> j) =>
+      VehicleFeatureCard(
+        category: _s(j['category']),
+        titleEn: _s(j['titleEn']),
+        titleAr: _s(j['titleAr']),
+        descriptionEn: _s(j['descriptionEn']),
+        descriptionAr: _s(j['descriptionAr']),
+        image: _s(j['imageUrl'] ?? j['image']),
+      );
+
+  @override
+  List<Object?> get props => [category, titleEn, image];
+}
+
 final class VehicleGalleryItem extends Equatable {
   const VehicleGalleryItem({this.image, this.type});
 
