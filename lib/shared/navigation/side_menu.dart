@@ -316,7 +316,11 @@ final class SideMenu extends StatelessWidget {
                       ),
                     ),
                     Switch(
-                      value: theme.mode == ThemeMode.dark,
+                      // EFFECTIVE brightness, not the stored mode: on first
+                      // launch the mode is `system`, so a device in dark
+                      // rendered the app dark while `mode == dark` was
+                      // false — the toggle looked off and needed two taps.
+                      value: isDark,
                       activeThumbColor: scheme.primary,
                       onChanged: (v) => context
                           .read<ThemeCubit>()
