@@ -4,7 +4,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../../core/utils/media_url.dart';
 import '../../../../core/utils/responsive.dart';
 import '../../../../shared/widgets/pressable.dart';
-import '../../../../shared/widgets/raised_tab_bar.dart';
 
 /// Shared building blocks for the home sections.
 
@@ -167,13 +166,63 @@ final class FilterChipsRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // The reference "model year" strip: inactive tabs are plain muted
-    // labels; the active one is a raised brand card floating above the row.
-    return RaisedTabBar(
-      tabs: labels,
-      index: selectedIndex,
-      onChanged: onSelected,
-      scrollable: true,
+    final scheme = Theme.of(context).colorScheme;
+    return SizedBox(
+      height: context.rs(40),
+      child: ListView.separated(
+        padding: EdgeInsets.symmetric(horizontal: context.rs(20)),
+        scrollDirection: Axis.horizontal,
+        clipBehavior: Clip.none,
+        itemCount: labels.length,
+        separatorBuilder: (_, _) => SizedBox(width: context.rs(8)),
+        itemBuilder: (context, i) {
+          final selected = i == selectedIndex;
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          // Reference-kit pills: selected = brand gradient pill, gently
+          // TRANSLATED up out of the row; unselected = flat surface pill.
+          return GestureDetector(
+            onTap: () => onSelected(i),
+            child: AnimatedSlide(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              offset: Offset(0, selected ? -0.07 : 0),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                padding: EdgeInsets.symmetric(horizontal: context.rs(18)),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: selected
+                      ? LinearGradient(colors: [
+                          scheme.primary,
+                          scheme.primary.withValues(alpha: 0.78),
+                        ])
+                      : null,
+                  color: selected
+                      ? null
+                      : (isDark ? const Color(0xFF1C1F26) : scheme.surface),
+                  borderRadius: BorderRadius.circular(999),
+                  border: !selected
+                      ? Border.all(
+                          color: scheme.outline
+                              .withValues(alpha: isDark ? 0.6 : 0.5))
+                      : null,
+                ),
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    fontSize: context.rf(12.5),
+                    fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                    color: selected
+                        ? scheme.onPrimary
+                        : scheme.onSurface.withValues(alpha: 0.75),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

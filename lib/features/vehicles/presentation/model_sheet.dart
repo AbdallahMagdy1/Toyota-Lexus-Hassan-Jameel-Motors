@@ -10,7 +10,6 @@ import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_states.dart';
-import '../../../shared/widgets/raised_tab_bar.dart';
 import '../../../shared/widgets/slope_hero.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../online_store/bloc/method_form_cubits.dart'
@@ -121,15 +120,66 @@ final class ModelSheet extends StatelessWidget {
     return Column(
       children: [
         const SheetHandle(),
-        // Reference "model year" strip: plain muted labels, the active tab
-        // raised as a brand card floating above the row.
+        // Website-style pill tab bar with a TRANSLATING highlight: one brand
+        // pill slides between the equal-width tabs instead of re-appearing.
         Padding(
           padding: EdgeInsets.fromLTRB(
-              context.rs(12), context.rs(8), context.rs(12), context.rs(2)),
-          child: RaisedTabBar(
-            tabs: tabs,
-            index: state.tab,
-            onChanged: cubit.setTab,
+              context.rs(12), context.rs(5), context.rs(12), context.rs(5)),
+          child: SizedBox(
+            height: context.rs(36),
+            child: LayoutBuilder(builder: (context, box) {
+              final scheme = Theme.of(context).colorScheme;
+              final w = box.maxWidth / tabs.length;
+              return Stack(children: [
+                AnimatedPositionedDirectional(
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  start: w * state.tab,
+                  top: 0,
+                  bottom: 0,
+                  width: w,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: scheme.primary,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                Row(children: [
+                  for (var i = 0; i < tabs.length; i++)
+                    Expanded(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () => cubit.setTab(i),
+                        child: Center(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: context.rs(6)),
+                              child: AnimatedDefaultTextStyle(
+                                duration: const Duration(milliseconds: 260),
+                                curve: Curves.easeOutCubic,
+                                style: TextStyle(
+                                  fontSize: context.rf(12),
+                                  fontWeight: i == state.tab
+                                      ? FontWeight.w800
+                                      : FontWeight.w600,
+                                  color: i == state.tab
+                                      ? scheme.onPrimary
+                                      : scheme.onSurface
+                                          .withValues(alpha: 0.6),
+                                ),
+                                child: Text(tabs[i], maxLines: 1),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ]),
+              ]);
+            }),
           ),
         ),
         Expanded(
