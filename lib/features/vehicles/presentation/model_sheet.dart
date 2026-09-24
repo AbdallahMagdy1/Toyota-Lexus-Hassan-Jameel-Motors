@@ -10,6 +10,7 @@ import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../../shared/widgets/app_dropdown.dart';
 import '../../../shared/widgets/app_states.dart';
+import '../../../shared/widgets/raised_tab_bar.dart';
 import '../../../shared/widgets/slope_hero.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../online_store/bloc/method_form_cubits.dart'
@@ -114,63 +115,21 @@ final class ModelSheet extends StatelessWidget {
     final t = AppLocalizations.of(context);
     final cubit = context.read<ModelSheetCubit>();
     final state = context.watch<ModelSheetCubit>().state;
-    final scheme = Theme.of(context).colorScheme;
 
     final tabs = [t.tabOverview, t.tabGallery, t.tabSpecs, t.tabFeatures, t.tabComparison];
 
     return Column(
       children: [
         const SheetHandle(),
-        // Website-style pill tab bar — equal-width pills that always fit the
-        // sheet, so the last tab (المقارنة) is never cut off the edge.
+        // Reference "model year" strip: plain muted labels, the active tab
+        // raised as a brand card floating above the row.
         Padding(
           padding: EdgeInsets.fromLTRB(
-              context.rs(12), context.rs(5), context.rs(12), context.rs(5)),
-          child: SizedBox(
-            height: context.rs(36),
-            child: Row(
-              children: [
-                for (var i = 0; i < tabs.length; i++) ...[
-                  if (i > 0) SizedBox(width: context.rs(4)),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => cubit.setTab(i),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: i == state.tab
-                              ? scheme.primary
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                                horizontal: context.rs(6)),
-                            child: Text(
-                              tabs[i],
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontSize: context.rf(12),
-                                fontWeight: i == state.tab
-                                    ? FontWeight.w800
-                                    : FontWeight.w600,
-                                color: i == state.tab
-                                    ? scheme.onPrimary
-                                    : scheme.onSurface
-                                        .withValues(alpha: 0.6),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              context.rs(12), context.rs(8), context.rs(12), context.rs(2)),
+          child: RaisedTabBar(
+            tabs: tabs,
+            index: state.tab,
+            onChanged: cubit.setTab,
           ),
         ),
         Expanded(
@@ -720,41 +679,55 @@ final class _SectionHeader extends StatelessWidget {
   }
 }
 
-/// '✓' renders as a round brand check chip; '—' muted; text otherwise.
+/// Comparison-table marks (the insurance-app reference): included = solid
+/// GREEN circle with a white check, missing = soft RED circle with a cross,
+/// anything else = the value text.
+const _kIncludedGreen = Color(0xFF22B26A);
+const _kMissingRed = Color(0xFFE5484D);
+
 final class _SpecValue extends StatelessWidget {
-  const _SpecValue({required this.value});
+  const _SpecValue({required this.value, this.center = false});
 
   final String value;
 
+  /// Comparison columns center their cells; the single-trim list trails.
+  final bool center;
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final v = value.trim();
     final lower = v.toLowerCase();
     if (v == '✓' || lower == 'yes' || lower == 'check') {
       return Container(
-        width: 19,
-        height: 19,
-        decoration: BoxDecoration(
-          color: scheme.primary.withValues(alpha: 0.12),
+        width: 20,
+        height: 20,
+        decoration: const BoxDecoration(
+          color: _kIncludedGreen,
           shape: BoxShape.circle,
         ),
-        child: Icon(Icons.check_rounded, size: 13, color: scheme.primary),
+        child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
       );
     }
     if (v.isEmpty || v == '—') {
-      return Text('—',
-          style:
-              TextStyle(color: scheme.onSurface.withValues(alpha: 0.3)));
+      return Container(
+        width: 20,
+        height: 20,
+        decoration: BoxDecoration(
+          color: _kMissingRed.withValues(alpha: 0.14),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(Icons.close_rounded,
+            size: 13, color: _kMissingRed.withValues(alpha: 0.9)),
+      );
     }
     return ConstrainedBox(
       constraints: BoxConstraints(
           maxWidth: MediaQuery.sizeOf(context).width * 0.4),
       child: Text(
         v,
-        textAlign: TextAlign.end,
+        textAlign: center ? TextAlign.center : TextAlign.end,
         style: TextStyle(
-            fontSize: context.rf(11.5),
+            fontSize: context.rf(11),
             fontWeight: FontWeight.w700,
             height: 1.35),
       ),
@@ -865,6 +838,12 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
     final b = trims[ib];
     final slugs = [a.slug ?? '', b.slug ?? ''];
 
+    // The better-priced column gets the reference's "recommended" ring +
+    // a soft tint down its whole column (only when both prices are real).
+    final pa = a.minPrice ?? 0.0, pb = b.minPrice ?? 0.0;
+    final int? star =
+        (pa > 0 && pb > 0 && pa != pb) ? (pa < pb ? 0 : 1) : null;
+
     final matrix = buildSpecsMatrix(state.equipments, lang);
     final sections = _diffsOnly
         ? [
@@ -919,21 +898,63 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
             ),
           ],
         ),
-        SizedBox(height: context.rs(6)),
+        SizedBox(height: context.rs(12)),
+        // ── Column headers (the insurance-reference cards): icon + trim
+        // name + price per column; the better-priced column is ringed in
+        // the brand color and keeps a soft tint down its whole column. ──
         Row(children: [
-          Expanded(
-              child: PriceText(
-                  price: a.minPrice,
-                  currency: t.currency,
-                  contactForPrice: t.homeContactForPrice,
-                  fontSize: context.rf(13))),
-          SizedBox(width: context.rs(10)),
-          Expanded(
-              child: PriceText(
-                  price: b.minPrice,
-                  currency: t.currency,
-                  contactForPrice: t.homeContactForPrice,
-                  fontSize: context.rf(13))),
+          const Spacer(flex: 5),
+          for (final (col, trim) in [(0, a), (1, b)]) ...[
+            SizedBox(width: context.rs(6)),
+            Expanded(
+              flex: 4,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                padding: EdgeInsets.symmetric(
+                    horizontal: context.rs(8), vertical: context.rs(10)),
+                decoration: BoxDecoration(
+                  color: col == star
+                      ? scheme.primary.withValues(alpha: 0.08)
+                      : scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: col == star
+                        ? scheme.primary
+                        : scheme.outline.withValues(alpha: 0.5),
+                    width: col == star ? 1.6 : 1,
+                  ),
+                ),
+                child: Column(children: [
+                  Icon(Icons.directions_car_filled_rounded,
+                      size: 18,
+                      color: col == star
+                          ? scheme.primary
+                          : scheme.onSurface.withValues(alpha: 0.55)),
+                  SizedBox(height: context.rs(4)),
+                  Text(
+                    trim.name(lang),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        fontSize: context.rf(10),
+                        height: 1.25,
+                        fontWeight: FontWeight.w800),
+                  ),
+                  SizedBox(height: context.rs(4)),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: PriceText(
+                        price: trim.minPrice,
+                        currency: t.currency,
+                        contactForPrice: t.homeContactForPrice,
+                        fontSize: context.rf(11.5),
+                        color: col == star ? scheme.primary : null),
+                  ),
+                ]),
+              ),
+            ),
+          ],
         ]),
         SizedBox(height: context.rs(10)),
         // إظهار الاختلافات فقط
@@ -1015,81 +1036,75 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
             ),
             child: Column(
               children: [
-                // Header row: SPEC | trim A | trim B.
-                Container(
-                  padding: EdgeInsets.symmetric(
-                      horizontal: context.rs(12),
-                      vertical: context.rs(9)),
-                  color: scheme.surfaceContainerHighest
-                      .withValues(alpha: 0.55),
-                  child: Row(children: [
-                    Expanded(
-                      flex: 5,
-                      child: Text(
-                        t.tabSpecs.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: context.rf(9),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.8,
-                          color:
-                              scheme.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ),
-                    for (final trim in [a, b])
-                      Expanded(
-                        flex: 4,
-                        child: Text(
-                          trim.name(lang),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                              fontSize: context.rf(10.5),
-                              height: 1.25,
-                              fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                  ]),
-                ),
                 for (var i = 0; i < section.rows.length; i++)
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: context.rs(12),
-                        vertical: context.rs(9)),
-                    decoration: BoxDecoration(
-                      color: section.rows[i].differsAcross(slugs)
-                          ? scheme.primary.withValues(alpha: 0.05)
-                          : null,
-                      border: Border(
-                          top: BorderSide(
-                              color: scheme.outline
-                                  .withValues(alpha: 0.3))),
-                    ),
+                  IntrinsicHeight(
                     child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        // Criterion label.
                         Expanded(
                           flex: 5,
-                          child: Text(
-                            section.rows[i].label,
-                            style: TextStyle(
-                              fontSize: context.rf(10.5),
-                              height: 1.35,
-                              color: scheme.onSurface
-                                  .withValues(alpha: 0.65),
+                          child: Container(
+                            padding: EdgeInsetsDirectional.fromSTEB(
+                                context.rs(12),
+                                context.rs(10),
+                                context.rs(8),
+                                context.rs(10)),
+                            decoration: BoxDecoration(
+                              border: i == 0
+                                  ? null
+                                  : Border(
+                                      top: BorderSide(
+                                          color: scheme.outline
+                                              .withValues(alpha: 0.3))),
+                            ),
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: Text(
+                                section.rows[i].label,
+                                style: TextStyle(
+                                  fontSize: context.rf(10.5),
+                                  height: 1.35,
+                                  color: scheme.onSurface
+                                      .withValues(alpha: 0.65),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                        for (final trim in [a, b])
+                        // Two value columns — centered marks, hairline
+                        // separators, the starred column softly tinted
+                        // top-to-bottom (the reference's highlight).
+                        for (final (col, trim) in [(0, a), (1, b)])
                           Expanded(
                             flex: 4,
-                            child: Align(
-                              alignment:
-                                  AlignmentDirectional.centerStart,
-                              child: _SpecValue(
-                                  value: section.rows[i]
-                                          .values[trim.slug] ??
-                                      '—'),
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: context.rs(4),
+                                  vertical: context.rs(10)),
+                              decoration: BoxDecoration(
+                                color: col == star
+                                    ? scheme.primary
+                                        .withValues(alpha: 0.06)
+                                    : null,
+                                border: BorderDirectional(
+                                  start: BorderSide(
+                                      color: scheme.outline
+                                          .withValues(alpha: 0.35)),
+                                  top: i == 0
+                                      ? BorderSide.none
+                                      : BorderSide(
+                                          color: scheme.outline
+                                              .withValues(alpha: 0.3)),
+                                ),
+                              ),
+                              child: Center(
+                                child: _SpecValue(
+                                    center: true,
+                                    value: section.rows[i]
+                                            .values[trim.slug] ??
+                                        '—'),
+                              ),
                             ),
                           ),
                       ],
@@ -1100,6 +1115,44 @@ final class _ComparisonTabState extends State<_ComparisonTab> {
           ),
           SizedBox(height: context.rs(8)),
         ],
+        // ── Price footer, per the reference's bottom price row ──
+        SizedBox(height: context.rs(4)),
+        Container(
+          padding: EdgeInsets.symmetric(
+              horizontal: context.rs(12), vertical: context.rs(12)),
+          decoration: BoxDecoration(
+            color: scheme.surfaceContainerHighest.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: scheme.outline.withValues(alpha: 0.5)),
+          ),
+          child: Row(children: [
+            Expanded(
+              flex: 5,
+              child: Text(
+                t.modelsPrice,
+                style: TextStyle(
+                    fontSize: context.rf(11),
+                    fontWeight: FontWeight.w800),
+              ),
+            ),
+            for (final (col, trim) in [(0, a), (1, b)])
+              Expanded(
+                flex: 4,
+                child: Center(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: PriceText(
+                        price: trim.minPrice,
+                        currency: t.currency,
+                        contactForPrice: t.homeContactForPrice,
+                        fontSize: context.rf(12.5),
+                        color: col == star ? scheme.primary : null),
+                  ),
+                ),
+              ),
+          ]),
+        ),
       ],
     ).animate().fadeIn(duration: 240.ms);
   }
