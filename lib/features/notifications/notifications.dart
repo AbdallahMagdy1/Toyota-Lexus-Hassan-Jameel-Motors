@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/constants/api_paths.dart';
@@ -140,10 +141,14 @@ final class PushService {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     try {
       await Firebase.initializeApp();
-      await _local.initialize(const InitializationSettings(
-        android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: DarwinInitializationSettings(),
-      ));
+      await _local.initialize(
+        const InitializationSettings(
+          android: AndroidInitializationSettings('@mipmap/ic_launcher'),
+          iOS: DarwinInitializationSettings(),
+        ),
+        // Foreground notification tapped → deep-link (payload = data['route']).
+        onDidReceiveNotificationResponse: (resp) => _navigateTo(resp.payload),
+      );
       await _local
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
@@ -175,12 +180,12 @@ final class PushService {
 
       FirebaseMessaging.onMessage.listen(_onMessage);
       FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
-      // Background/terminated arrivals: the SYSTEM tray shows them, but they
-      // never passed through onMessage — store them into the in-app inbox
-      // when the user opens the app from the notification.
-      FirebaseMessaging.onMessageOpenedApp.listen(_storeOnly);
+      // Background/terminated arrivals: the SYSTEM tray showed them; when the
+      // user TAPS one, store it into the in-app inbox AND deep-link to the
+      // screen the dashboard chose (data['route']).
+      FirebaseMessaging.onMessageOpenedApp.listen(_handleOpen);
       final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) await _storeOnly(initial);
+      if (initial != null) await _handleOpen(initial);
       _ready = true;
 
       // Register the token now (if signed in) and on every auth change.
@@ -195,6 +200,28 @@ final class PushService {
   /// Inbox-only: the tray already displayed this one (background arrival).
   static Future<void> _storeOnly(RemoteMessage m) =>
       sl<NotificationsCubit>().add(AppNotification.fromMessage(m));
+
+  /// User TAPPED a tray notification (background/terminated) → store it in the
+  /// inbox, then deep-link to the screen the dashboard chose. data['route']
+  /// carries a go_router PATH (e.g. '/offers', '/maintenance', '/tracking').
+  static Future<void> _handleOpen(RemoteMessage m) async {
+    await _storeOnly(m);
+    _navigateTo(m.data['route']);
+  }
+
+  /// Navigate to a notification's target screen. Only app PATHS (leading '/')
+  /// are followed; any other value (or none) just leaves the app on its normal
+  /// start screen. Deferred to after the first frame so the router + shell are
+  /// mounted even on a cold start (getInitialMessage).
+  static void _navigateTo(String? route) {
+    if (route == null || !route.startsWith('/')) return;
+    final path = route; // non-null, captured for the deferred closure
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        sl<GoRouter>().go(path);
+      } catch (_) {/* unknown/guarded route — ignore, app stays where it is */}
+    });
+  }
 
   static Future<void> _onMessage(RemoteMessage m) async {
     final n = AppNotification.fromMessage(m);
@@ -212,6 +239,7 @@ final class PushService {
           priority: Priority.high,
         ),
       ),
+      payload: n.route, // so tapping the foreground notification deep-links too
     );
   }
 
