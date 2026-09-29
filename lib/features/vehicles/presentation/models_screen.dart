@@ -11,11 +11,13 @@ import '../../../shared/widgets/back_header.dart';
 import '../../../shared/widgets/pressable.dart';
 import '../../../shared/widgets/tab_slide_switcher.dart';
 import '../../../shared/widgets/tab_swipe.dart';
+import '../../../core/network/api_client.dart';
 import '../../home/data/home_repository.dart';
 import '../../home/domain/home_models.dart';
 import '../../home/presentation/widgets/home_bits.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
+import '../data/vehicles_repository.dart';
 import 'model_sheet.dart';
 
 /// "Meet the models" catalog — the reference's swiper of big editorial
@@ -100,9 +102,12 @@ final class ModelsCubit extends Cubit<ModelsState> {
 }
 
 final class ModelsScreen extends StatelessWidget {
-  const ModelsScreen({super.key, this.initialCategory});
+  const ModelsScreen({super.key, this.initialCategory, this.initialSlug});
 
   final String? initialCategory;
+
+  /// Deep-link to a SPECIFIC vehicle (its slug) — opens that model's sheet.
+  final String? initialSlug;
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +116,7 @@ final class ModelsScreen extends StatelessWidget {
       key: ValueKey('models-$brandKey-$initialCategory'),
       create: (_) => ModelsCubit(sl(),
           brandKey: brandKey, initialCategory: initialCategory),
-      child: const _ModelsView(),
+      child: _ModelsView(initialSlug: initialSlug),
     );
   }
 }
@@ -129,7 +134,9 @@ int _categoryRank(String c) {
 }
 
 final class _ModelsView extends StatefulWidget {
-  const _ModelsView();
+  const _ModelsView({this.initialSlug});
+
+  final String? initialSlug;
 
   @override
   State<_ModelsView> createState() => _ModelsViewState();
@@ -139,6 +146,9 @@ final class _ModelsViewState extends State<_ModelsView> {
   /// One-shot: pre-select the first section (sedan) once the catalog loads
   /// — user taps afterwards (including "All") are never overridden.
   bool _autoPicked = false;
+
+  /// One-shot: a push-notification deep-link opened this model's sheet.
+  bool _deepLinkOpened = false;
 
   @override
   Widget build(BuildContext context) {
@@ -157,6 +167,26 @@ final class _ModelsViewState extends State<_ModelsView> {
         WidgetsBinding.instance.addPostFrameCallback(
             (_) => cubit.setCategory(categories.first));
       }
+    }
+
+    // Deep-link: open the specific vehicle's sheet once the catalog is loaded
+    // (find the full record by slug — openModelSheet needs the whole object).
+    final deepSlug = widget.initialSlug;
+    if (!_deepLinkOpened && !state.loading && deepSlug != null && deepSlug.isNotEmpty) {
+      _deepLinkOpened = true;
+      final wanted = deepSlug.toLowerCase();
+      SliderVehicle? match;
+      for (final v in state.vehicles) {
+        if ((v.slug ?? '').toLowerCase() == wanted) { match = v; break; }
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        if (!mounted) return;
+        // In this brand's loaded catalog → open it directly. Otherwise fetch
+        // the model by slug (same Site_Vehicle_* cycle as the website) so the
+        // deep-link still works for cars not in the slider list.
+        final vehicle = match ?? await VehiclesRepository(sl<ApiClient>()).detail(deepSlug);
+        if (mounted && vehicle != null) openModelSheet(context, vehicle);
+      });
     }
 
     // Horizontal fling moves across the category tabs (…categories, All).

@@ -27,7 +27,10 @@ const _kGreen = Color(0xFF16A34A);
 /// approved listings grid → full detail sheet (gallery, specs, features,
 /// the full inspection, WhatsApp) + the "اعرض سيارتك" submission wizard.
 final class UsedCarsScreen extends StatefulWidget {
-  const UsedCarsScreen({super.key});
+  const UsedCarsScreen({super.key, this.initialGuid});
+
+  /// Deep-link to a SPECIFIC used car (its GUID) — opens that car's sheet.
+  final String? initialGuid;
 
   @override
   State<UsedCarsScreen> createState() => _UsedCarsScreenState();
@@ -45,6 +48,14 @@ final class _UsedCarsScreenState extends State<UsedCarsScreen> {
     super.initState();
     _lastBrand = _brand;
     _future = UsedCarsRepository(sl<ApiClient>()).list(brand: _brand);
+    // Deep-link: open the specific used-car sheet (fetches by GUID itself).
+    final guid = widget.initialGuid;
+    if (guid != null && guid.isNotEmpty) {
+      final lang = sl<LocaleCubit>().state.languageCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showUsedCarDetail(context, guid, lang);
+      });
+    }
   }
 
   @override

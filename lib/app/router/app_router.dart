@@ -165,7 +165,8 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
             path: Routes.models,
             pageBuilder: (context, state) => page(
                 ModelsScreen(
-                    initialCategory: state.uri.queryParameters['category']),
+                    initialCategory: state.uri.queryParameters['category'],
+                    initialSlug: state.uri.queryParameters['slug']),
                 state),
           ),
           GoRoute(
@@ -173,7 +174,8 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
             pageBuilder: (context, state) => page(
                 OffersScreen(
                     initialTypeId:
-                        int.tryParse(state.uri.queryParameters['type'] ?? '')),
+                        int.tryParse(state.uri.queryParameters['type'] ?? ''),
+                    initialSlug: state.uri.queryParameters['slug']),
                 state),
           ),
           GoRoute(
@@ -196,7 +198,9 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
           ),
           GoRoute(
             path: Routes.news,
-            pageBuilder: (context, state) => page(const NewsScreen(), state),
+            pageBuilder: (context, state) => page(
+                NewsScreen(initialSlug: state.uri.queryParameters['slug']),
+                state),
           ),
           GoRoute(
             path: Routes.contact,
@@ -218,8 +222,9 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
           ),
           GoRoute(
             path: Routes.usedCars,
-            pageBuilder: (context, state) =>
-                page(const UsedCarsScreen(), state),
+            pageBuilder: (context, state) => page(
+                UsedCarsScreen(initialGuid: state.uri.queryParameters['guid']),
+                state),
           ),
           GoRoute(
             path: Routes.partsCart,

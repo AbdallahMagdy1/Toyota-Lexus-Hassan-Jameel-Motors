@@ -38,7 +38,7 @@ android {
         // Toyota app package — matches the iOS bundle id. Must be listed in
         // google-services.json (register it in the Firebase project too so
         // FCM tokens stay valid).
-        applicationId = "com.hassanjameel.lexus"
+        applicationId = "com.hassanjameel.toyota"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

@@ -19,13 +19,16 @@ import 'content_repository.dart';
 /// News — the website's /news for mobile: one payload, brand-filtered
 /// client-side, article opens as a sheet.
 final class NewsScreen extends StatelessWidget {
-  const NewsScreen({super.key});
+  const NewsScreen({super.key, this.initialSlug});
+
+  /// Deep-link to a SPECIFIC article (its slug) — opens that article's sheet.
+  final String? initialSlug;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => _NewsCubit(ContentRepository(sl<ApiClient>())),
-      child: const _NewsView(),
+      child: _NewsView(initialSlug: initialSlug),
     );
   }
 }
@@ -54,8 +57,29 @@ final class _NewsCubit extends Cubit<_NewsState> {
   }
 }
 
-final class _NewsView extends StatelessWidget {
-  const _NewsView();
+final class _NewsView extends StatefulWidget {
+  const _NewsView({this.initialSlug});
+
+  final String? initialSlug;
+
+  @override
+  State<_NewsView> createState() => _NewsViewState();
+}
+
+final class _NewsViewState extends State<_NewsView> {
+  @override
+  void initState() {
+    super.initState();
+    // Deep-link: open the specific article. The sheet re-fetches the body by
+    // slug, so a slug-only NewsItem is enough.
+    final slug = widget.initialSlug;
+    if (slug != null && slug.isNotEmpty) {
+      final lang = sl<LocaleCubit>().state.languageCode;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openArticle(context, NewsItem(id: 0, slugEn: slug), lang);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

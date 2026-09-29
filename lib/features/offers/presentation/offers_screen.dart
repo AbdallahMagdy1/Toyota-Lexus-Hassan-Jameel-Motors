@@ -24,10 +24,13 @@ import 'offer_detail_sheet.dart';
 /// becomes a section (vehicle offers, maintenance offers, …). Brand filter
 /// follows the app's Toyota/Lexus switch via BrandList, like the website.
 final class OffersScreen extends StatelessWidget {
-  const OffersScreen({super.key, this.initialTypeId});
+  const OffersScreen({super.key, this.initialTypeId, this.initialSlug});
 
   /// Deep-link filter (e.g. maintenance offers quick action).
   final int? initialTypeId;
+
+  /// Deep-link to a SPECIFIC offer (its slug) — opens that offer's sheet.
+  final String? initialSlug;
 
   @override
   Widget build(BuildContext context) {
@@ -36,13 +39,33 @@ final class OffersScreen extends StatelessWidget {
         OffersRepository(sl<ApiClient>()),
         initialTypeId: initialTypeId,
       ),
-      child: const _OffersView(),
+      child: _OffersView(initialSlug: initialSlug),
     );
   }
 }
 
-final class _OffersView extends StatelessWidget {
-  const _OffersView();
+final class _OffersView extends StatefulWidget {
+  const _OffersView({this.initialSlug});
+
+  final String? initialSlug;
+
+  @override
+  State<_OffersView> createState() => _OffersViewState();
+}
+
+final class _OffersViewState extends State<_OffersView> {
+  @override
+  void initState() {
+    super.initState();
+    // Deep-link: the offer sheet fetches by slug on its own, so open it as
+    // soon as the sheet host is mounted (independent of the list load).
+    final slug = widget.initialSlug;
+    if (slug != null && slug.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) showOfferDetailSheet(context, slug);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
