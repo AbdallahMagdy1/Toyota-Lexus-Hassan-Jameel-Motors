@@ -2952,4 +2952,13 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get pfCancel => 'إلغاء';
+
+  @override
+  String get osGrade => 'الفئة';
+
+  @override
+  String get osModelYear => 'سنة الصنع';
+
+  @override
+  String get osVehicleSpecs => 'مواصفات السيارة';
 }

@@ -31,13 +31,21 @@ import 'finance_requests_screen.dart' show FinanceRequest;
 /// broadcaster → this screen). Falls back to a 30s refresh if the stream
 /// drops; the backend stays the single source of state.
 final class ServiceTrackingScreen extends StatelessWidget {
-  const ServiceTrackingScreen({super.key});
+  const ServiceTrackingScreen({super.key, this.initialKind, this.initialRef});
+
+  /// Push deep link (/tracking?kind=&ref=): open the hub on this kind's chip
+  /// (maintenance | protection | order | finance) …
+  final String? initialKind;
+
+  /// … and scroll to + highlight the order whose RefNo (or reservation /
+  /// reception / job-order no. / GUID) matches.
+  final String? initialRef;
 
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => _TrackingCubit(),
-      child: const _View(),
+      child: _View(initialKind: initialKind, initialRef: initialRef),
     );
   }
 }
@@ -166,7 +174,10 @@ final class _TrackingCubit extends Cubit<_TrackingState> {
 }
 
 final class _View extends StatelessWidget {
-  const _View();
+  const _View({this.initialKind, this.initialRef});
+
+  final String? initialKind;
+  final String? initialRef;
 
   @override
   Widget build(BuildContext context) {
@@ -235,7 +246,8 @@ final class _View extends StatelessWidget {
                     // below (App_ServiceJourney_View), so rendering it twice
                     // would show the same visit as two unrelated cards.
                     // WorkOrderCard still drives the home-screen hero card.
-                    const _OrdersTrackingSection(),
+                    _OrdersTrackingSection(
+                        initialKind: initialKind, initialRef: initialRef),
                   ],
                 ),
         ),
@@ -249,7 +261,10 @@ final class _View extends StatelessWidget {
 /// (App_Orders_TrackingSnapshot): kind filter chips, stage progress per
 /// order, status chip and payment shortcuts (Sadad / pay URL).
 final class _OrdersTrackingSection extends StatefulWidget {
-  const _OrdersTrackingSection();
+  const _OrdersTrackingSection({this.initialKind, this.initialRef});
+
+  final String? initialKind;
+  final String? initialRef;
 
   @override
   State<_OrdersTrackingSection> createState() => _OrdersTrackingSectionState();
@@ -260,9 +275,23 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
   Future<List<FinanceRequest>>? _finFuture;
   int _tab = 0; // 0 all, 1 maintenance, 2 protection, 3 order, 4 finance
 
+  // Deep-link target (push tap): the matching card gets this key, is scrolled
+  // into view once, and stays highlighted for a few seconds.
+  final _targetKey = GlobalKey();
+  bool _scrolledToTarget = false;
+  bool _highlight = false;
+  Timer? _highlightTimer;
+
   @override
   void initState() {
     super.initState();
+    _tab = switch ((widget.initialKind ?? '').toLowerCase()) {
+      'maintenance' => 1,
+      'protection' => 2,
+      'order' => 3,
+      'finance' => 4,
+      _ => 0,
+    };
     _refetch();
     // Live SSE events bump this — the hub refetches instantly.
     _hubRefresh.addListener(_refetch);
@@ -270,8 +299,36 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
 
   @override
   void dispose() {
+    _highlightTimer?.cancel();
     _hubRefresh.removeListener(_refetch);
     super.dispose();
+  }
+
+  /// True when [o] is the order the push pointed at — the RefNo the backend
+  /// sends, or any of the card's other identifiers.
+  bool _isTarget(TrackedOrder o) {
+    final ref = (widget.initialRef ?? '').trim().toLowerCase();
+    if (ref.isEmpty) return false;
+    return [o.refNo, o.guid, o.reservationNo, o.receptionNo, o.jobOrderNo]
+        .any((v) => (v ?? '').trim().toLowerCase() == ref);
+  }
+
+  /// Once the target card is laid out: scroll to it and pulse the highlight.
+  void _revealTarget() {
+    if (_scrolledToTarget) return;
+    _scrolledToTarget = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ctx = _targetKey.currentContext;
+      if (ctx == null || !mounted) return;
+      Scrollable.ensureVisible(ctx,
+          duration: const Duration(milliseconds: 450),
+          curve: Curves.easeOutCubic,
+          alignment: 0.15);
+      setState(() => _highlight = true);
+      _highlightTimer = Timer(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _highlight = false);
+      });
+    });
   }
 
   static Future<List<FinanceRequest>> _fetchFinance() async {
@@ -321,6 +378,13 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
           3 => all.where((o) => o.kind == 'order').toList(),
           _ => all,
         };
+        // Show the first 20 — plus the deep-linked order if it sits further down.
+        final shown = filtered.take(20).toList();
+        final target = filtered.where(_isTarget).firstOrNull;
+        if (target != null && !shown.contains(target)) shown.add(target);
+        if (target != null && snap.connectionState == ConnectionState.done) {
+          _revealTarget();
+        }
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -369,10 +433,23 @@ final class _OrdersTrackingSectionState extends State<_OrdersTrackingSection> {
                 ),
               )
             else
-              for (final o in filtered.take(20))
+              for (final o in shown)
                 Padding(
+                  key: identical(o, target) ? _targetKey : null,
                   padding: EdgeInsets.only(bottom: context.rs(10)),
-                  child: _TrackedOrderCard(order: o, lang: lang),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 350),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        width: 2,
+                        color: identical(o, target) && _highlight
+                            ? scheme.primary
+                            : Colors.transparent,
+                      ),
+                    ),
+                    child: _TrackedOrderCard(order: o, lang: lang),
+                  ),
                 ),
           ],
         );

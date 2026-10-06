@@ -331,13 +331,14 @@ final class _StoreServices extends StatelessWidget {
 
     // Every Hassan Jameel service, one tap away — the Quick Links panel
     // (first service = the filled brand tile, scroll bar under the row).
+    // "Meet the models" leads the rail (both brands), ahead of maintenance.
     final services = <(IconData, String, String)>[
+      (Icons.directions_car_outlined, t.homeMeetTheModels, Routes.models),
       (Icons.build_circle_outlined, t.mhTitle, Routes.maintenance),
       (Icons.shield_outlined, t.ghSvcProtection, Routes.protection),
       (Icons.account_balance_outlined, t.ghSvcFinance, Routes.finance),
       (Icons.local_offer_outlined, t.offersTitle, Routes.offers),
       (Icons.storefront_outlined, t.homeOnlineStore, Routes.onlineStore),
-      (Icons.directions_car_outlined, t.homeMeetTheModels, Routes.models),
       (Icons.settings_rounded, t.ghSpareParts, Routes.parts),
       (Icons.car_repair_rounded, t.trackTitle, Routes.tracking),
       (Icons.sell_outlined, t.ucTitle, Routes.usedCars),

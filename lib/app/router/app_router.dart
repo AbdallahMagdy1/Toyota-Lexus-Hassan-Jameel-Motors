@@ -165,6 +165,9 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
             path: Routes.models,
             pageBuilder: (context, state) => page(
                 ModelsScreen(
+                    // Keyed by the query: a deep link (push tap) to the screen
+                    // that's already open still re-runs its ?slug= handling.
+                    key: ValueKey('models?${state.uri.query}'),
                     initialCategory: state.uri.queryParameters['category'],
                     initialSlug: state.uri.queryParameters['slug']),
                 state),
@@ -173,6 +176,7 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
             path: Routes.offers,
             pageBuilder: (context, state) => page(
                 OffersScreen(
+                    key: ValueKey('offers?${state.uri.query}'),
                     initialTypeId:
                         int.tryParse(state.uri.queryParameters['type'] ?? ''),
                     initialSlug: state.uri.queryParameters['slug']),
@@ -213,8 +217,14 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
           ),
           GoRoute(
             path: Routes.tracking,
-            pageBuilder: (context, state) =>
-                page(const ServiceTrackingScreen(), state),
+            // ?kind=maintenance|protection|order|finance&ref=<RefNo> — push
+            // taps open the tracking hub on that order (chip + scroll).
+            pageBuilder: (context, state) => page(
+                ServiceTrackingScreen(
+                    key: ValueKey('tracking?${state.uri.query}'),
+                    initialKind: state.uri.queryParameters['kind'],
+                    initialRef: state.uri.queryParameters['ref']),
+                state),
           ),
           GoRoute(
             path: Routes.cart,

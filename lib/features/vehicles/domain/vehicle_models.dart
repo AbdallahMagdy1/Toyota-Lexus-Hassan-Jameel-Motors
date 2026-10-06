@@ -184,7 +184,9 @@ final class VehicleGalleryItem extends Equatable {
 final class EquipmentRow extends Equatable {
   const EquipmentRow({
     this.trimSlug,
+    this.trimProductId,
     this.trimName,
+    this.sectionId,
     this.sectionEn,
     this.sectionAr,
     this.descriptionEn,
@@ -194,7 +196,9 @@ final class EquipmentRow extends Equatable {
   });
 
   final String? trimSlug;
+  final String? trimProductId; // InvProducts.ProductID — matches a stock car's productId
   final String? trimName;
+  final int? sectionId; // section display order (عام → الاضافات الخارجية → …)
   final String? sectionEn;
   final String? sectionAr;
   final String? descriptionEn;
@@ -211,7 +215,9 @@ final class EquipmentRow extends Equatable {
 
   factory EquipmentRow.fromJson(Map<String, dynamic> j) => EquipmentRow(
         trimSlug: _s(j['trimSlug']),
+        trimProductId: _s(j['trimProductId']),
         trimName: _s(j['trimName']),
+        sectionId: _i(j['sectionId']),
         sectionEn: _s(j['sectionEn']),
         sectionAr: _s(j['sectionAr']),
         descriptionEn: _s(j['descriptionEn']),

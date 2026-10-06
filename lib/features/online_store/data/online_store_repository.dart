@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/di/injector.dart' show appBrand;
 import '../../../core/network/api_client.dart';
 import '../../home/domain/home_models.dart';
+import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow;
 import '../domain/online_store_models.dart';
 
 /// Buy-online cycle — same endpoints/DTOs as the website's online store.
@@ -47,6 +48,22 @@ final class OnlineStoreRepository {
           : null;
     } on DioException {
       return null;
+    }
+  }
+
+  /// Equipment/spec rows of every trim in the car's model group + year —
+  /// the website's online detail specs source (filter to the trim with
+  /// equipmentsForTrim).
+  Future<List<EquipmentRow>> equipments(String slug) async {
+    try {
+      final res =
+          await _api.get<List<dynamic>>('/api/app/vehicles/$slug/equipments');
+      return (res.data ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(EquipmentRow.fromJson)
+          .toList();
+    } on DioException {
+      return const [];
     }
   }
 

@@ -20,6 +20,7 @@ import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/car_sheet_cubit.dart';
 import 'widgets/method_forms.dart';
+import 'widgets/online_specs_view.dart';
 
 /// Opens the purchase bottom sheet for a car — NZ-style sheet (92% height,
 /// 300ms slide) with the card image flying in via Hero.
@@ -187,35 +188,7 @@ final class _Overview extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    SizedBox(height: context.rs(12)),
-                    if (detail != null)
-                      Wrap(
-                        spacing: context.rs(8),
-                        runSpacing: context.rs(8),
-                        children: [
-                          if (detail.hp != null)
-                            _SpecStat(
-                                value: '${detail.hp!.round()}',
-                                label: t.specHp),
-                          if ((detail.petrol ?? '').isNotEmpty)
-                            _SpecStat(value: detail.petrol!, label: t.specFuel),
-                          if (detail.seatsNumber != null)
-                            _SpecStat(
-                                value: '${detail.seatsNumber}',
-                                label: t.specSeats),
-                          if (detail.cylinders != null)
-                            _SpecStat(
-                                value: '${detail.cylinders}',
-                                label: t.specCylinders),
-                        ],
-                      )
-                          .animate()
-                          .fadeIn(duration: 300.ms, delay: 100.ms)
-                          .slideY(
-                              begin: 0.08,
-                              end: 0,
-                              curve: Curves.easeOutCubic),
-                    SizedBox(height: context.rs(14)),
+                    SizedBox(height: context.rs(18)),
                     Text(
                       t.sheetSelectYourCar,
                       style: TextStyle(
@@ -250,6 +223,28 @@ final class _Overview extends StatelessWidget {
                           lang: lang,
                           onTap: () => cubit.selectColor(c),
                         ),
+
+                    // ── Website parity (online/[slug]): vehicle details card +
+                    // this trim's tabbed specifications. ──
+                    SizedBox(height: context.rs(18)),
+                    OnlineVehicleDetailsCard(
+                      detail: detail,
+                      vehicle: vehicle,
+                      color: state.color,
+                      grade: state.specs.isEmpty ? null : state.specs.first.trimName,
+                      lang: lang,
+                    ),
+                    SizedBox(height: context.rs(24)),
+                    OnlineSpecsSection(
+                      rows: state.specs,
+                      loading: state.specsLoading,
+                      lang: lang,
+                      subtitle: [
+                        vehicle.name(lang),
+                        (detail?.year ?? vehicle.year ?? '').trim(),
+                        (state.specs.isEmpty ? '' : state.specs.first.trimName ?? '').trim(),
+                      ].where((s) => s.isNotEmpty).join(' · '),
+                    ),
                     SizedBox(height: context.rs(90)),
                   ],
                 ),
@@ -386,47 +381,6 @@ final class _StoreFinanceCtaState extends State<_StoreFinanceCta> {
                 child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.account_balance_rounded, size: 17),
         label: Text(t.finReqTitle),
-      ),
-    );
-  }
-}
-
-/// Compact stat chip (hairline border, no shadow): value bold, label muted.
-final class _SpecStat extends StatelessWidget {
-  const _SpecStat({required this.value, required this.label});
-
-  final String value;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: context.rs(13), vertical: context.rs(8)),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: scheme.outline.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: context.rf(14.5),
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: context.rf(9.5),
-              color: scheme.onSurface.withValues(alpha: 0.5),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -5821,6 +5821,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get pfCancel;
+
+  /// No description provided for @osGrade.
+  ///
+  /// In en, this message translates to:
+  /// **'Grade'**
+  String get osGrade;
+
+  /// No description provided for @osModelYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Model year'**
+  String get osModelYear;
+
+  /// No description provided for @osVehicleSpecs.
+  ///
+  /// In en, this message translates to:
+  /// **'Vehicle specifications'**
+  String get osVehicleSpecs;
 }
 
 class _AppLocalizationsDelegate

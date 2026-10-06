@@ -2,8 +2,10 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../home/domain/home_models.dart';
+import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow;
 import '../data/online_store_repository.dart';
 import '../domain/online_store_models.dart';
+import '../domain/online_specs.dart';
 
 /// One car's purchase sheet: loads detail (stock sn) + bank offers +
 /// form/reservation settings in parallel; holds the color, bank, method and
@@ -26,6 +28,8 @@ final class CarSheetState extends Equatable {
     this.page = SheetPage.overview,
     this.reference,
     this.orderGuid,
+    this.specs = const [],
+    this.specsLoading = true,
   });
 
   final bool loading;
@@ -40,6 +44,9 @@ final class CarSheetState extends Equatable {
   final SheetPage page;
   final String? reference; // HJ-… on success
   final String? orderGuid; // deposit OrderGUID → "complete purchase" resume
+  /// This trim's equipment rows (website "مواصفات السيارة" source).
+  final List<EquipmentRow> specs;
+  final bool specsLoading;
 
   CarSheetState copyWith({
     bool? loading,
@@ -54,6 +61,8 @@ final class CarSheetState extends Equatable {
     SheetPage? page,
     String? reference,
     String? orderGuid,
+    List<EquipmentRow>? specs,
+    bool? specsLoading,
   }) =>
       CarSheetState(
         loading: loading ?? this.loading,
@@ -68,6 +77,8 @@ final class CarSheetState extends Equatable {
         page: page ?? this.page,
         reference: reference ?? this.reference,
         orderGuid: orderGuid ?? this.orderGuid,
+        specs: specs ?? this.specs,
+        specsLoading: specsLoading ?? this.specsLoading,
       );
 
   @override
@@ -84,6 +95,8 @@ final class CarSheetState extends Equatable {
         page,
         reference,
         orderGuid,
+        specs,
+        specsLoading,
       ];
 }
 
@@ -93,6 +106,7 @@ final class CarSheetCubit extends Cubit<CarSheetState> {
           color: vehicle.uniqueColors.isEmpty ? null : vehicle.uniqueColors.first,
         )) {
     _load();
+    _loadSpecs();
   }
 
   final OnlineStoreRepository _repo;
@@ -117,6 +131,18 @@ final class CarSheetCubit extends Cubit<CarSheetState> {
       selectedBankId: banks.isEmpty ? null : banks.first.bankId,
       formSettings: results[2] as FormSettings,
       reservationSettings: results[3] as ReservationSettings,
+    ));
+  }
+
+  /// Specs load on their own so a slow equipments call never delays the
+  /// price/colours/banks the purchase needs.
+  Future<void> _loadSpecs() async {
+    final slug = vehicle.slug;
+    final rows = slug == null ? const <EquipmentRow>[] : await _repo.equipments(slug);
+    if (isClosed) return;
+    emit(state.copyWith(
+      specsLoading: false,
+      specs: equipmentsForTrim(rows, slug, vehicle.productId),
     ));
   }
 

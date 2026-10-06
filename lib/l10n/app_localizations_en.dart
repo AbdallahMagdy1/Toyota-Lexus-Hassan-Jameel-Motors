@@ -2978,4 +2978,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get pfCancel => 'Cancel';
+
+  @override
+  String get osGrade => 'Grade';
+
+  @override
+  String get osModelYear => 'Model year';
+
+  @override
+  String get osVehicleSpecs => 'Vehicle specifications';
 }

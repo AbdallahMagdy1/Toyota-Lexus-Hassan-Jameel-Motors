@@ -72,7 +72,7 @@ final class AppNotification extends Equatable {
         titleEn: m.data['titleEn'] ?? m.notification?.title,
         bodyAr: m.data['bodyAr'] ?? m.notification?.body,
         bodyEn: m.data['bodyEn'] ?? m.notification?.body,
-        route: m.data['route'],
+        route: PushService.resolveRoute(m.data),
         date: DateTime.now(),
       );
 
@@ -190,7 +190,15 @@ final class PushService {
 
       // Register the token now (if signed in) and on every auth change.
       await syncToken();
-      sl<AuthBloc>().stream.listen((_) => syncToken());
+      sl<AuthBloc>().stream.listen((state) {
+        // Signed out → detach THIS device from the account so it stops
+        // receiving that user's personal pushes (other devices keep theirs).
+        if (state.user == null && _registeredUserId != null) {
+          _unregister();
+        } else {
+          syncToken();
+        }
+      });
       FirebaseMessaging.instance.onTokenRefresh.listen((_) => syncToken());
     } catch (e) {
       debugPrint('FCM init skipped: $e');
@@ -206,8 +214,37 @@ final class PushService {
   /// carries a go_router PATH (e.g. '/offers', '/maintenance', '/tracking').
   static Future<void> _handleOpen(RemoteMessage m) async {
     await _storeOnly(m);
-    _navigateTo(m.data['route']);
+    _navigateTo(resolveRoute(m.data));
   }
+
+  /// The go_router path a push opens. Current backends send it ready-made in
+  /// data['route'] ('/models?slug=…', '/offers?slug=…', '/tracking?kind=…&ref=…').
+  /// Older payloads carried a NAME instead of a path — mapped here so those
+  /// taps still land on the right screen:
+  ///   new_car                              → /models?slug=<slug>
+  ///   orders_tracking / maintenance_tracking → /tracking?kind=<kind>&ref=<refNo|orderId>
+  static String? resolveRoute(Map<String, dynamic> data) {
+    final route = data['route']?.toString().trim() ?? '';
+    if (route.startsWith('/')) return route;
+    String q(String k) => Uri.encodeQueryComponent(data[k]?.toString().trim() ?? '');
+    switch (route) {
+      case 'new_car':
+        final slug = q('slug');
+        return slug.isEmpty ? '/models' : '/models?slug=$slug';
+      case 'orders_tracking':
+        final kind = q('kind'), ref = q('refNo');
+        return '/tracking?kind=$kind&ref=$ref';
+      case 'maintenance_tracking':
+        return '/tracking?kind=maintenance&ref=${q('orderId')}';
+      case 'offer':
+        return '/offers';
+      default:
+        return null;
+    }
+  }
+
+  /// Opens an inbox item's target screen (same handling as a push tap).
+  static void openRoute(String? route) => _navigateTo(route);
 
   /// Navigate to a notification's target screen. Only app PATHS (leading '/')
   /// are followed; any other value (or none) just leaves the app on its normal
@@ -243,7 +280,12 @@ final class PushService {
     );
   }
 
-  /// Web_Users.Token — the same storage the notification procs read.
+  /// The account this device's token is currently registered to (null = none).
+  static int? _registeredUserId;
+
+  /// Registers THIS device's token for the signed-in user. The backend keeps
+  /// one row per device (App_UserDevices, unique per token), so every device
+  /// the user signs in on receives their pushes — not only the last one.
   static Future<void> syncToken() async {
     if (!_ready) return;
     final user = sl<AuthBloc>().state.user;
@@ -262,8 +304,28 @@ final class PushService {
           'platform': Platform.isIOS ? 'ios' : 'android',
         },
       );
+      _registeredUserId = user.userId;
     } catch (e) {
       debugPrint('FCM token sync failed: $e');
+    }
+  }
+
+  /// Sign-out: remove this device's token from the account it was registered
+  /// to. Brand topics ('all' / 'toyota' / 'lexus') stay subscribed, so the
+  /// device still gets general broadcasts as a guest.
+  static Future<void> _unregister() async {
+    final userId = _registeredUserId;
+    _registeredUserId = null;
+    if (!_ready || userId == null) return;
+    try {
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token == null) return;
+      await sl<ApiClient>().post<Map<String, dynamic>>(
+        ApiPaths.fcmTokenUnregister,
+        body: {'userId': userId, 'token': token},
+      );
+    } catch (e) {
+      debugPrint('FCM token unregister failed: $e');
     }
   }
 }
@@ -288,6 +350,7 @@ final class ServerNotification {
     this.contentEn,
     this.type,
     this.date,
+    this.targetRoute,
   });
 
   final int id;
@@ -297,6 +360,11 @@ final class ServerNotification {
   final String? contentEn;
   final String? type;
   final DateTime? date;
+
+  /// App path this item opens on tap ('/models?slug=…', '/offers?slug=…',
+  /// '/tracking?kind=…&ref=…'); null/blank = informational only.
+  final String? targetRoute;
+  bool get tappable => (targetRoute ?? '').trim().startsWith('/');
 
   String title(String lang) =>
       (lang == 'ar' ? titleAr : titleEn) ?? titleEn ?? titleAr ?? '';
@@ -312,6 +380,7 @@ final class ServerNotification {
         contentEn: j['contentEn']?.toString(),
         type: j['alertType']?.toString(),
         date: DateTime.tryParse('${j['createdDate'] ?? ''}'),
+        targetRoute: j['targetRoute']?.toString(),
       );
 
   /// Icon by the ops NotificationType (service update / appointment /
@@ -505,7 +574,7 @@ final class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
+    final tile = Container(
       padding: EdgeInsets.all(context.rs(12)),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF181B21) : const Color(0xFFF7F8FA),
@@ -555,7 +624,29 @@ final class _NotificationTile extends StatelessWidget {
               ],
             ),
           ),
+          if (n.tappable) ...[
+            SizedBox(width: context.rs(6)),
+            Padding(
+              padding: EdgeInsets.only(top: context.rs(9)),
+              child: Icon(Icons.chevron_right_rounded,
+                  size: 20, color: scheme.onSurface.withValues(alpha: 0.35)),
+            ),
+          ],
         ],
+      ),
+    );
+    if (!n.tappable) return tile;
+    // Tap → close the inbox and open the item (new car / offer / order).
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          Navigator.of(context).maybePop();
+          PushService.openRoute(n.targetRoute!.trim());
+        },
+        child: tile,
       ),
     );
   }

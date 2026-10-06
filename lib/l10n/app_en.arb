@@ -1088,5 +1088,8 @@
   "pfDeleteNote": "Warning: this will permanently delete your account and hide all your data — it cannot be undone from the app.",
   "pfDeleteDialogTitle": "Delete account?",
   "pfDeleteDialogBody": "Are you sure you want to delete your account? Your data will be hidden from the app and this cannot be undone.",
-  "pfCancel": "Cancel"
+  "pfCancel": "Cancel",
+  "osGrade": "Grade",
+  "osModelYear": "Model year",
+  "osVehicleSpecs": "Vehicle specifications"
 }
