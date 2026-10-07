@@ -3,7 +3,7 @@ import 'package:dio/dio.dart';
 import '../../../core/di/injector.dart' show appBrand;
 import '../../../core/network/api_client.dart';
 import '../../home/domain/home_models.dart';
-import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow;
+import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow, VehicleColor;
 import '../domain/online_store_models.dart';
 
 /// Buy-online cycle — same endpoints/DTOs as the website's online store.
@@ -61,6 +61,20 @@ final class OnlineStoreRepository {
       return (res.data ?? [])
           .whereType<Map<String, dynamic>>()
           .map(EquipmentRow.fromJson)
+          .toList();
+    } on DioException {
+      return const [];
+    }
+  }
+
+  /// The model's full colour palette — carries the INTERIOR swatch image
+  /// (interiorImage) the stock-colour list lacks; matched by colorId.
+  Future<List<VehicleColor>> palette(String slug) async {
+    try {
+      final res = await _api.get<List<dynamic>>('/api/app/vehicles/$slug/colors');
+      return (res.data ?? [])
+          .whereType<Map<String, dynamic>>()
+          .map(VehicleColor.fromJson)
           .toList();
     } on DioException {
       return const [];

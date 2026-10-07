@@ -20,11 +20,14 @@ final class OnlineVehicleDetailsCard extends StatelessWidget {
     required this.color,
     required this.grade,
     required this.lang,
+    this.interiorImage,
   });
 
   final SliderVehicle? detail;
   final OnlineVehicle vehicle;
   final CarColor? color;
+  /// Interior trim swatch from the model palette (null → approximated dot).
+  final String? interiorImage;
   final String? grade;
   final String lang;
 
@@ -51,7 +54,15 @@ final class OnlineVehicleDetailsCard extends StatelessWidget {
       if (year.isNotEmpty) (t.osModelYear, _value(context, year)),
       if (exterior != null)
         (t.osExteriorColor, _colorValue(context, exterior, color?.image)),
-      if (interior != null) (t.osInnerColor, _value(context, interior)),
+      if (interior != null)
+        (
+          t.osInnerColor,
+          _colorValue(context, interior, interiorImage,
+              // No palette image → the website's name-based colour dot.
+              hex: (interiorImage ?? '').isEmpty
+                  ? interiorSwatchArgb(color?.nameEn)
+                  : null),
+        ),
     ];
 
     if (stats.isEmpty && rows.isEmpty) return const SizedBox.shrink();
@@ -118,19 +129,22 @@ final class OnlineVehicleDetailsCard extends StatelessWidget {
         style: TextStyle(fontSize: context.rf(12.5), fontWeight: FontWeight.w700),
       );
 
-  Widget _colorValue(BuildContext context, String name, String? image) {
+  Widget _colorValue(BuildContext context, String name, String? image,
+      {int? hex}) {
     final scheme = Theme.of(context).colorScheme;
+    final hasImage = (image ?? '').isNotEmpty;
     return Row(mainAxisSize: MainAxisSize.min, children: [
-      if ((image ?? '').isNotEmpty) ...[
+      if (hasImage || hex != null) ...[
         Container(
           width: context.rs(20),
           height: context.rs(20),
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
+            color: hex == null ? null : Color(hex),
             border: Border.all(color: scheme.outline.withValues(alpha: 0.5)),
           ),
-          child: HomeImage(url: image, fit: BoxFit.cover),
+          child: hasImage ? HomeImage(url: image, fit: BoxFit.cover) : null,
         ),
         SizedBox(width: context.rs(8)),
       ],

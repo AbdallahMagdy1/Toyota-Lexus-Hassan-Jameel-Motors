@@ -61,6 +61,7 @@ final class VehicleColor extends Equatable {
     this.nameAr,
     this.exteriorImage,
     this.exteriorCode,
+    this.interiorImage,
   });
 
   final String colorId;
@@ -68,6 +69,7 @@ final class VehicleColor extends Equatable {
   final String? nameAr;
   final String? exteriorImage; // swatch dot
   final String? exteriorCode;
+  final String? interiorImage; // interior trim swatch
 
   String name(String lang) => (lang == 'ar' ? nameAr : nameEn) ?? nameEn ?? nameAr ?? '';
 
@@ -77,6 +79,7 @@ final class VehicleColor extends Equatable {
         nameAr: _s(j['nameAr']),
         exteriorImage: _s(j['exteriorImage']),
         exteriorCode: _s(j['exteriorCode']),
+        interiorImage: _s(j['interiorImage']),
       );
 
   @override

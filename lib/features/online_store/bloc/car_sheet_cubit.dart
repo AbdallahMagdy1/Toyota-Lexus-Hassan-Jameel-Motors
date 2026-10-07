@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../home/domain/home_models.dart';
-import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow;
+import '../../vehicles/domain/vehicle_models.dart' show EquipmentRow, VehicleColor;
 import '../data/online_store_repository.dart';
 import '../domain/online_store_models.dart';
 import '../domain/online_specs.dart';
@@ -30,6 +30,7 @@ final class CarSheetState extends Equatable {
     this.orderGuid,
     this.specs = const [],
     this.specsLoading = true,
+    this.palette = const [],
   });
 
   final bool loading;
@@ -47,6 +48,21 @@ final class CarSheetState extends Equatable {
   /// This trim's equipment rows (website "مواصفات السيارة" source).
   final List<EquipmentRow> specs;
   final bool specsLoading;
+  /// Model palette (/vehicles/{slug}/colors) — interior swatch per colorId.
+  final List<VehicleColor> palette;
+
+  /// Interior swatch image of [c] (website: palette match by colorId).
+  String? interiorImageFor(CarColor? c) {
+    final id = (c?.colorId ?? '').toLowerCase();
+    if (id.isEmpty) return null;
+    for (final p in palette) {
+      if (p.colorId.toLowerCase() == id &&
+          (p.interiorImage ?? '').isNotEmpty) {
+        return p.interiorImage;
+      }
+    }
+    return null;
+  }
 
   CarSheetState copyWith({
     bool? loading,
@@ -63,6 +79,7 @@ final class CarSheetState extends Equatable {
     String? orderGuid,
     List<EquipmentRow>? specs,
     bool? specsLoading,
+    List<VehicleColor>? palette,
   }) =>
       CarSheetState(
         loading: loading ?? this.loading,
@@ -79,6 +96,7 @@ final class CarSheetState extends Equatable {
         orderGuid: orderGuid ?? this.orderGuid,
         specs: specs ?? this.specs,
         specsLoading: specsLoading ?? this.specsLoading,
+        palette: palette ?? this.palette,
       );
 
   @override
@@ -97,6 +115,7 @@ final class CarSheetState extends Equatable {
         orderGuid,
         specs,
         specsLoading,
+        palette,
       ];
 }
 
@@ -138,11 +157,21 @@ final class CarSheetCubit extends Cubit<CarSheetState> {
   /// price/colours/banks the purchase needs.
   Future<void> _loadSpecs() async {
     final slug = vehicle.slug;
-    final rows = slug == null ? const <EquipmentRow>[] : await _repo.equipments(slug);
+    if (slug == null) {
+      emit(state.copyWith(specsLoading: false));
+      return;
+    }
+    final results = await Future.wait<Object>([
+      _repo.equipments(slug),
+      _repo.palette(slug),
+    ]);
     if (isClosed) return;
+    final rows = results[0] as List<EquipmentRow>;
+    final palette = results[1] as List<VehicleColor>;
     emit(state.copyWith(
       specsLoading: false,
       specs: equipmentsForTrim(rows, slug, vehicle.productId),
+      palette: palette,
     ));
   }
 

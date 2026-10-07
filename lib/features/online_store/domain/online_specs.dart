@@ -73,6 +73,28 @@ List<OnlineSpecSection> buildOnlineSpecSections(
   return [for (final t in order) OnlineSpecSection(t, sections[t]!)];
 }
 
+/// Approximate interior swatch from the English interior name when the
+/// palette has no interior image — the website's INTERIOR_HEX (trim colour
+/// names are a small fixed vocabulary; unknown names get no dot).
+int? interiorSwatchArgb(String? nameEn) {
+  final interior = splitColorName(nameEn ?? '').$2;
+  if (interior == null) return null;
+  const table = <(String, int)>[
+    (r'black', 0xFF1F1F1F),
+    (r'b(ei|ie)e?ge|ivory', 0xFFD9C6A3),
+    (r'fawn|tan|camel', 0xFFC39A6B),
+    (r'hazel|saddle|brown|cognac', 0xFF7B5636),
+    (r'bordeaux|burgundy|red|maroon|crim', 0xFF6E1F2B),
+    (r'gr[ae]y|silver', 0xFF8D8F93),
+    (r'white', 0xFFF2F2F0),
+    (r'blue|navy', 0xFF24334F),
+  ];
+  for (final (re, argb) in table) {
+    if (RegExp(re, caseSensitive: false).hasMatch(interior)) return argb;
+  }
+  return null;
+}
+
 /// "GRAY METALLIC /BEIGE" → ("GRAY METALLIC", "BEIGE") — exterior / interior.
 (String?, String?) splitColorName(String name) {
   if (name.trim().isEmpty) return (null, null);

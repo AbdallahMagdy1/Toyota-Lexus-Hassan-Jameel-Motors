@@ -231,6 +231,7 @@ final class _Overview extends StatelessWidget {
                       detail: detail,
                       vehicle: vehicle,
                       color: state.color,
+                      interiorImage: state.interiorImageFor(state.color),
                       grade: state.specs.isEmpty ? null : state.specs.first.trimName,
                       lang: lang,
                     ),

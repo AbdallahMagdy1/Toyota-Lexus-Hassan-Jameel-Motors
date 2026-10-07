@@ -141,6 +141,36 @@ final class PushService {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     try {
       await Firebase.initializeApp();
+    } catch (e) {
+      debugPrint('FCM init skipped: $e');
+      return;
+    }
+
+    // ── Token registration FIRST, independent of everything below. ──
+    // It used to run only after the permission dialogs, topic subscriptions
+    // and getInitialMessage had all completed: a permission prompt the user
+    // hadn't answered yet, or any earlier failure, meant the device signed in
+    // but NEVER sent its token — so the backend could not reach that phone.
+    _ready = true;
+    sl<AuthBloc>().stream.listen((state) {
+      // Signed out → detach THIS device from the account so it stops
+      // receiving that user's personal pushes (other devices keep theirs).
+      if (state.user == null && _registeredUserId != null) {
+        _unregister();
+      } else {
+        syncToken();
+      }
+    });
+    FirebaseMessaging.instance.onTokenRefresh.listen((_) => syncToken());
+    // Self-heal: re-register every time the app comes back to the
+    // foreground, so a token rotated while the app was closed (reinstall,
+    // Play-services refresh) or a failed earlier sync never leaves this
+    // device unreachable for the signed-in user.
+    // (The binding keeps the listener registered for the app's lifetime.)
+    AppLifecycleListener(onResume: syncToken);
+    syncToken(); // not awaited — never blocks the steps below
+
+    try {
       await _local.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -186,22 +216,12 @@ final class PushService {
       FirebaseMessaging.onMessageOpenedApp.listen(_handleOpen);
       final initial = await FirebaseMessaging.instance.getInitialMessage();
       if (initial != null) await _handleOpen(initial);
-      _ready = true;
 
-      // Register the token now (if signed in) and on every auth change.
+      // Permission is settled now — on iOS the APNs token (needed for an FCM
+      // token) only exists after it, so sync once more.
       await syncToken();
-      sl<AuthBloc>().stream.listen((state) {
-        // Signed out → detach THIS device from the account so it stops
-        // receiving that user's personal pushes (other devices keep theirs).
-        if (state.user == null && _registeredUserId != null) {
-          _unregister();
-        } else {
-          syncToken();
-        }
-      });
-      FirebaseMessaging.instance.onTokenRefresh.listen((_) => syncToken());
     } catch (e) {
-      debugPrint('FCM init skipped: $e');
+      debugPrint('FCM setup step failed: $e');
     }
   }
 
@@ -286,13 +306,61 @@ final class PushService {
   /// Registers THIS device's token for the signed-in user. The backend keeps
   /// one row per device (App_UserDevices, unique per token), so every device
   /// the user signs in on receives their pushes — not only the last one.
-  static Future<void> syncToken() async {
+  static Future<void> syncToken() {
+    // One sync at a time — sign-in, resume and token-refresh can fire
+    // together. A request arriving mid-sync (e.g. sign-in while the startup
+    // sync is retrying) queues exactly one more pass, so it's never lost.
+    if (_syncing != null) {
+      _syncAgain = true;
+      return _syncing!;
+    }
+    return _syncing = _syncLoop();
+  }
+
+  static Future<void>? _syncing;
+  static bool _syncAgain = false;
+
+  static Future<void> _syncLoop() async {
+    try {
+      do {
+        _syncAgain = false;
+        await _syncOnce();
+      } while (_syncAgain);
+    } finally {
+      _syncing = null;
+    }
+  }
+
+  /// Fetches the FCM token with retries: right after install/sign-in it can be
+  /// null or throw briefly (Play services warming up; on iOS the APNs token
+  /// arrives a moment after the permission prompt). A single silent failure
+  /// used to leave the phone unregistered until the next sign-in.
+  static Future<String?> _fetchToken() async {
+    for (var attempt = 0; attempt < 5; attempt++) {
+      try {
+        if (Platform.isIOS &&
+            await FirebaseMessaging.instance.getAPNSToken() == null) {
+          throw StateError('APNs token not available yet');
+        }
+        final token = await FirebaseMessaging.instance.getToken();
+        if (token != null && token.isNotEmpty) return token;
+      } catch (e) {
+        debugPrint('FCM getToken attempt ${attempt + 1} failed: $e');
+      }
+      await Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)));
+    }
+    return null;
+  }
+
+  static Future<void> _syncOnce() async {
     if (!_ready) return;
     final user = sl<AuthBloc>().state.user;
     if (user == null || user.userId <= 0) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      final token = await _fetchToken();
       if (token == null) return;
+      // Still the same signed-in user after the retries?
+      if (sl<AuthBloc>().state.user?.userId != user.userId) return;
       await sl<ApiClient>().post<Map<String, dynamic>>(
         ApiPaths.fcmToken,
         // brand routes brand-specific pushes (a Toyota car's updates must
