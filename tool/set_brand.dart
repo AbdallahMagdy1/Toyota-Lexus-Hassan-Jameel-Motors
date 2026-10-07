@@ -11,9 +11,22 @@ library;
 
 import 'dart:io';
 
+// iOS and Android ids DIFFER for Toyota: the App Store app was registered
+// as com.hassanjameel.toyotamotors while Google Play uses
+// com.hassanjameel.toyota. Lexus uses the same id on both stores.
 const _brands = {
-  'toyota': (name: 'Toyota HJ', bundleId: 'com.hassanjameel.toyota', icons: 'icons-toyota.yaml'),
-  'lexus': (name: 'Lexus HJ', bundleId: 'com.hassanjameel.lexus', icons: 'icons-lexus.yaml'),
+  'toyota': (
+    name: 'Toyota HJ',
+    androidId: 'com.hassanjameel.toyota',
+    iosBundleId: 'com.hassanjameel.toyotamotors',
+    icons: 'icons-toyota.yaml',
+  ),
+  'lexus': (
+    name: 'Lexus HJ',
+    androidId: 'com.hassanjameel.lexus',
+    iosBundleId: 'com.hassanjameel.lexus',
+    icons: 'icons-lexus.yaml',
+  ),
 };
 
 Future<void> main(List<String> args) async {
@@ -31,21 +44,25 @@ Future<void> main(List<String> args) async {
         '\${1}${brand.name}\${2}',
   });
 
-  // Both brands' ids map onto the target id; the .RunnerTests suffix is
-  // preserved because only the shared base id is replaced.
+  // Rewrite the PRODUCT_BUNDLE_IDENTIFIER lines wholesale (Runner + its
+  // RunnerTests suffix) — robust against whichever brand id is currently
+  // in place, including the toyotamotors/toyota substring overlap.
   _rewrite('ios/Runner.xcodeproj/project.pbxproj', {
-    for (final b in _brands.values) RegExp(RegExp.escape(b.bundleId)): brand.bundleId,
+    RegExp(r'PRODUCT_BUNDLE_IDENTIFIER = com\.hassanjameel\.[A-Za-z0-9]+\.RunnerTests;'):
+        'PRODUCT_BUNDLE_IDENTIFIER = ${brand.iosBundleId}.RunnerTests;',
+    RegExp(r'PRODUCT_BUNDLE_IDENTIFIER = com\.hassanjameel\.[A-Za-z0-9]+;'):
+        'PRODUCT_BUNDLE_IDENTIFIER = ${brand.iosBundleId};',
   });
 
   _rewrite('android/app/src/main/AndroidManifest.xml', {
     RegExp(r'android:label="[^"]*"'): 'android:label="${brand.name}"',
   });
 
-  // Android applicationId — same id as iOS, so ONE android/ folder serves
-  // both store apps (Play package flips per brand before building).
+  // Android applicationId — ONE android/ folder serves both store apps
+  // (the Play package flips per brand before building).
   _rewrite('android/app/build.gradle.kts', {
     RegExp(r'applicationId = "[^"]*"'):
-        'applicationId = "${brand.bundleId}"',
+        'applicationId = "${brand.androidId}"',
   });
 
   // iOS Firebase config — download each brand's GoogleService-Info.plist
@@ -73,7 +90,8 @@ Future<void> main(List<String> args) async {
     return;
   }
 
-  stdout.writeln('✓ Project is now the ${brand.name} app (${brand.bundleId}).');
+  stdout.writeln('✓ Project is now the ${brand.name} app '
+      '(android ${brand.androidId} / ios ${brand.iosBundleId}).');
 }
 
 void _rewrite(String path, Map<RegExp, String> replacements) {
