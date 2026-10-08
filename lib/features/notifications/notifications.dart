@@ -137,14 +137,42 @@ final class PushService {
   );
   static bool _ready = false;
 
+  /// Notification permission as last reported by the OS (for diagnostics).
+  static String _perm = 'unknown';
+
+  /// Push-registration diagnostics → GET /api/user/token/diag?stage=…
+  /// Every step of registration reports here so a phone that "doesn't get
+  /// notifications" shows WHY in the server request log (IIS logs the query
+  /// even before the backend endpoint is deployed). Fire-and-forget; never
+  /// throws, never blocks.
+  static void _diag(String stage, [Object? detail]) {
+    try {
+      final user = sl<AuthBloc>().state.user;
+      final d = (detail ?? '').toString().replaceAll(RegExp(r'\s+'), ' ');
+      sl<ApiClient>().get<dynamic>(
+        ApiPaths.fcmTokenDiag,
+        query: {
+          'stage': stage,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+          'brand': appBrand,
+          'perm': _perm,
+          'userId': user?.userId ?? 0,
+          if (d.isNotEmpty) 'detail': d.length > 160 ? d.substring(0, 160) : d,
+        },
+      ).ignore(); // drop the result and any error
+    } catch (_) {}
+  }
+
   static Future<void> init() async {
     if (!Platform.isAndroid && !Platform.isIOS) return;
     try {
       await Firebase.initializeApp();
     } catch (e) {
       debugPrint('FCM init skipped: $e');
+      _diag('firebase_init_failed', e);
       return;
     }
+    _diag('init_ok');
 
     // ── Token registration FIRST, independent of everything below. ──
     // It used to run only after the permission dialogs, topic subscriptions
@@ -170,11 +198,28 @@ final class PushService {
     AppLifecycleListener(onResume: syncToken);
     syncToken(); // not awaited — never blocks the steps below
 
+    // ── Tap handling NEXT, also ahead of any prompt or network call. ──
+    // getInitialMessage used to wait behind the permission dialog and the
+    // topic subscriptions (network), so a cold start from a tapped push could
+    // stall before deep-linking. Each step below has its own try so one
+    // failure never skips the rest.
+    FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
+    // Background/terminated arrivals: the SYSTEM tray showed them; when the
+    // user TAPS one, store it into the in-app inbox AND deep-link to the
+    // screen the dashboard chose (data['route']).
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleOpen);
     try {
       await _local.initialize(
         const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-          iOS: DarwinInitializationSettings(),
+          // No prompt here — requestPermission() below asks once for both
+          // FCM and local notifications, so initialize() never waits on a
+          // dialog.
+          iOS: DarwinInitializationSettings(
+            requestAlertPermission: false,
+            requestBadgePermission: false,
+            requestSoundPermission: false,
+          ),
         ),
         // Foreground notification tapped → deep-link (payload = data['route']).
         onDidReceiveNotificationResponse: (resp) => _navigateTo(resp.payload),
@@ -183,45 +228,59 @@ final class PushService {
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_channel);
+      // A foreground-shown notification tapped after the app was killed
+      // launches it without onDidReceiveNotificationResponse firing.
+      final launch = await _local.getNotificationAppLaunchDetails();
+      if (launch?.didNotificationLaunchApp ?? false) {
+        _navigateTo(launch!.notificationResponse?.payload);
+      }
+    } catch (e) {
+      debugPrint('Local notifications setup failed: $e');
+      _diag('setup_failed', 'local: $e');
+    }
+    FirebaseMessaging.onMessage.listen(_onMessage);
+    try {
+      final initial = await FirebaseMessaging.instance.getInitialMessage();
+      if (initial != null) await _handleOpen(initial);
+    } catch (e) {
+      debugPrint('FCM initial message failed: $e');
+      _diag('setup_failed', 'initial: $e');
+    }
 
-      await FirebaseMessaging.instance.requestPermission();
+    try {
+      final settings = await FirebaseMessaging.instance.requestPermission();
+      _perm = settings.authorizationStatus.name; // authorized | denied | …
+      _diag('permission', _perm);
       // Android 13+ POST_NOTIFICATIONS also for the local (foreground)
       // notifications path — without it .show() drops silently.
       await _local
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
           ?.requestNotificationsPermission();
-
-      // "TargetAll" broadcasts publish to the 'all' topic (WebSiteMobileBackEnd
-      // FCMServices.SendToTopicAsync) — the OLD app never subscribed, so
-      // broadcasts reached nobody. Subscribing fixes send-to-all.
-      try {
-        await FirebaseMessaging.instance.subscribeToTopic('all');
-        // Per-brand topic so broadcasts can target one store app only —
-        // and DROP the other brand's topic: dev/debug installs that once
-        // ran with the other brand's entry point subscribed to it, and FCM
-        // topic subscriptions persist forever unless unsubscribed. Without
-        // this cleanup a 'toyota' broadcast still lands in such a Lexus
-        // install (and vice versa).
-        await FirebaseMessaging.instance.subscribeToTopic(appBrand);
-        await FirebaseMessaging.instance
-            .unsubscribeFromTopic(appBrand == 'lexus' ? 'toyota' : 'lexus');
-      } catch (_) {}
-
-      FirebaseMessaging.onMessage.listen(_onMessage);
-      FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
-      // Background/terminated arrivals: the SYSTEM tray showed them; when the
-      // user TAPS one, store it into the in-app inbox AND deep-link to the
-      // screen the dashboard chose (data['route']).
-      FirebaseMessaging.onMessageOpenedApp.listen(_handleOpen);
-      final initial = await FirebaseMessaging.instance.getInitialMessage();
-      if (initial != null) await _handleOpen(initial);
-
-      // Permission is settled now — on iOS the APNs token (needed for an FCM
-      // token) only exists after it, so sync once more.
-      await syncToken();
     } catch (e) {
-      debugPrint('FCM setup step failed: $e');
+      debugPrint('FCM permission request failed: $e');
+      _diag('setup_failed', 'permission: $e');
+    }
+    // Permission is settled now — on iOS the APNs token (needed for an FCM
+    // token) may only exist after it, so sync once more.
+    syncToken();
+
+    // "TargetAll" broadcasts publish to the 'all' topic (WebSiteMobileBackEnd
+    // FCMServices.SendToTopicAsync) — the OLD app never subscribed, so
+    // broadcasts reached nobody. Subscribing fixes send-to-all.
+    try {
+      await FirebaseMessaging.instance.subscribeToTopic('all');
+      // Per-brand topic so broadcasts can target one store app only —
+      // and DROP the other brand's topic: dev/debug installs that once
+      // ran with the other brand's entry point subscribed to it, and FCM
+      // topic subscriptions persist forever unless unsubscribed. Without
+      // this cleanup a 'toyota' broadcast still lands in such a Lexus
+      // install (and vice versa).
+      await FirebaseMessaging.instance.subscribeToTopic(appBrand);
+      await FirebaseMessaging.instance
+          .unsubscribeFromTopic(appBrand == 'lexus' ? 'toyota' : 'lexus');
+    } catch (e) {
+      debugPrint('FCM topic subscription failed: $e');
     }
   }
 
@@ -275,9 +334,22 @@ final class PushService {
     final path = route; // non-null, captured for the deferred closure
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
-        sl<GoRouter>().go(path);
+        final router = sl<GoRouter>();
+        // Already ON this exact location (the same push tapped again):
+        // go() would be a no-op and the item's sheet would not reopen. A
+        // throwaway query param changes the screen's query key so its
+        // ?slug= / ?guid= handling runs again.
+        final current = router.routerDelegate.currentConfiguration.uri;
+        final target = current.toString() == path
+            ? '$path${path.contains('?') ? '&' : '?'}'
+                '_t=${DateTime.now().millisecondsSinceEpoch}'
+            : path;
+        router.go(target);
       } catch (_) {/* unknown/guarded route — ignore, app stays where it is */}
     });
+    // A post-frame callback alone doesn't schedule a frame — on an idle
+    // screen (nothing animating) it would never run.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   static Future<void> _onMessage(RemoteMessage m) async {
@@ -302,6 +374,38 @@ final class PushService {
 
   /// The account this device's token is currently registered to (null = none).
   static int? _registeredUserId;
+
+  /// Last successful POST /api/user/token on THIS install, as
+  /// 'userId|brand|token' — survives restarts, so "does this device
+  /// have a registered token?" is answered without a server round-trip.
+  static const _registeredKey = 'push_registered_token';
+
+  /// True when this device's CURRENT FCM token is registered for the
+  /// signed-in user (a rotated token or another account counts as not).
+  static Future<bool> hasRegisteredToken() async {
+    if (!_ready) return false;
+    final user = sl<AuthBloc>().state.user;
+    if (user == null || user.userId <= 0) return false;
+    try {
+      final saved =
+          (await SharedPreferences.getInstance()).getString(_registeredKey);
+      if (saved == null) return false;
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 10));
+      return token != null && saved == '${user.userId}|$appBrand|$token';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Safety net for the welcome swipe CTA: registers this device only if it
+  /// has no registered token yet. Fire-and-forget — never delays navigation.
+  static Future<void> ensureRegistered() async {
+    if (_syncing != null) return; // a registration is already running
+    if (await hasRegisteredToken()) return;
+    await syncToken();
+  }
 
   /// Registers THIS device's token for the signed-in user. The backend keeps
   /// one row per device (App_UserDevices, unique per token), so every device
@@ -336,19 +440,25 @@ final class PushService {
   /// arrives a moment after the permission prompt). A single silent failure
   /// used to leave the phone unregistered until the next sign-in.
   static Future<String?> _fetchToken() async {
+    Object? lastError;
     for (var attempt = 0; attempt < 5; attempt++) {
       try {
         if (Platform.isIOS &&
             await FirebaseMessaging.instance.getAPNSToken() == null) {
           throw StateError('APNs token not available yet');
         }
-        final token = await FirebaseMessaging.instance.getToken();
+        // Bounded: a phone with broken Google services can hang here forever.
+        final token = await FirebaseMessaging.instance
+            .getToken()
+            .timeout(const Duration(seconds: 20));
         if (token != null && token.isNotEmpty) return token;
       } catch (e) {
+        lastError = e;
         debugPrint('FCM getToken attempt ${attempt + 1} failed: $e');
       }
       await Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)));
     }
+    _diag('token_unavailable', lastError ?? 'getToken returned null');
     return null;
   }
 
@@ -361,7 +471,8 @@ final class PushService {
       if (token == null) return;
       // Still the same signed-in user after the retries?
       if (sl<AuthBloc>().state.user?.userId != user.userId) return;
-      await sl<ApiClient>().post<Map<String, dynamic>>(
+      // <dynamic>: a non-JSON-object reply must not fail a stored registration.
+      final res = await sl<ApiClient>().post<dynamic>(
         ApiPaths.fcmToken,
         // brand routes brand-specific pushes (a Toyota car's updates must
         // reach the Toyota app, not Lexus) — App_UserDevices.Brand.
@@ -372,9 +483,22 @@ final class PushService {
           'platform': Platform.isIOS ? 'ios' : 'android',
         },
       );
+      // ApiClient returns every <500 status as data — a rejected
+      // registration (400/404…) must not be recorded as "registered".
+      final code = res.statusCode ?? 0;
+      if (code < 200 || code >= 300) {
+        throw StateError('HTTP $code ${res.data ?? ''}');
+      }
       _registeredUserId = user.userId;
+      await (await SharedPreferences.getInstance())
+          .setString(_registeredKey, '${user.userId}|$appBrand|$token');
+      _diag('registered');
+      // Signed out while the request was in flight → detach it again, or
+      // this device keeps receiving the signed-out user's pushes.
+      if (sl<AuthBloc>().state.user?.userId != user.userId) await _unregister();
     } catch (e) {
       debugPrint('FCM token sync failed: $e');
+      _diag('register_failed', e);
     }
   }
 
@@ -386,12 +510,19 @@ final class PushService {
     _registeredUserId = null;
     if (!_ready || userId == null) return;
     try {
-      final token = await FirebaseMessaging.instance.getToken();
+      await (await SharedPreferences.getInstance()).remove(_registeredKey);
+      final token = await FirebaseMessaging.instance
+          .getToken()
+          .timeout(const Duration(seconds: 20));
       if (token == null) return;
-      await sl<ApiClient>().post<Map<String, dynamic>>(
+      final res = await sl<ApiClient>().post<dynamic>(
         ApiPaths.fcmTokenUnregister,
         body: {'userId': userId, 'token': token},
       );
+      final code = res.statusCode ?? 0;
+      if (code < 200 || code >= 300) {
+        debugPrint('FCM token unregister rejected: HTTP $code');
+      }
     } catch (e) {
       debugPrint('FCM token unregister failed: $e');
     }

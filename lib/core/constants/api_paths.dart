@@ -68,6 +68,7 @@ abstract final class ApiPaths {
   static const String financeRequests = '/api/app/account/finance-requests';
   static const String fcmToken = '/api/user/token';
   static const String fcmTokenUnregister = '/api/user/token/unregister';
+  static const String fcmTokenDiag = '/api/user/token/diag';
   static const String trackingStream = '/api/app/tracking/stream';
   static const String maintDays = '/api/app/maintenance/available-days';
 
