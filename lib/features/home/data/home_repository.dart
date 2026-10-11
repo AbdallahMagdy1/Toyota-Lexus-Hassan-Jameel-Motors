@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../core/constants/api_paths.dart';
 import '../../../core/network/api_client.dart';
 import '../domain/home_models.dart';
@@ -8,11 +10,17 @@ final class HomeRepository {
   final ApiClient _api;
 
   /// One request paints the whole home page (server-side warmed aggregate).
-  Future<HomeFeed?> fetch(String brandKey) async {
+  ///
+  /// `fresh: true` bypasses the stale-while-revalidate disk cache
+  /// (SwrCacheInterceptor) and hits the network, so pull-to-refresh reflects
+  /// live inventory immediately — a car that just sold drops off the home rail
+  /// at once instead of lingering behind the cached payload.
+  Future<HomeFeed?> fetch(String brandKey, {bool fresh = false}) async {
     try {
       final res = await _api.get<Map<String, dynamic>>(
         ApiPaths.home,
         query: {'brand': brandKey},
+        options: fresh ? Options(extra: const {'fresh': true}) : null,
       );
       final data = res.data;
       if (res.statusCode != 200 || data == null) return null;

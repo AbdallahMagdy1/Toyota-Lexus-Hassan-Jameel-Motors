@@ -203,9 +203,7 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
           GoRoute(
             path: Routes.news,
             pageBuilder: (context, state) => page(
-                NewsScreen(
-                    key: ValueKey('news?${state.uri.query}'),
-                    initialSlug: state.uri.queryParameters['slug']),
+                NewsScreen(initialSlug: state.uri.queryParameters['slug']),
                 state),
           ),
           GoRoute(
@@ -235,9 +233,7 @@ GoRouter buildRouter({required AuthBloc authBloc, required LocalStore store}) {
           GoRoute(
             path: Routes.usedCars,
             pageBuilder: (context, state) => page(
-                UsedCarsScreen(
-                    key: ValueKey('used-cars?${state.uri.query}'),
-                    initialGuid: state.uri.queryParameters['guid']),
+                UsedCarsScreen(initialGuid: state.uri.queryParameters['guid']),
                 state),
           ),
           GoRoute(

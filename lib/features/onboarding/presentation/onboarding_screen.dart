@@ -12,7 +12,6 @@ import '../../../shared/widgets/brand_backdrop.dart';
 import '../../../shared/widgets/swipe_action.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../auth/bloc/auth_bloc.dart';
-import '../../notifications/notifications.dart';
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/onboarding_cubit.dart';
@@ -133,10 +132,6 @@ final class _OnboardingView extends StatelessWidget {
                         label: label,
                         onConfirm: () async {
                           cubit.complete();
-                          // Signed in → make sure THIS device's push token is
-                          // registered (no-op when it already is). Not awaited
-                          // — the swipe never waits on the network.
-                          if (user != null) PushService.ensureRegistered();
                           context.go(
                               user != null ? Routes.home : Routes.welcome);
                           return true;

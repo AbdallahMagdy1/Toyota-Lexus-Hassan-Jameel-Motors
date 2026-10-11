@@ -12,10 +12,11 @@ part 'home_state.dart';
 /// Owns the whole home page: the aggregate feed, the offers-hero auto-play
 /// PageController, the vehicles category filter (client-side), the parts
 /// category tabs and the protection model picker (both async).
-final class HomeCubit extends Cubit<HomeState> {
+final class HomeCubit extends Cubit<HomeState> with WidgetsBindingObserver {
   HomeCubit(this._repo, {required String brandKey})
       : _brandKey = brandKey,
         super(const HomeState()) {
+    WidgetsBinding.instance.addObserver(this);
     load();
     _autoPlay = Timer.periodic(const Duration(seconds: 5), (_) => _advanceHero());
   }
@@ -25,9 +26,9 @@ final class HomeCubit extends Cubit<HomeState> {
   final PageController heroController = PageController();
   Timer? _autoPlay;
 
-  Future<void> load() async {
+  Future<void> load({bool fresh = false}) async {
     emit(state.copyWith(status: HomeStatus.loading));
-    final feed = await _repo.fetch(_brandKey);
+    final feed = await _repo.fetch(_brandKey, fresh: fresh);
     if (isClosed) return;
     if (feed == null) {
       emit(state.copyWith(status: HomeStatus.error));
@@ -40,7 +41,24 @@ final class HomeCubit extends Cubit<HomeState> {
     ));
   }
 
-  Future<void> refresh() => load();
+  /// Pull-to-refresh forces a network fetch (bypasses the SWR disk cache), so
+  /// live inventory — e.g. a car that just sold — is reflected immediately
+  /// instead of lingering behind the cached payload.
+  Future<void> refresh() => load(fresh: true);
+
+  /// When the app returns to the foreground, silently refetch the feed fresh so
+  /// the home rails self-heal (a sold car drops off on its own) — without a
+  /// loading flash or disturbing the user's parts/protection selections.
+  Future<void> _refreshOnResume() async {
+    final feed = await _repo.fetch(_brandKey, fresh: true);
+    if (isClosed || feed == null) return;
+    emit(state.copyWith(status: HomeStatus.ready, feed: feed));
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
+    if (lifecycleState == AppLifecycleState.resumed) _refreshOnResume();
+  }
 
   void _advanceHero() {
     final count = state.feed.vehicleOffers.length + state.feed.maintenanceOffers.length;
@@ -119,6 +137,7 @@ final class HomeCubit extends Cubit<HomeState> {
 
   @override
   Future<void> close() {
+    WidgetsBinding.instance.removeObserver(this);
     _autoPlay?.cancel();
     heroController.dispose();
     return super.close();
