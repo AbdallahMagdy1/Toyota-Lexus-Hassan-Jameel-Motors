@@ -394,10 +394,23 @@ final class PushService {
     final user = sl<AuthBloc>().state.user;
     if (user == null || user.userId <= 0) return;
     try {
+      // getToken() returns this phone's FCM token — Firebase CREATES one if the
+      // install has none yet (fresh install / just updated / token rotated).
       final token = await _fetchToken();
       if (token == null) return;
       // Still the same signed-in user after the retries?
       if (sl<AuthBloc>().state.user?.userId != user.userId) return;
+
+      // Check first: is THIS phone's token already registered for this user
+      // and this app? If yes there is nothing to do; if not (new phone,
+      // reinstall, app update with a new token, token owned by another
+      // account or registered by the other brand app) register it below.
+      if (await _isRegistered(user.userId, token)) {
+        _registeredUserId = user.userId;
+        _diag('token_ok');
+        return;
+      }
+
       await sl<ApiClient>().post<Map<String, dynamic>>(
         ApiPaths.fcmToken,
         // brand routes brand-specific pushes (a Toyota car's updates must
@@ -416,6 +429,34 @@ final class PushService {
       _diag('register_failed', e);
     }
   }
+
+  /// POST /api/user/token/status → {registered, brand}. True only when the
+  /// server already has this exact token for this user AND this brand's app.
+  /// Any failure (e.g. an older backend without the endpoint) returns false,
+  /// so the caller simply registers — registration is idempotent.
+  static Future<bool> _isRegistered(int userId, String token) async {
+    try {
+      final res = await sl<ApiClient>().post<Map<String, dynamic>>(
+        ApiPaths.fcmTokenStatus,
+        body: {
+          'userId': userId,
+          'token': token,
+          'brand': appBrand,
+          'platform': Platform.isIOS ? 'ios' : 'android',
+        },
+      );
+      final data = res.data ?? const {};
+      return data['registered'] == true &&
+          (data['brand']?.toString() ?? '') == appBrand;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Entry check (welcome "Hello <name> — Get started" swipe): make sure the
+  /// phone the signed-in user is opening the app on has a live FCM token
+  /// registered on the server; create + register one if not.
+  static Future<void> ensureDeviceRegistered() => syncToken();
 
   /// Sign-out: remove this device's token from the account it was registered
   /// to. Brand topics ('all' / 'toyota' / 'lexus') stay subscribed, so the

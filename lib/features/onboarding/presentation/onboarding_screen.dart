@@ -12,6 +12,7 @@ import '../../../shared/widgets/brand_backdrop.dart';
 import '../../../shared/widgets/swipe_action.dart';
 import '../../../shared/widgets/page_dots.dart';
 import '../../auth/bloc/auth_bloc.dart';
+import '../../notifications/notifications.dart' show PushService;
 import '../../settings/bloc/locale_cubit.dart';
 import '../../settings/bloc/theme_cubit.dart';
 import '../bloc/onboarding_cubit.dart';
@@ -131,6 +132,11 @@ final class _OnboardingView extends StatelessWidget {
                       return SwipeAction(
                         label: label,
                         onConfirm: () async {
+                          // Returning signed-in user (e.g. just updated the
+                          // app): verify this phone's push token is
+                          // registered, create + register it if not.
+                          // Not awaited — never delays entering the app.
+                          if (user != null) PushService.ensureDeviceRegistered();
                           cubit.complete();
                           context.go(
                               user != null ? Routes.home : Routes.welcome);
